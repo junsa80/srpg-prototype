@@ -3,6 +3,7 @@ const CELL = 80
 @export var size = Vector2i(9, 12)
 var astar = AStarGrid2D.new()
 var walls = {}
+var forest = {}
 var highlight_move = []
 var highlight_attack = []
 
@@ -14,7 +15,9 @@ func _ready() -> void:
 	astar.update()
 	for w in [Vector2i(4, 4), Vector2i(4, 5), Vector2i(2, 7), Vector2i(6, 7)]:
 		walls[w] = true; astar.set_point_solid(w)
+	for f in [Vector2i(1, 5), Vector2i(1, 6), Vector2i(7, 5), Vector2i(7, 6), Vector2i(3, 8), Vector2i(5, 8)]: forest[f] = true
 
+func is_forest(c: Vector2i) -> bool: return forest.has(c)
 func in_bounds(c: Vector2i) -> bool: return astar.is_in_boundsv(c)
 func cell_to_pos(c: Vector2i) -> Vector2: return Vector2(c) * CELL + Vector2(CELL, CELL) / 2
 func pos_to_cell(p: Vector2) -> Vector2i: return Vector2i(floor(p.x / CELL), floor(p.y / CELL))
@@ -49,7 +52,7 @@ func _draw() -> void:
 	for x in size.x:
 		for y in size.y:
 			var r = Rect2(x * CELL, y * CELL, CELL, CELL)
-			draw_rect(r, Color(0.25, 0.45, 0.25) if not walls.has(Vector2i(x, y)) else Color(0.35, 0.3, 0.25))
+			draw_rect(r, Color(0.35, 0.3, 0.25) if walls.has(Vector2i(x, y)) else (Color(0.12, 0.32, 0.15) if forest.has(Vector2i(x, y)) else Color(0.25, 0.45, 0.25)))
 			draw_rect(r, Color(0, 0, 0, 0.3), false, 1)
 	for c in highlight_attack: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(1, 0, 0, 0.3))
 	for c in highlight_move: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(0, 0.4, 1, 0.4))

@@ -12,7 +12,8 @@ static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:
 			if u.team != e.team: block[u.cell] = true
 	var reach = grid.movement_range(e.cell, e.move_range(), block, occ)
 	var best = {}; var best_score = -INF
-	var w = e.data.weapon
+	var w = e.weapon()
+	if w == null: return {"unit": e, "move_to": e.cell, "target": null}
 	for c in reach:
 		for f in foes:
 			var dist: int = abs(c.x - f.cell.x) + abs(c.y - f.cell.y)

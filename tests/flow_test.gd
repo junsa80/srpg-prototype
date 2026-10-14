@@ -24,7 +24,15 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var kael: Unit = ch2._unit_named("카엘"); var a2: Unit = ch2._unit_named("아린")
 	print("카엘 awakened=", kael.awakened, " hp=", kael.stats.hp, " | 아린 awakened=", a2.awakened, " lv=", a2.level, " exp=", a2.exp)
+	var sera: Unit = ch2._unit_named("세라")
+	print("아린 items ", ch2._items_text(a2), " | 세라 items ", ch2._items_text(sera))
+	ok = ok and ch2._items_text(a2) == "철검 %d/40" % Campaign.roster["아린"].items[0].uses and Campaign.roster["아린"].items[0].uses < 40 and sera.staff() != null
 	ok = ok and kael.awakened and kael.stats.hp == 27 and not a2.awakened and a2.exp == Campaign.roster["아린"].exp
+	# touch staff flow: tap 세라, tap injured adjacent 카엘, confirm
+	kael.hp = 5; kael.cell = sera.cell + Vector2i(0, -1)
+	ch2.tap(sera.cell); ch2.tap(kael.cell); var preview = ch2.info.text; ch2._on_confirm()
+	print("heal preview: ", preview.replace("\n", " | "), " -> 카엘 hp ", kael.hp, " 힐 uses ", sera.staff().uses)
+	ok = ok and kael.hp == 5 + 10 + sera.eff("mag") and sera.staff().uses == 29 and sera.has_acted
 	for u in ch2.units: if u.team == 1: u.hp = 0
 	ch2._check_end()
 	ok = ok and not Campaign.attempts.has("ch1")
