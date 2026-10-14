@@ -1,0 +1,65 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/test_chapter.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/grid.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/turn_manager.gd" id="3"]
+
+[ext_resource type="Script" path="res://scripts/dialogue_box.gd" id="4"]
+
+[node name="TestChapter" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Grid" type="Node2D" parent="."]
+script = ExtResource("2")
+
+[node name="TurnManager" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -320.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Info" type="Label" parent="UI/Panel"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 28
+text = "유닛을 탭하세요"
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="UI/Panel"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_constants/separation = 12
+
+[node name="Cancel" type="Button" parent="UI/Panel/Buttons"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 34
+disabled = true
+text = "취소"
+
+[node name="Confirm" type="Button" parent="UI/Panel/Buttons"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 34
+disabled = true
+text = "확인"
+
+[node name="EndTurn" type="Button" parent="UI/Panel/Buttons"]
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 34
+text = "턴 종료"
+
+[node name="Dialogue" type="CanvasLayer" parent="."]
+script = ExtResource("4")
