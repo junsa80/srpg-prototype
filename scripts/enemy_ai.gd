@@ -1,35 +1,53 @@
 class_name EnemyAI extends RefCounted
-## Simple AI: pick best reachable target (max damage, prefer kills), else move toward nearest.
-## plan() returns an intent dict which the UI can display before execution.
+## Enemy AI. Attackers in reach pick the target with best expected damage (kills weigh most, counter-damage
+## and terrain considered). Units with no target advance; guard units hold position; bosses never move.
+## plan() returns an intent dict {unit, move_to, target} shown to the player before the enemy phase.
+
+static func expected(e: Unit, f: Unit) -> Dictionary:
+	var fc = BattleManager.forecast(e, f)
+	var hits = 2 if fc.atk_x2 else 1
+	var exp_dmg = mini(f.hp, fc.atk_dmg * hits) * fc.atk_hit / 100.0
+	var p_kill = 0.0
+	if fc.def_hp_after == 0: p_kill = pow(fc.atk_hit / 100.0, hits if fc.atk_dmg * 1 < f.hp else 1)
+	var taken = 0.0
+	if fc.def_dmg > 0: taken = fc.def_dmg * (2 if fc.def_x2 else 1) * fc.def_hit / 100.0
+	return {"score": exp_dmg + p_kill * 40.0 - taken * 0.5, "fc": fc}
 
 static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:
+	var stay = {"unit": e, "move_to": e.cell, "target": null}
 	var foes = units.filter(func(u): return u.team != e.team and u.hp > 0)
-	if foes.is_empty(): return {"unit": e, "move_to": e.cell, "target": null}
+	var w = e.weapon()
+	if foes.is_empty() or w == null: return stay
 	var occ = {}; var block = {}
 	for u in units:
 		if u != e and u.hp > 0:
 			occ[u.cell] = true
 			if u.team != e.team: block[u.cell] = true
-	var reach = grid.movement_range(e.cell, e.move_range(), block, occ)
+	var reach = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), block, occ)
 	var best = {}; var best_score = -INF
-	var w = e.weapon()
-	if w == null: return {"unit": e, "move_to": e.cell, "target": null}
+	var old: Vector2i = e.cell
 	for c in reach:
 		for f in foes:
 			var dist: int = abs(c.x - f.cell.x) + abs(c.y - f.cell.y)
 			if dist < w.min_range or dist > w.max_range: continue
-			var old: Vector2i = e.cell; e.cell = c
-			var fc = BattleManager.forecast(e, f); e.cell = old
-			var score: float = (f.hp - fc.def_hp_after) * fc.atk_hit / 100.0 + (50 if fc.def_hp_after == 0 else 0) - (e.hp - fc.atk_hp_after) * 0.5
+			e.cell = c
+			var r = expected(e, f)
+			var t = grid.terrain_bonus(c)
+			var score = r.score + t[1] * 0.05 + t[0] * 0.5
+			e.cell = old
 			if score > best_score: best_score = score; best = {"unit": e, "move_to": c, "target": f}
+	e.cell = old
 	if not best.is_empty(): return best
-	# approach nearest foe
+	if e.guard or e.boss: return stay
+	# advance toward nearest foe by path distance (approximate with manhattan over reachable cells)
 	var nearest: Unit = foes[0]
 	for f in foes:
 		if _d(e.cell, f.cell) < _d(e.cell, nearest.cell): nearest = f
-	var dest: Vector2i = e.cell
+	var dest: Vector2i = e.cell; var best_len = INF
 	for c in reach:
-		if _d(c, nearest.cell) < _d(dest, nearest.cell): dest = c
+		var p = grid.path(c, nearest.cell)
+		var l = p.size() if p.size() > 0 else 999 + _d(c, nearest.cell)
+		if l < best_len: best_len = l; dest = c
 	return {"unit": e, "move_to": dest, "target": null}
 
 static func _d(a: Vector2i, b: Vector2i) -> int: return abs(a.x - b.x) + abs(a.y - b.y)

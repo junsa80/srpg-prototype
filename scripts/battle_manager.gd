@@ -3,6 +3,10 @@ class_name BattleManager extends RefCounted
 const TRIANGLE_HIT = 15
 const TRIANGLE_DMG = 1
 static var rng = RandomNumberGenerator.new()
+## Structured record of the last resolve()/heal() for the animated combat scene.
+static var events: Array = []    # {type:"strike", x, y, hit, crit, dmg, x_hp, y_hp, broke} | {type:"heal", ...}
+static var start_hp = {}
+static var exp_events: Array = [] # {unit, gained, before, after, level_before, ups:[gains]}
 
 static func tri(a: Unit, d: Unit) -> int:
 	if a.weapon() == null or d.weapon() == null: return 0
@@ -16,7 +20,7 @@ static func attack_speed(u: Unit) -> int:
 	return u.eff("spd") - maxi(0, burden)
 
 static func avoid(d: Unit) -> int:
-	var terrain = 20 if Skills.grid and Skills.grid.is_forest(d.cell) else 0
+	var terrain = Skills.grid.terrain_bonus(d.cell)[1] if Skills.grid else 0
 	return attack_speed(d) * 2 + d.eff("lck") + terrain + Skills.avo_mod(d)
 
 static func hit_rate(a: Unit, d: Unit) -> int:
@@ -112,7 +116,9 @@ static func award_exp(a: Unit, d: Unit, a_hp0: int, d_hp0: int) -> Array:
 
 static func give_exp(u: Unit, gained: int) -> Array:
 	var out = []
+	var before = u.exp; var lv0 = u.level
 	var ups = u.gain_exp(gained)
+	exp_events.append({"unit": u, "gained": gained, "before": before, "after": u.exp, "level_before": lv0, "ups": ups})
 	out.append("%s EXP +%d (%d/100)" % [u.data.name, gained, u.exp])
 	for g in ups: out.append("%s 레벨 업! Lv%d %s" % [u.data.name, u.level, str(g)])
 	var C = _campaign()
@@ -122,6 +128,7 @@ static func give_exp(u: Unit, gained: int) -> Array:
 ## Execute combat. Returns log lines.
 static func resolve(a: Unit, d: Unit) -> Array:
 	var log = []
+	events = []; exp_events = []; start_hp = {a: a.hp, d: d.hp}
 	var a_hp0 = a.hp; var d_hp0 = d.hp
 	var n = {a: 0, d: 0}
 	for s in strike_order(a, d, _extra(a, d), _extra(d, a)):
@@ -130,15 +137,18 @@ static func resolve(a: Unit, d: Unit) -> Array:
 		var w = x.weapon()
 		if w == null: continue
 		n[x] += 1
+		var ev = {"type": "strike", "x": x, "y": y, "hit": false, "crit": false, "dmg": 0}
 		if roll_hit(hit_rate(x, y)):
 			var dm = damage(x, y, s[2], n[x]); var crit = rng.randi_range(0, 99) < crit_rate(x, y)
 			if crit: dm = dm * 3 + Skills.crit_dmg_bonus(x)
 			y.hp = maxi(0, y.hp - dm)
+			ev.hit = true; ev.crit = crit; ev.dmg = dm
 			log.append("%s → %s %d 피해%s" % [x.data.name, y.data.name, dm, " (치명!)" if crit else ""])
 			var ls = Skills.lifesteal_magic(x)
 			if ls > 0 and w.magic: var h = int(dm * ls); x.hp = mini(x.stats.hp, x.hp + h); log.append("%s HP +%d 흡수" % [x.data.name, h])
 			if y.hp > 0 and rng.randf() < Skills.poison_chance(x): y.poison = 3; log.append("%s 중독!" % y.data.name)
 		else: log.append("%s 빗나감" % x.data.name)
+		ev["x_hp"] = x.hp; ev["y_hp"] = y.hp; events.append(ev)
 		if x.use_item(w): log.append("%s의 %s 파손!" % [x.data.name, w.name])
 	log.append_array(award_exp(a, d, a_hp0, d_hp0))
 	return log
@@ -147,8 +157,10 @@ static func resolve(a: Unit, d: Unit) -> Array:
 static func heal(healer: Unit, target: Unit) -> Array:
 	var st = healer.staff()
 	if st == null: return []
+	events = []; exp_events = []
 	var amt = mini(target.stats.hp - target.hp, st.heal + healer.eff("mag"))
 	target.hp += amt
+	events.append({"type": "heal", "x": healer, "y": target, "amt": amt, "y_hp": target.hp})
 	var log = ["%s → %s HP +%d (%s)" % [healer.data.name, target.data.name, amt, st.name]]
 	if healer.use_item(st): log.append("%s 파손!" % st.name)
 	log.append_array(give_exp(healer, 11))

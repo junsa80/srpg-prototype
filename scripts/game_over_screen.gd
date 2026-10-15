@@ -2,7 +2,7 @@ class_name GameOverScreen extends CanvasLayer
 ## Defeat screen: retry same party, or swap units (picker). Shows who would gain 각성.
 signal retry_same
 signal retry_swap(lineup: Array)
-const SIZE = 5
+var SIZE = 5
 const LOCKED = ["아린"]  # lord must deploy
 var root: Control; var picker: VBoxContainer; var choice = []; var roster = []; var prior = []
 var start_btn: Button
@@ -13,7 +13,7 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _big(t: String, h = 130) -> Button:
-	var b = Button.new(); b.text = t; b.custom_minimum_size = Vector2(0, h); b.add_theme_font_size_override("font_size", 36); return b
+	var b = Ornate.button(Button.new()); b.text = t; b.custom_minimum_size = Vector2(0, h); b.add_theme_font_size_override("font_size", 36); return b
 
 func _clear() -> void:
 	for c in root.get_children(): c.queue_free()
@@ -24,7 +24,7 @@ func _box() -> VBoxContainer:
 	v.add_theme_constant_override("separation", 20); return v
 
 func open(all: Array, deployed: Array, attempts: Array) -> void:
-	roster = all; choice = deployed.duplicate(); prior = attempts; visible = true; _clear()
+	SIZE = deployed.size(); roster = all; choice = deployed.duplicate(); prior = attempts; visible = true; _clear()
 	var v = _box()
 	var t = Label.new(); t.text = "패배…\n(얻은 EXP·레벨은 유지됩니다)"; t.add_theme_font_size_override("font_size", 44)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; v.add_child(t)

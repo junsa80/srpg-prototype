@@ -21,6 +21,11 @@ var awakened = false
 var inventory: Array = []   # Array[WeaponData]; first non-staff usable = equipped
 var flags = {}              # per-chapter flags: moved, kaizen
 var poison = 0              # turns remaining
+var pending_gift = []       # items that did not fit (go to convoy)
+var drop: WeaponData = null # enemy droppable item
+var gold_drop = 0
+var guard = false           # AI: hold position unless target reachable
+var boss = false            # AI: never moves
 
 func setup(d: UnitData, t: int, c: Vector2i) -> void:
 	data = d; team = t; cell = c; level = d.level; unit_class = d.unit_class
@@ -29,14 +34,28 @@ func setup(d: UnitData, t: int, c: Vector2i) -> void:
 	hp = stats.hp
 	if d.weapon: inventory = [d.weapon]
 
+const MAX_ITEMS = 5
+
+func can_use(w: WeaponData) -> bool:
+	return w.uses > 0 and (unit_class.weapon_types.is_empty() or w.type in unit_class.weapon_types)
+
+func usable_weapons() -> Array: return inventory.filter(func(w): return not w.is_staff() and can_use(w))
+
+func equip(w: WeaponData) -> void:
+	if w in inventory: inventory.erase(w); inventory.push_front(w)
+
+func give(w: WeaponData) -> bool:
+	if inventory.size() >= MAX_ITEMS: return false
+	inventory.append(w); return true
+
 func weapon() -> WeaponData:
 	for w in inventory:
-		if not w.is_staff() and w.uses > 0: return w
+		if not w.is_staff() and can_use(w): return w
 	return null
 
 func staff() -> WeaponData:
 	for w in inventory:
-		if w.is_staff() and w.uses > 0: return w
+		if w.is_staff() and can_use(w): return w
 	return null
 
 ## Spend one use; drop when broken. Returns true if it broke.
@@ -84,6 +103,8 @@ func apply_progress(p: Dictionary) -> void:
 	level = int(p.level); exp = int(p.exp)
 	for s in p.stats: stats[s] = int(p.stats[s])
 	hp = stats.hp
+	move_bonus = int(p.get("move_bonus", 0))
+	if p.has("class") and p["class"] != unit_class.name: unit_class = Roster.cls(p["class"])
 	if p.has("items"): inventory = p.items.map(func(i): return Weapons.make(i.name, int(i.uses)))
 
 func can_promote() -> bool:
@@ -92,6 +113,12 @@ func can_promote() -> bool:
 func promote() -> void:
 	if not can_promote(): return
 	var target: ClassData = unit_class.promotes_to
+	# new weapon types -> free iron weapon of each new type
+	for t in target.weapon_types:
+		if not t in unit_class.weapon_types and Roster.IRON.has(t):
+			var iw = Weapons.make(Roster.IRON[t])
+			if inventory.size() < MAX_ITEMS: inventory.append(iw)
+			else: pending_gift.append(iw)
 	var b = target.get_promotion_bonus()
 	for s in b:
 		if s == "move": move_bonus += b[s]
@@ -111,18 +138,32 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary) -> void:
 	cell = Vector2i(d.cell[0], d.cell[1]); level = d.level; exp = d.exp; hp = d.hp; stats = d.stats; has_acted = d.acted; move_bonus = d.get("move_bonus", 0)
 
+static var anim_frame = 0   # global idle frame (0,1,2) advanced by battle scene
+
 func _draw() -> void:
 	var sz = Grid.CELL - 8
-	var col = data.color
-	if has_acted: col = col.darkened(0.5)
-	draw_rect(Rect2(-sz / 2.0, -sz / 2.0, sz, sz), col)
-	draw_rect(Rect2(-sz / 2.0, -sz / 2.0, sz, sz), Color.WHITE if team == 0 else Color.BLACK, false, 3)
+	var grey = has_acted and team == 0
+	var bob = [0, -4, 0, 4][anim_frame % 4] if not grey else 0
+	var px = 64.0 if not boss else 76.0
+	# team base (blue/red ellipse) like GBA map palettes
+	var base = Color8(48, 96, 232, 200) if team == 0 else Color8(216, 40, 40, 200)
+	if grey: base = Color8(96, 96, 96, 200)
+	draw_set_transform(Vector2(0, 26), 0, Vector2(1, 0.35)); draw_circle(Vector2.ZERO, 30, base); draw_set_transform(Vector2.ZERO)
+	var mod = Color.WHITE
+	if team == 1 and has_tag("dark"): mod = Color(0.85, 0.7, 1.0)
+	if grey: mod = Color(0.45, 0.45, 0.5)
+	var user = Sprites.user_sheet(self) != null
+	if user: mod = Color(1, 1, 1) if not grey else Color(0.5, 0.5, 0.55)
+	draw_texture_rect(Sprites.unit_frame(self, (anim_frame / 2) % 2) if user else Sprites.unit_tex(self), Rect2(-px / 2, -px / 2 - 6 + (-3 if anim_frame % 4 == 1 else 0), px, px), false, mod)
+	if team == 1: draw_rect(Rect2(-px / 2, -px / 2 - 6, 10, 10), Color8(216, 40, 40))
+	# HP bar
 	var w = float(hp) / stats.hp
-	draw_rect(Rect2(-sz / 2.0, sz / 2.0 - 8, sz * w, 8), Color.GREEN)
-	var f = FONT
-	draw_string(f, Vector2(-sz / 2.0 + 2, -4), data.name, HORIZONTAL_ALIGNMENT_CENTER, sz - 4, 15, Color.WHITE)
+	draw_rect(Rect2(-30, 30, 60, 6), Color8(16, 16, 24))
+	draw_rect(Rect2(-29, 31, 58 * w, 4), Color8(88, 232, 96) if w > 0.5 else (Color8(248, 200, 48) if w > 0.25 else Color8(240, 64, 48)))
+	if drop or gold_drop > 0:
+		draw_rect(Rect2(sz / 2.0 - 16, -sz / 2.0, 14, 14), Color8(255, 216, 32)); draw_rect(Rect2(sz / 2.0 - 16, -sz / 2.0, 14, 14), Color8(16, 16, 24), false, 2)
+	if boss: draw_string(FONT, Vector2(-sz / 2.0, -sz / 2.0 + 12), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color8(255, 80, 80))
 	if poison > 0: draw_circle(Vector2(-sz / 2.0 + 8, -sz / 2.0 + 8), 7, Color(0.6, 0.1, 0.8))
 	if awakened:
-		draw_rect(Rect2(sz / 2.0 - 26, -sz / 2.0 - 4, 30, 22), Color(1, 0.8, 0.1))
-		draw_string(f, Vector2(sz / 2.0 - 26, -sz / 2.0 + 13), "각성", HORIZONTAL_ALIGNMENT_CENTER, 30, 13, Color.BLACK)
-	if unit_class.name != data.name: draw_string(f, Vector2(-sz / 2.0 + 2, 20), unit_class.name, HORIZONTAL_ALIGNMENT_CENTER, sz - 4, 15, Color(1, 1, 1, 0.85))
+		draw_rect(Rect2(sz / 2.0 - 30, sz / 2.0 - 30, 30, 18), Color8(255, 200, 32))
+		draw_string(FONT, Vector2(sz / 2.0 - 30, sz / 2.0 - 16), "각성", HORIZONTAL_ALIGNMENT_CENTER, 30, 13, Color.BLACK)

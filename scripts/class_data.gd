@@ -6,6 +6,8 @@ class_name ClassData extends Resource
 @export var growth_rates = {"hp": 60, "str": 30, "mag": 5, "skl": 50, "spd": 50, "lck": 30, "def": 20, "res": 15}
 @export var promotion_level = 10
 @export var promotes_to: ClassData
+## Usable weapon types (WeaponData.Type). Empty = all.
+@export var weapon_types: Array = []
 ## Stat bonus granted when promoting INTO this class. Empty -> looked up in PromotionBonuses.TABLE by name.
 @export var promotion_bonus = {}
 ## Movement bonus granted when promoting into this class.

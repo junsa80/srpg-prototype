@@ -2,12 +2,13 @@ config_version=5
 
 [application]
 config/name="SRPG Prototype"
-run/main_scene="res://scenes/test_chapter.tscn"
+run/main_scene="res://scenes/battle.tscn"
 config/features=PackedStringArray("4.3")
 
 [autoload]
 SaveManager="*res://scripts/save_manager.gd"
 Campaign="*res://scripts/campaign.gd"
+Sfx="*res://scripts/audio.gd"
 
 [display]
 window/size/viewport_width=720
@@ -17,12 +18,14 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [input_devices]
-pointing/emulate_touch_from_mouse=true
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
 
 [gui]
 theme/custom_font="res://assets/fonts/NanumGothic-Bold.ttf"
 
 [rendering]
+textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true

@@ -65,6 +65,7 @@ static func crit_mod(a: Unit) -> int:
 ## Defense used against attacker a (after reductions).
 static func defense_vs(a: Unit, d: Unit, magic: bool) -> int:
 	var v = d.eff("res") if magic else d.eff("def")
+	if grid: v += grid.terrain_bonus(d.cell)[0]
 	if magic and has(a, "오르린"): v -= 3
 	if not magic and has(d, "브렌") and _dist(a, d) == 1: v += 2
 	if has(a, "하론"): v = int(ceil(v * 0.7))
