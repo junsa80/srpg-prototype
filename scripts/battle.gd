@@ -45,6 +45,9 @@ static func demo_flags() -> String:
 
 func _ready() -> void:
 	var demo = demo_flags()
+	if "lv12" in demo:   # dev: screenshot promotion compare
+		Campaign.ensure_roster()
+		for n in Campaign.roster: Campaign.roster[n].level = 12
 	if "base" in demo and not Campaign.get_meta("from_base", false) and not "--flowtest" in demo:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/base.tscn"); return
 	if "ch2" in demo and Campaign.chapter == "ch1": Campaign.chapter = "ch2"; Campaign.ensure_roster()
@@ -111,6 +114,8 @@ func _ready() -> void:
 	if "camtop" in demo: cam.position = Vector2(grid.pixel_size().x - _view_size().x, 0)   # dev: screenshot top-right of map
 	if "combat" in demo: _demo_combat.call_deferred()
 	if "forecast" in demo: _demo_forecast.call_deferred()
+	var rd = RegEx.create_from_string("recruit=([^+&]+)").search(demo)   # dev: #recruit=아린|카스 talk dialogue screenshot
+	if rd: dialogue.play.call_deferred(ChapterData.TALK.get("아린|" + rd.get_string(1).uri_decode(), []))
 	if "--gameover-demo" in OS.get_cmdline_user_args():
 		for u in units: if u.team == 0: u.hp = 0
 		_check_end(); game_over._open_picker()
