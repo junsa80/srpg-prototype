@@ -1177,7 +1177,7 @@ func _won() -> bool:
 		"boss": return units.filter(func(u): return u.team == 1 and u.boss and u.hp > 0).is_empty()
 		"seize": return seized
 		"escape": return "아린" in escaped
-		"defend": return tm.turn > int(MAP.turns) and tm.phase == TurnManager.Phase.PLAYER
+		"defend": return (tm.turn > int(MAP.turns) and tm.phase == TurnManager.Phase.PLAYER) or (MAP.get("rout_early", false) and units.filter(func(u): return u.team == 1 and u.hp > 0).is_empty() and MAP.get("reinforcements", []).all(func(r): return r.get("done", false)))
 	return units.filter(func(u): return u.team == 1 and u.hp > 0).is_empty()
 
 func _lost() -> bool:
@@ -1191,7 +1191,7 @@ func goal_text() -> String:
 		"boss": return "%s 격파" % MAP.get("boss", "보스")
 		"seize": return "아린이 옥좌에서 [제압]"
 		"escape": return "아린이 탈출 지점에서 [탈출]"
-		"defend": return "%d턴 동안 버티기 (현재 %d턴)" % [MAP.turns, tm.turn]
+		"defend": return "%d턴 동안 버티기 (현재 %d턴)%s" % [MAP.turns, tm.turn, " · 적 전멸 시 조기 승리" if MAP.get("rout_early", false) else ""]
 	return "적 전멸" + (" · %s 보호" % MAP.npc[0][0] if MAP.has("npc") else "")
 
 ## Side objectives + turn rank. Grants rewards once; returns report for the clear screen.

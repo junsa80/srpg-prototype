@@ -345,7 +345,7 @@ func _ready() -> void:
 	var two = true
 	for b9 in bases: two = two and per.get(b9, 0) >= 2
 	check(two, ">=2 units per base class")
-	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch7") and not CampaignPlan.playable("ch8") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch8 gated")
+	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch8") and not CampaignPlan.playable("ch9") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch9 gated")
 	Skills.units = []; Skills.grid = null
 	var vb = Roster.make_unit("바르가스", 1, Vector2i.ZERO); vb.data.name = "바르가스"; vb.boss = true
 	var hit9 = Roster.make_unit("카엘", 0, Vector2i(0, 1)); hit9.inventory = [Weapons.make("철창")]
