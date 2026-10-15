@@ -58,7 +58,7 @@ func _ready() -> void:
 	ok = ok and base.trade("세라", 1, "엘리아")  # give 힐 to 엘리아
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 49")
 	print("trade: 엘리아 items ", Campaign.roster["엘리아"].items, " 세라 ", Campaign.roster["세라"].items)
-	ok = ok and Campaign.roster["엘리아"].items.size() == 2 and Campaign.roster["세라"].items.size() == 1
+	ok = ok and Campaign.roster["엘리아"].items.size() == 3 and Campaign.roster["세라"].items.size() == 1
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 51")
 	# equip: give 노아 a 강철검 from convoy, equip it
 	var noa = Roster.make_unit("노아", 0, Vector2i.ZERO, Campaign.entry("노아")); noa.give(Campaign.from_convoy(Campaign.convoy.size() - 1)); Campaign.record_progress(noa); noa.free()

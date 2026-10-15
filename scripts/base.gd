@@ -1,10 +1,10 @@
 extends Control
 ## 거점 (between-chapter base): 상점 / 수송 / 장비 / 출전 / 출격. Touch UI, all state in Campaign.
-const PRICES = {"철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
+const PRICES = {"철도끼": 270, "강철도끼": 360, "철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
 	"파이어": 560, "썬더": 700, "힐": 600, "은검": 1500, "은창": 1200, "은활": 1600, "엘파이어": 1200, "멘드": 1000}
 const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러소드", "킬러랜스", "킬러보우", "피지오"]  # unlocked after ch2 clear
 ## Utility weapons: sold from the Ch2 base onward (after Ch1 clear).
-const UTILITY = {"투창": 750, "손도끼": 600, "아머킬러": 900, "호스슬레이어": 950, "볼트": 900, "윈드소드": 1100, "해머": 800,
+const UTILITY = {"투창": 750, "손도끼": 600, "아머킬러": 900, "호스슬레이어": 950, "볼트": 900, "윈드소드": 1100, "해머": 800, "해커": 1200,
 	"킬러소드": 1300, "킬러랜스": 1200, "킬러보우": 1400, "피지오": 1500}
 ## Items: 상처약 always; keys from the Ch2 base on.
 const ITEM_PRICES = {"상처약": 300, "문 열쇠": 500, "상자 열쇠": 700}
@@ -49,6 +49,7 @@ func _ready() -> void:
 	var tabs = GridContainer.new(); tabs.columns = 5; v.add_child(tabs)
 	tabs.add_theme_constant_override("h_separation", 8); tabs.add_theme_constant_override("v_separation", 8)
 	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["상태", _status], ["저장", _save], ["지원", _supports], ["설정", func(): Menus.settings(self)],
+			["환생", func(): Menus.rebirth_select(self, func(): get_tree().change_scene_to_file("res://scenes/battle.tscn"))],
 			["타이틀", func(): Menus.confirm(self, "타이틀로 돌아갈까요?\n(거점 상태는 자동 저장됩니다)", "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))], ["출격 ▶", _sortie]]:
 		var b = ItemMenus.big(t[0], 88, 28); b.name = "T_" + t[0].replace(" ▶", ""); b.pressed.connect(t[1]); tabs.add_child(b)
 	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
@@ -61,7 +62,7 @@ func _ready() -> void:
 
 func _refresh_head() -> void:
 	var nxt = ChapterData.CHAPTERS.get(Campaign.chapter, {}).get("title", Campaign.chapter)
-	title.text = "거점 — 다음: " + nxt + (("  [환생 %d회차]" % (Campaign.cycle + 1)) if Campaign.cycle > 0 else "")
+	title.text = "거점 — 다음: " + nxt + (("  " + Campaign.mode_tag()) if Campaign.mode_tag() != "" else "")
 	gold_lbl.text = "소지금 %dG   수송대 %d/%d" % [Campaign.gold, Campaign.convoy.size(), Campaign.CONVOY_MAX]
 
 func _clear() -> void:
@@ -90,8 +91,25 @@ func _shop() -> void:
 		if w.is_item(): b.text = "%s  %dG\n아이템 · %s" % [n, price(n), w.desc]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w); b.name = "Buy_" + n
 		b.disabled = locked or Campaign.gold < price(n)
-		b.pressed.connect(func(): buy(n); _shop())
+		b.pressed.connect(func(): confirm_buy(n))
 		body.add_child(b)
+
+## Purchase confirmation: icon, name, price, gold before -> after, 구매/취소.
+func confirm_buy(n: String) -> CanvasLayer:
+	Sfx.play("select")
+	var w = Weapons.make(n); var p = price(n)
+	var o = Menus.overlay(self, "구매 확인", 50, 360, 360); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "BuyConfirm"
+	var h = HBoxContainer.new(); h.alignment = BoxContainer.ALIGNMENT_CENTER; h.add_theme_constant_override("separation", 16); v.add_child(h)
+	h.add_child(Icons.rect(w, 64))
+	var nl = ItemMenus.label("%s\n%s" % [n, Weapons.ITEMS.get(n, {}).get("desc", "") if w.is_item() else Weapons.effect_text(w)], 30, Color8(255, 236, 160)); nl.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(nl)
+	var gl = ItemMenus.label("가격 %dG\n소지금 %dG → %dG\n수량 1 (수송대로 보냅니다)" % [p, Campaign.gold, Campaign.gold - p], 28); gl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gl.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(gl)
+	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 16); v.add_child(row)
+	var no = Menus._small("취소", 160); no.name = "BuyNo"; row.add_child(no); no.pressed.connect(func(): Sfx.play("cancel"); cl.queue_free())
+	var yes = Menus._small("구매", 160); yes.name = "BuyYes"; row.add_child(yes)
+	yes.disabled = Campaign.gold < p
+	yes.pressed.connect(func(): cl.queue_free(); buy(n); _shop(); _refresh_head())
+	return cl
 
 static func price(n: String) -> int: return PRICES.get(n, UTILITY.get(n, ITEM_PRICES.get(n, 9999)))
 
@@ -157,6 +175,10 @@ func _equip_unit() -> void:
 	if u.can_promote():
 		var pb = ItemMenus.big("전직 → %s" % u.unit_class.promotes_to.name, 90, 30)
 		pb.pressed.connect(func(): promote(sel_unit); _equip_unit()); body.add_child(pb)
+		if Roster.ALT_PROMOTE.has(u.unit_class.name):
+			var alt = Roster.ALT_PROMOTE[u.unit_class.name]
+			var pb2 = ItemMenus.big("전직 → %s" % alt, 90, 30)
+			pb2.pressed.connect(func(): promote(sel_unit, alt); _equip_unit()); body.add_child(pb2)
 	var back = ItemMenus.big("← 유닛 목록", 80, 26); back.pressed.connect(_equip); body.add_child(back)
 	u.free()
 
@@ -178,10 +200,10 @@ func trade(from_n: String, idx: int, to_n: String) -> bool:
 		var w = a.inventory[idx]; a.inventory.remove_at(idx); b.give(w)
 	_save_unit(a); _save_unit(b); return ok
 
-func promote(n: String) -> bool:
+func promote(n: String, alt := "") -> bool:
 	var u = _unit(n)
 	var ok = u.can_promote()
-	if ok: u.promote(); Sfx.play("levelup")
+	if ok: u.promote(alt); Sfx.play("levelup")
 	_save_unit(u); return ok
 
 # ---------------- 상태 / 저장
@@ -215,9 +237,9 @@ func _deploy() -> void:
 func _sortie() -> void:
 	if not Maps.CH.has(Campaign.chapter):
 		_clear()
-		body.add_child(ItemMenus.label("제1부 완결! 축하합니다.\n\n[환생] 레벨·능력치·무기 랭크·아이템·골드를 그대로 가지고 1장부터 다시 시작합니다.\n적은 회차마다 강해집니다 (Lv +%d)." % Campaign.CYCLE_LV, 28))
-		var rb = ItemMenus.big("환생 — %d회차 시작" % (Campaign.cycle + 2), 96, 32); rb.name = "Rebirth"; body.add_child(rb)
-		rb.pressed.connect(func(): Menus.confirm(self, "환생할까요?\n유닛·아이템은 유지되고 1장부터 다시 시작합니다.", "환생", func(): Campaign.rebirth(); get_tree().reload_current_scene()))
+		body.add_child(ItemMenus.label("제1부 완결! 축하합니다.\n\n[환생]으로 1장부터 다시 시작할 수 있습니다 (표준/강화 선택).", 28))
+		var rb = ItemMenus.big("환생 — ★%d 시작" % (Campaign.cycle + 1), 96, 32); rb.name = "Rebirth"; body.add_child(rb)
+		rb.pressed.connect(func(): Menus.rebirth_select(self, func(): get_tree().change_scene_to_file("res://scenes/battle.tscn")))
 		return
 	Campaign.save_campaign(); Campaign.set_meta("from_base", true); Campaign.resume = {}
 	get_tree().change_scene_to_file("res://scenes/battle.tscn")

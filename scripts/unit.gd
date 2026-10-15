@@ -28,6 +28,7 @@ var guard = false           # AI: hold position unless target reachable
 var boss = false            # AI: never moves
 var weapon_used: WeaponData = null
 var aoe = false            # boss: hits also splash units adjacent to the target
+static var show_badge = true   # set from Settings.weapon_badge
 var uid = -1               # spawn index (random drop roll key)
 var drop_w = 0             # random drop chance % for equipped weapon
 var drop_i = 0             # random drop chance % for carried item
@@ -157,9 +158,9 @@ func apply_progress(p: Dictionary) -> void:
 func can_promote() -> bool:
 	return level >= unit_class.promotion_level and unit_class.promotes_to != null
 
-func promote() -> void:
+func promote(alt := "") -> void:
 	if not can_promote(): return
-	var target: ClassData = unit_class.promotes_to
+	var target: ClassData = Roster.cls(alt) if alt != "" else unit_class.promotes_to
 	# new weapon types -> free iron weapon of each new type
 	for t in target.weapon_types:
 		if not t in unit_class.weapon_types and Roster.IRON.has(t):
@@ -211,8 +212,15 @@ func _draw() -> void:
 	draw_rect(Rect2(-29, 31, 58 * w, 4), Color8(88, 232, 96) if w > 0.5 else (Color8(248, 200, 48) if w > 0.25 else Color8(240, 64, 48)))
 	if drop or gold_drop > 0:
 		draw_rect(Rect2(sz / 2.0 - 16, -sz / 2.0, 14, 14), Color8(255, 216, 32)); draw_rect(Rect2(sz / 2.0 - 16, -sz / 2.0, 14, 14), Color8(16, 16, 24), false, 2)
+	if show_badge:   # equipped weapon badge (bottom-left), FE-style
+		var bw = weapon() if weapon() else staff()
+		if bw:
+			draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(16, 16, 24, 220)); draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(248, 216, 112), false, 1.5)
+			draw_texture_rect(Icons.of(bw), Rect2(-sz / 2.0, sz / 2.0 - 22, 20, 20), false)
 	if boss: draw_string(FONT, Vector2(-sz / 2.0, -sz / 2.0 + 12), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color8(255, 80, 80))
 	if poison > 0: draw_circle(Vector2(-sz / 2.0 + 8, -sz / 2.0 + 8), 7, Color(0.6, 0.1, 0.8))
 	if awakened:
 		draw_rect(Rect2(sz / 2.0 - 30, sz / 2.0 - 30, 30, 18), Color8(255, 200, 32))
 		draw_string(FONT, Vector2(sz / 2.0 - 30, sz / 2.0 - 16), "각성", HORIZONTAL_ALIGNMENT_CENTER, 30, 13, Color.BLACK)
+
+func _ready() -> void: add_to_group("units")

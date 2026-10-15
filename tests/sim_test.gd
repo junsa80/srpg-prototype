@@ -83,6 +83,10 @@ func _prep_party(ch: String) -> void:
 		Campaign.record_progress(u, false); u.free()
 	Unit.fixed_growth = fg
 	Campaign.deploy = []
+	if OS.get_environment("SIM_NOHEAL") != "":   # healer-free run: 세라 out, 보리스 in
+		var dd: Array = Maps.CH[ch].get("default_deploy", []).duplicate(); dd.erase("세라")
+		if not "보리스" in dd: dd.append("보리스")
+		Campaign.deploy = dd
 
 func run(ch: String, seed_: int) -> Dictionary:
 	_prep_party(ch)
@@ -118,7 +122,20 @@ func _act(b, u: Unit, target_cell: Vector2i) -> void:
 	var o = b._occ(u)
 	var reach = b.grid.movement_range(u.cell, u.move_range(), o[1], o[0], "flying" in u.tags())
 	# lord objective (seize/escape): walk toward the tile once early fighting has thinned the enemy
-	if u.data.name == "아린" and target_cell.x >= 0:
+	if b.MAP.goal == "escape" and target_cell.x >= 0:   # everyone runs for the nearest exit; 아린 waits until last
+		var exits = b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "escape")
+		if u.data.name != "아린" or b._others_left(u) == 0:
+			var be = u.cell; var bl2 = 9999
+			for c in reach:
+				if b._unit_at(c) and b._unit_at(c) != u: continue
+				for ex in exits:
+					var l = 0 if c == ex else (b.grid.path(c, ex).size() if b.grid.path(c, ex).size() else 999)
+					if l < bl2: bl2 = l; be = c
+			if b.tm.turn >= 2 or bl2 == 0:
+				_move(b, u, be)
+				if b.grid.terrain.get(u.cell, "") == "escape":
+					b.selected = u; b.moved = true; b._do_open(); return
+	elif u.data.name == "아린" and target_cell.x >= 0:
 		var best = u.cell; var bl = 9999
 		for c in reach:
 			var p = b.grid.path(c, target_cell); var l = p.size() if p.size() else 999

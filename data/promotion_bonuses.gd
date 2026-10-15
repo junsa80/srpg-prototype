@@ -1,6 +1,7 @@
 class_name PromotionBonuses extends RefCounted
 ## FINAL promotion bonuses (applied at promotion, Lv10). Keys: hp str mag skl spd lck def res move.
 const TABLE = {
+	"워리어": {"hp": 3, "str": 2, "skl": 2, "def": 2}, "버서커": {"hp": 4, "str": 3, "skl": 1, "spd": 2},
 	"영웅": {"hp": 4, "str": 2, "skl": 2, "def": 2},
 	"검성": {"hp": 3, "skl": 3, "spd": 3, "lck": 2},
 	"팔라딘": {"hp": 4, "str": 2, "def": 2, "move": 1},

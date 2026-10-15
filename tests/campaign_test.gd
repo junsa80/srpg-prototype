@@ -90,6 +90,8 @@ func _ready() -> void:
 	arin = _named(b, "아린")
 	check(Campaign.roster.has("아서"), "아서 joins the roster in ch6")
 	for c in b.grid.terrain: if b.grid.terrain[c] == "escape": _put(b, arin, c)
+	check(b._action(arin).get("kind", "") != "escape", "ch6: 아린 can't escape while allies remain")
+	for o in b.units.duplicate(): if o.team == 0 and o != arin: b._escape(o)
 	b.selected = arin; b.moved = true; await b._do_open()
 	check("아린" in b.escaped and b.ended and Campaign.chapter == "end", "ch6 escape clears the campaign")
 	b.queue_free(); await get_tree().process_frame
@@ -117,19 +119,20 @@ func _ready() -> void:
 	lina2.hp = 3; var str0 = lina2.stats.str
 	b.use_item(lina2, lina2.items()[0])
 	check(lina2.hp == mini(13, lina2.stats.hp) and lina2.items()[0].uses == 2 and lina2.has_acted, "상처약 heals 10, 3 uses -> 2, ends action")
-	b.use_item(lina2, lina2.items()[1])
-	check(lina2.stats.str == str0 + 2 and lina2.items().size() == 1, "힘의 반지 str +2 and consumed")
+	b.use_item(lina2, lina2.inventory.filter(func(w): return w.name == "힘의 반지")[0])
+	check(lina2.stats.str == str0 + 2 and not lina2.inventory.any(func(w): return w.name == "힘의 반지"), "힘의 반지 str +2 and consumed")
 	check(lina2.weapon() != null and not lina2.weapon().is_item(), "items never equipped as weapons")
 	var foes = b.units.filter(func(u): return u.team == 1 and not u.boss and u.drop == null)
 	var e1 = foes[0]
-	check(e1.drop_w == 8 and b.drop_text(e1).contains("?8%"), "random drop shown: %s" % b.drop_text(e1).strip_edges())
+	var ew = 15 if e1.guard else 8
+	check(e1.drop_w == ew and b.drop_text(e1).contains("?%d%%" % ew), "random drop shown: %s" % b.drop_text(e1).strip_edges())
 	var r1 = b.roll(e1, "w"); var r2 = b.roll(e1, "w")
 	check(r1 == r2 and r1 >= 0 and r1 < 100, "drop roll deterministic per seed (%d)" % r1)
 	var seed0 = Campaign.drop_seed("ch2")
 	var snap2 = b.payload()
-	e1.drop_w = 100; var got = b.random_drops(e1)
+	e1.drop_w = 100; e1.drop_i = 0; var got = b.random_drops(e1)
 	check(got.size() == 1 and not got[0].is_item(), "100%% weapon drop -> %s" % [got.map(func(w): return w.name)])
-	var guard = b.units.filter(func(u): return u.team == 1 and u.guard and u.drop == null)
+	var guard = b.units.filter(func(u): return u.team == 1 and u.guard and u.drop == null and u != e1)
 	check(guard.is_empty() or guard[0].drop_w == 15, "elite/guard drop 15%")
 	var boss2 = b.units.filter(func(u): return u.boss)[0]
 	check(boss2.drop_w == 0 and boss2.drop != null, "boss: fixed drop only")
@@ -163,5 +166,67 @@ func _ready() -> void:
 	check(Campaign.cycle == 0 and Campaign.clears == 0 and Campaign.roster.is_empty() and SaveManager.latest_slot() < 0, "완전 초기화 wipes everything")
 	check(ChapterData.EVENTS.ch1.has(1) and ChapterData.CAMP.has("ch2") and ChapterData.PROLOGUE.size() > 5, "story: prologue/events/camp present")
 	Campaign.reset()
+	# ---- 환생 rework
+	Campaign.reset(); Campaign.chapter = "ch3"; Campaign.cleared = ["ch1", "ch2"]; Campaign.ensure_roster(); Campaign.gold = 20000
+	check(Campaign.rb_points() == 2 and Campaign.max_diff() == 0, "mid-progress: 2pt, max diff = current")
+	var ro = Campaign.rb_defaults(); check(ro.gold and ro.bundle == "상처약 x5" and ro.supports, "defaults: gold+bundle+supports")
+	var bad = ro.duplicate(true); bad.ranks = true; check(not Campaign.rebirth_std(bad), "over budget rejected")
+	bad = ro.duplicate(true); bad.diff = 2; check(not Campaign.rebirth_std(bad), "locked difficulty rejected")
+	check(Campaign.rebirth_std(ro) and Campaign.cycle == 1 and Campaign.chapter == "ch1" and Campaign.gold == 3000 and Campaign.convoy.size() == 5, "std rebirth: gold 30%% cap 3000, 상처약 x5")
+	check(not Campaign.roster.has("에일린") and Campaign.roster.has("보리스") and Campaign.enemy_lv == 0, "units back to join; no pre-join")
+	Campaign.cleared = ["ch1", "ch2", "ch3", "ch4a", "ch5", "ch6"]
+	check(Campaign.rb_points() == 9 and Campaign.max_diff() == 2, "full clear: 6+3 pt, all tiers")
+	var o2 = {"diff": 2, "gold": false, "weapons": [], "ranks": false, "bundle": "", "supports": true, "stat": {"unit": "아린", "stat": "str"}}
+	var s0 = Campaign.roster["아린"].stats.str
+	check(Campaign.rebirth_std(o2) and Campaign.enemy_lv == 4 and Campaign.roster["아린"].stats.str == s0 + 1, "매우 어려움 +4, stat perk +1")
+	var d3 = Campaign.to_dict(); d3.erase("difficulty"); d3.erase("grind"); d3.erase("enemy_lv"); d3.cycle = 2
+	Campaign.from_dict(d3); check(Campaign.enemy_lv == 6 and Campaign.grind == 2, "old save migrates (cycle*3)")
+	Campaign.reset()
+	# ---- UI pass: trade / loot / relayout / badge / shop confirm
+	var bt = await _battle("ch2")
+	var ta = _named(bt, "아린"); var tb = bt.units.filter(func(u): return u.team == 0 and u != ta)[0]
+	_put(bt, tb, ta.cell + Vector2i(1, 0))
+	check(tb in bt.trade_partners(ta), "adjacent ally is a trade partner")
+	var tu = bt.open_trade(ta, tb); await get_tree().process_frame
+	var na = ta.inventory.size(); var nb = tb.inventory.size(); var w0 = ta.inventory[0]
+	tu.find_child("T0_0", true, false).emit_signal("pressed"); await get_tree().process_frame
+	tu.find_child("T1_4", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(ta.inventory.size() == na - 1 and tb.inventory.size() == nb + 1 and w0 in tb.inventory, "trade: move to empty slot")
+	while tb.inventory.size() < Unit.MAX_ITEMS: tb.inventory.append(Weapons.make("상처약"))
+	var x0 = ta.inventory[0]; var y0 = tb.inventory[0]
+	tu.find_child("T0_0", true, false).emit_signal("pressed"); await get_tree().process_frame
+	tu.find_child("T1_0", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(ta.inventory[0] == y0 and tb.inventory[0] == x0 and tb.inventory.size() == Unit.MAX_ITEMS, "trade: swap keeps 5-slot limit")
+	var nb2 = tb.inventory.size(); var ta_n = ta.inventory.size()
+	if ta.inventory.size() > 1:
+		tu.find_child("T0_1", true, false).emit_signal("pressed"); await get_tree().process_frame
+		tu.find_child("T1_4", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(tb.inventory.size() <= Unit.MAX_ITEMS and ta.inventory.size() + tb.inventory.size() == ta_n + nb2, "trade: no overflow past 5")
+	var sw = tb.inventory.filter(func(w): return not w.is_item() and tb.block_reason(w) == "")
+	if sw.size():
+		var si = tb.inventory.find(sw[-1])
+		tu.find_child("T1_%d" % si, true, false).emit_signal("pressed"); await get_tree().process_frame
+		tu.find_child("T1_%d" % si, true, false).emit_signal("pressed"); await get_tree().process_frame
+		check(tb.weapon() == sw[-1], "trade screen: tap twice = equip")
+	check(bt.traded and not bt.moved and ta.has_acted == false, "trade doesn't end action / still can move")
+	tu.queue_free()
+	var full_u = tb; var gl = bt.grant(full_u, Weapons.make("철검"), "드롭!")
+	check(gl.contains("수송대") and bt.loot_queue.size() == 1, "full inventory -> convoy + popup queued: " + gl)
+	var lg = bt.grant(ta, Weapons.make("상처약"), "확정 드롭"); check(lg.contains("얻었다") and lg.contains("아린"), "grant log line")
+	await bt.show_loot(); check(bt.loot_queue.is_empty(), "loot queue drained")
+	bt.relayout_windows(Vector2i(0, 0)); check(bt.terrain_win.get_meta("bottom"), "cursor top -> windows bottom")
+	bt.relayout_windows(Vector2i(0, 13)); check(not bt.terrain_win.get_meta("bottom"), "cursor bottom -> windows top")
+	var en = bt.units.filter(func(u): return u.team == 1 and u.drop != null)
+	if en.size(): bt.selected = ta; bt.pending_target = en[0]; bt._show_forecast(); check(bt.fc_panel.find_child("Drop", true, false) != null, "forecast shows drop row")
+	Unit.show_badge = false; check(not Unit.show_badge, "badge toggle"); Unit.show_badge = true
+	bt.queue_free(); await get_tree().process_frame
+	var bs = load("res://scenes/base.tscn").instantiate(); add_child(bs); await get_tree().process_frame
+	Campaign.gold = 1000; var cv = Campaign.convoy.size()
+	var bc = bs.confirm_buy("상처약"); await get_tree().process_frame
+	bc.find_child("BuyNo", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(Campaign.gold == 1000 and Campaign.convoy.size() == cv, "shop confirm: 취소 buys nothing")
+	bc = bs.confirm_buy("상처약"); bc.find_child("BuyYes", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(Campaign.gold == 700 and Campaign.convoy.size() == cv + 1, "shop confirm: 구매 -> 1000→700")
+	bs.queue_free(); await get_tree().process_frame
 	print("CAMPAIGNTEST ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	get_tree().quit(0 if fails == 0 else 1)

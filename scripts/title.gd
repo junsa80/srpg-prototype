@@ -36,13 +36,13 @@ func _main() -> void:
 	if ls >= 0:
 		var m = SaveManager.slot_metadata()[ls]
 		info_t = "  %s · %s · %s" % [m.chapter_title, ("턴 %d" % m.turn) if m.in_battle else "거점", m.timestamp]
-	if Campaign.cycle > 0: info_t += "  [환생 %d회차]" % (Campaign.cycle + 1)
+	if Campaign.mode_tag() != "": info_t += "  " + Campaign.mode_tag()
 	box.add_child(ItemMenus.label(info_t, 22, Color8(200, 190, 230)))
 	var ng = ItemMenus.big("새 게임", 90, 34); ng.name = "NewGame"; ng.pressed.connect(_new_game_confirm); box.add_child(ng)
 	var ld = ItemMenus.big("불러오기", 90, 34); ld.name = "Load"; ld.pressed.connect(func(): Menus.slots(self, "load", null, _goto)); box.add_child(ld)
-	if Campaign.clears > 0 and Campaign.roster.size() > 0:
-		var rb = ItemMenus.big("환생 (%d회차로)" % (Campaign.cycle + 2), 90, 34); rb.name = "Rebirth"; box.add_child(rb)
-		rb.pressed.connect(func(): Menus.confirm(self, "환생할까요?\n레벨·능력치·랭크·아이템·골드를 유지하고\n1장부터 다시 시작합니다. 적이 강해집니다.", "환생", func(): Campaign.rebirth(); SaveManager.delete_slot(0); _goto("res://scenes/battle.tscn")))
+	if _has_save() and Campaign.roster.size() > 0:   # 환생 anytime once a save exists
+		var rb = ItemMenus.big("환생 (★%d → ★%d)" % [Campaign.cycle, Campaign.cycle + 1], 90, 34); rb.name = "Rebirth"; box.add_child(rb)
+		rb.pressed.connect(func(): Menus.rebirth_select(self, func(): _goto("res://scenes/battle.tscn")))
 	var st = ItemMenus.big("설정", 90, 34); st.name = "Settings"; st.pressed.connect(func(): Menus.settings(self)); box.add_child(st)
 	var wipe = ItemMenus.big("완전 초기화 새 게임", 80, 28); wipe.name = "Wipe"; box.add_child(wipe)
 	wipe.add_theme_color_override("font_color", Color8(255, 110, 110)); wipe.add_theme_color_override("font_hover_color", Color8(255, 150, 150))

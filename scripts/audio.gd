@@ -3,7 +3,7 @@ extends Node
 var players = {}
 var bgm: AudioStreamPlayer
 var muted = false
-const NAMES = ["cursor", "select", "cancel", "hit", "crit", "miss", "levelup", "heal", "phase"]
+const NAMES = ["cursor", "select", "cancel", "hit", "crit", "miss", "levelup", "heal", "phase", "pickup"]
 
 func _ready() -> void:
 	for n in NAMES:

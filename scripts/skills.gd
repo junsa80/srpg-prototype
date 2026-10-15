@@ -12,7 +12,7 @@ const LIST = {
 	"리엘": ["숲에서 회피 +10", "impl"], "엘리아": ["마력 +2", "impl"], "미라": ["마법 무게 패널티 -2", "impl"],
 	"오르린": ["전투 중 대상 마방 -3", "impl"], "루나": ["전투 중 2번째 타격 위력 +2", "impl"],
 	"카이젠": ["자기 턴 시작부터 마방 +2", "impl"], "아리아": ["마법 피해의 20% 회복", "impl"],
-	"루크": ["치명 +15", "impl"], "섀도우": ["이동 +1, 회피 +5", "impl"], "잭": ["보물 탐지 +1", "data"],
+	"루크": ["치명 +15", "impl"], "보리스": ["도끼 장비 시 명중 +10 (나무꾼)", "impl"], "섀도우": ["이동 +1, 회피 +5", "impl"], "잭": ["보물 탐지 +1", "data"],
 	"니아": ["방어 시 선공, 회피 +5", "impl"], "벤": ["명중 시 20% 독 (턴 시작 HP-3, 3턴)", "impl"],
 	"릴리": ["해제 범위 +1", "data"], "세라": ["턴 종료 시 인접 아군 HP 5 회복", "impl"],
 	"아이린": ["'dark' 적에게 마법 피해 +3", "impl"], "가브리엘": ["인접 아군 방어 +1, 마방 +1", "impl"],
@@ -47,6 +47,7 @@ static func move_mod(u: Unit) -> int: return 1 if has(u, "엘런") or has(u, "�
 static func hit_mod(a: Unit, d: Unit) -> int:
 	var m = 0
 	if has(a, "리나"): m += 10
+	if has(a, "보리스") and a.weapon() and a.weapon().type == WeaponData.Type.AXE: m += 10
 	if has(a, "카엘") and a.flags.get("moved", false): m += 10
 	if has(a, "리안") and a.weapon() and a.weapon().type == WeaponData.Type.LANCE: m += 10
 	if _allies_with(a, "셀레나", 2): m += 5

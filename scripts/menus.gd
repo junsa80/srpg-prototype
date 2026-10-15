@@ -104,6 +104,14 @@ static func _fill_settings(list: VBoxContainer) -> void:
 	for opt in [[true, "켬"], [false, "끔"]]:
 		var b = _small(("▶" if Settings.anim == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]
 		b.pressed.connect(func(): Settings.anim = val; Sfx.play("select"); refill.call()); h4.add_child(b)
+	var h5 = _row(list, "무기 아이콘")
+	for opt in [[true, "표시"], [false, "숨김"]]:
+		var b = _small(("▶" if Settings.weapon_badge == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]; b.name = "Badge_" + opt[1]
+		b.pressed.connect(func():
+			Settings.weapon_badge = val; Unit.show_badge = val; Settings.save(); Sfx.play("select"); refill.call()
+			var tree = Engine.get_main_loop()
+			if tree is SceneTree: tree.call_group("units", "queue_redraw"))
+		h5.add_child(b)
 
 # ------------------------------------------------------------------ save / load slots
 ## mode "save": payload_fn() -> [chapter, turn, payload]. mode "load": on_loaded(scene_path).
@@ -175,8 +183,13 @@ static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pi
 		h.add_theme_constant_override("separation", 12); h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var ic = TextureRect.new(); ic.texture = Sprites.unit_tex(u); ic.custom_minimum_size = Vector2(72, 72); ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER; h.add_child(ic)
-		var nm = ItemMenus.label("%s\n%s Lv%d" % [u.data.name, u.unit_class.name, u.level], 22); nm.custom_minimum_size.x = 210; nm.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var w = u.weapon() if u.weapon() else u.staff()
+		var nm = ItemMenus.label("%s\n%s Lv%d" % [u.data.name, u.unit_class.name, u.level], 22); nm.custom_minimum_size.x = 170; nm.autowrap_mode = TextServer.AUTOWRAP_OFF
 		nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; h.add_child(nm)
+		var wv = VBoxContainer.new(); wv.alignment = BoxContainer.ALIGNMENT_CENTER; wv.custom_minimum_size.x = 110; h.add_child(wv)
+		if w: wv.add_child(Icons.rect(w, 32))
+		var wl = ItemMenus.label(w.name if w else "-", 18); wl.autowrap_mode = TextServer.AUTOWRAP_OFF; wv.add_child(wl)
+		for c in [wv] + wv.get_children(): c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var hv = VBoxContainer.new(); hv.alignment = BoxContainer.ALIGNMENT_CENTER; hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL; h.add_child(hv)
 		hv.add_child(ItemMenus.label("HP %d/%d  %s" % [u.hp, u.stats.hp, status_text(u, true)], 22, TXT))
 		hv.add_child(bar(u.hp, u.stats.hp, 250, 14, _hp_col(u)))
@@ -192,12 +205,16 @@ static func _hp_col(u: Unit) -> Color:
 	var r = float(u.hp) / maxf(u.stats.hp, 1)
 	return Color8(96, 208, 120) if r > 0.5 else (Color8(240, 200, 64) if r > 0.25 else Color8(232, 72, 64))
 
+## 환생 select (title / base / battle) -> RebirthUI.
+static func rebirth_select(parent: Node, on_done: Callable) -> CanvasLayer: return RebirthUI.open(parent, on_done)
+
 static func status_text(u: Unit, short = false) -> String:
 	var s = []
 	if u.awakened: s.append("각성" if short else "각성 (전 스탯+2, HP+5, 이번 장 한정)")
 	if u.poison > 0: s.append("독 %d턴" % u.poison if short else "독 (턴 시작 HP-3, 남은 %d턴)" % u.poison)
 	if u.has_acted and u.team == 0: s.append("행동 완료")
 	if u.boss: s.append("보스")
+	if u.team == 0 and not short and Campaign.carry_text(u.data.name) != "": s.append(Campaign.carry_text(u.data.name))
 	if u.guard: s.append("경계" if short else "경계 (사거리 안에 들어오면 공격)")
 	if u.team == 1:
 		if u.drop: s.append("★드롭 %s" % u.drop.name)

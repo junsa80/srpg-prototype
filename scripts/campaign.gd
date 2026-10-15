@@ -24,7 +24,12 @@ var route = ""              # "ch4a" / "ch4b" after the Ch3 branch
 var drop_seeds = {}         # chapter -> random-drop seed for the current attempt (fixed until cleared: no save/load scumming)
 var cycle = 0               # 환생 count (New Game+): enemies +CYCLE_LV levels per cycle
 var clears = 0              # times the final chapter was cleared (unlocks 환생 on title)
-const CYCLE_LV = 3
+const CYCLE_LV = 3          # 강화 환생 (grind): enemies +3 Lv per cycle
+const CYCLE_LV_STD = 1      # 환생 (표준): enemies +1 Lv per cycle
+var enemy_lv = 0            # accumulated enemy level bonus from all cycles
+var rb_bonus = {}           # unit -> {"stats": {s: n}, "growth": {s: pct}, "wexp": {type: pts}} (표준 환생 carry-over)
+var boosters = {}           # unit -> {s: n} stat boosters already used (kept through 표준 환생)
+var keep_all = false        # last rebirth was 강화 (units pre-joined as before)
 var camp_seen = []          # chapters whose camp conversation was shown
 var supports_seen = []      # support conversation ids read
 
@@ -84,10 +89,112 @@ func drop_seed(ch: String) -> int:
 	if not drop_seeds.has(ch): drop_seeds[ch] = randi() % 1000000007
 	return int(drop_seeds[ch])
 
-## 환생 (New Game+): back to Ch1 keeping units (levels, stats, ranks, items), convoy and gold. Enemies scale up.
-func rebirth() -> void:
-	cycle += 1; chapter = "ch1"; cleared = []; attempts = {}; deploy = []; ranks = {}; sides = {}; route = ""; drop_seeds = {}; resume = {}; camp_seen = []
+## 강화 환생 (grind): back to Ch1 keeping everything (levels, stats, ranks, items, convoy, gold). Enemies +3 Lv.
+func rebirth() -> void:   # 노가다 모드
+	cycle += 1; grind += 1; enemy_lv += CYCLE_LV; keep_all = true
+	chapter = "ch1"; cleared = []; attempts = {}; deploy = []; ranks = {}; sides = {}; route = ""; drop_seeds = {}; resume = {}; camp_seen = []
 	ensure_roster(); save_campaign()
+
+const DIFFS = ["보통", "어려움", "매우 어려움"]; const DIFF_LV = [0, 2, 4]
+const RB_CAP = 10; const RB_FULL = 3; const STAT_CAP = 2
+const PERK_COST = {"gold": 1, "weapon": 2, "ranks": 2, "bundle": 1, "supports": 0, "stat": 3}
+const BUNDLES = {"엘릭서": ["엘릭서"], "마스터 키": ["마스터 키"], "강철 무기 세트": ["강철검", "강철창", "강철도끼", "강철활"], "상처약 x5": ["상처약", "상처약", "상처약", "상처약", "상처약"]}
+var difficulty = 0          # 0 보통 / 1 어려움 (+2 Lv) / 2 매우 어려움 (+4 Lv, smarter AI)
+var grind = 0               # 노가다 모드 cycles (each +3 enemy Lv; marked on saves)
+
+func full_clear() -> bool: return "ch6" in cleared
+## 환생 포인트: 1 per chapter cleared this cycle, +3 for a full clear, capped at 10. Never carried over.
+func rb_points() -> int: return mini(RB_CAP, cleared.size() + (RB_FULL if full_clear() else 0))
+## Highest difficulty selectable: all tiers after a full clear; otherwise (mid-progress) the current one.
+func max_diff() -> int: return 2 if full_clear() else difficulty
+
+## Special weapons: brave, effective (특효), boss drops, rank >= A.
+static func is_special(n: String) -> bool:
+	if not Weapons.LIST.has(n): return false
+	var w = Weapons.make(n)
+	if w.is_item(): return false
+	if w.brave or (w.effective.size() > 0 and w.type != WeaponData.Type.BOW) or w.rank >= 4: return true   # bows are innately anti-flier
+	for ch in Maps.CH:
+		for e in Maps.CH[ch].get("enemies", []):
+			if e[3].get("boss", false) and e[3].get("drop", "") == n: return true
+	return false
+
+func special_owned() -> Array:
+	var out = []
+	for n in roster: for it in roster[n].get("items", []): if is_special(it.name) and not it.name in out: out.append(it.name)
+	for it in convoy: if is_special(it.name) and not it.name in out: out.append(it.name)
+	return out
+
+## opts: {diff, gold, weapons: [names<=2], ranks, bundle: key|"", supports, stat: {unit, stat}|{}}
+func rb_cost(o: Dictionary) -> int:
+	var c = 0
+	if o.get("gold", false): c += PERK_COST.gold
+	c += PERK_COST.weapon * o.get("weapons", []).size()
+	if o.get("ranks", false): c += PERK_COST.ranks
+	if o.get("bundle", "") != "": c += PERK_COST.bundle
+	if not o.get("stat", {}).is_empty(): c += PERK_COST.stat
+	return c
+
+func rb_defaults() -> Dictionary:
+	var o = {"diff": difficulty, "gold": false, "weapons": [], "ranks": false, "bundle": "", "supports": true, "stat": {}}
+	var pts = rb_points()
+	if pts >= 1: o.gold = true
+	if pts >= 2: o.bundle = "상처약 x5"
+	return o
+
+## 환생: restart at Ch1 with chosen difficulty and perks (budget = rb_points()). Units restart at join level.
+func rebirth_std(o: Dictionary) -> bool:
+	if rb_cost(o) > rb_points() or o.get("weapons", []).size() > 2 or int(o.get("diff", 0)) > max_diff(): return false
+	var keep_w = o.get("weapons", []).filter(func(n): return n in special_owned())
+	var new_ranks = {}
+	if o.get("ranks", false):
+		for n in roster:
+			var r = {}
+			for t in roster[n].get("wexp", {}):
+				var k = ClassProfs.rank_of(int(roster[n].wexp[t]))
+				if k > 0: r[str(t)] = ClassProfs.WEXP[k - 1]
+			new_ranks[n] = r
+	var st: Dictionary = o.get("stat", {})
+	if not st.is_empty():
+		var cur = rb_bonus.get(st.unit, {}).get("stats", {})
+		var total = 0
+		for s in cur: total += int(cur[s])
+		if total < STAT_CAP:
+			if not rb_bonus.has(st.unit): rb_bonus[st.unit] = {"stats": {}}
+			rb_bonus[st.unit].stats[st.stat] = int(rb_bonus[st.unit].stats.get(st.stat, 0)) + 1
+	for n in rb_bonus: rb_bonus[n]["wexp"] = new_ranks.get(n, {})
+	for n in new_ranks: if not rb_bonus.has(n): rb_bonus[n] = {"stats": {}, "wexp": new_ranks[n]}
+	if not o.get("ranks", false): for n in rb_bonus: rb_bonus[n]["wexp"] = {}
+	gold = mini(3000, gold * 30 / 100) if o.get("gold", false) else 0
+	convoy = keep_w.map(func(n): return Weapons.make(n).to_dict())
+	for it in BUNDLES.get(o.get("bundle", ""), []): convoy.append(Weapons.make(it).to_dict())
+	if not o.get("supports", true): supports_seen = []
+	difficulty = int(o.get("diff", 0)); cycle += 1; keep_all = false
+	enemy_lv = DIFF_LV[difficulty] + grind * CYCLE_LV
+	roster = {}; recruited = []
+	chapter = "ch1"; cleared = []; attempts = {}; deploy = []; ranks = {}; sides = {}; route = ""; drop_seeds = {}; resume = {}; camp_seen = []
+	ensure_roster(); save_campaign()
+	return true
+
+## Carried 환생 bonuses applied once when a unit (re)joins: chosen stat (+1/cycle, cap +2 total) and kept ranks.
+func apply_carry(u: Unit) -> void:
+	var b = rb_bonus.get(u.data.name, {})
+	for s in b.get("stats", {}): u.stats[s] += int(b.stats[s])
+	if b.get("stats", {}).has("hp"): u.hp = u.stats.hp
+	for t in b.get("wexp", {}): u.wexp[int(t)] = maxi(int(u.wexp.get(int(t), 0)), int(b.wexp[t]))
+
+func carry_text(n: String) -> String:
+	var b = rb_bonus.get(n, {})
+	var parts = []
+	for s in b.get("stats", {}): parts.append("%s+%d" % [Menus.STAT_NAMES.get(s, s), int(b.stats[s])])
+	if b.get("wexp", {}).size(): parts.append("무기 랭크 유지")
+	return ("환생 ★%d: " % cycle + " ".join(parts)) if parts.size() else ""
+
+func mode_tag() -> String:
+	var t = "환생 ★%d %s" % [cycle, DIFFS[difficulty]] if cycle > 0 or difficulty > 0 else ""
+	if grind > 0: t += " [노가다 ×%d]" % grind
+	return t.strip_edges()
+
 
 ## 완전 초기화: wipe everything (campaign + all save slots).
 func wipe_all() -> void:
@@ -95,7 +202,7 @@ func wipe_all() -> void:
 	reset(); cycle = 0; clears = 0; save_campaign()
 
 func to_dict() -> Dictionary:
-	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen}
+	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen, "enemy_lv": enemy_lv, "rb_bonus": rb_bonus, "boosters": boosters, "keep_all": keep_all, "difficulty": difficulty, "grind": grind}
 
 ## Make sure every joined unit has a roster entry (default stats/loadout).
 func ensure_roster() -> void:
@@ -105,6 +212,7 @@ func ensure_roster() -> void:
 			var fg = Unit.fixed_growth; Unit.fixed_growth = true   # deterministic join level
 			for i in Roster.JOIN_LV.get(n, 1) - 1: u.level_up()
 			Unit.fixed_growth = fg; u.hp = u.stats.hp
+			apply_carry(u)
 			record_progress(u, false); u.free()
 
 func entry(n: String) -> Dictionary: return roster.get(n, {})
@@ -133,9 +241,13 @@ func from_dict(c: Dictionary) -> void:
 	recruited = c.get("recruited", []); ranks = c.get("ranks", {}); sides = c.get("sides", {}); route = c.get("route", "")
 	drop_seeds = c.get("drop_seeds", {}); cycle = int(c.get("cycle", 0)); clears = int(c.get("clears", 0))
 	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", [])
+	# migrate: pre-rework saves only had 강화-style cycles (+3 Lv each, everyone kept)
+	enemy_lv = int(c.get("enemy_lv", cycle * CYCLE_LV)); keep_all = bool(c.get("keep_all", cycle > 0))
+	rb_bonus = c.get("rb_bonus", {}); boosters = c.get("boosters", {})
+	difficulty = int(c.get("difficulty", 0)); grind = int(c.get("grind", cycle))   # old cycles were all keep-all
 
 func reset() -> void:
-	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; drop_seeds = {}; cycle = 0; camp_seen = []; supports_seen = []; save_campaign()
+	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; drop_seeds = {}; cycle = 0; camp_seen = []; supports_seen = []; enemy_lv = 0; rb_bonus = {}; boosters = {}; keep_all = false; difficulty = 0; grind = 0; save_campaign()
 
 ## Support conversations unlocked: both units in roster and chapter cleared.
 func supports_open() -> Array:

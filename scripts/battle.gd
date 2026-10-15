@@ -81,7 +81,7 @@ func _ready() -> void:
 		lineup.erase("아린"); lineup.push_front("아린")
 	deploy_party(lineup)
 	for e in MAP.enemies:
-		if e[3].has("talk") and Campaign.roster.has(e[3].get("name", "")): continue   # 환생: already recruited
+		if e[3].has("talk") and Campaign.roster.has(e[3].get("name", "")) and Campaign.keep_all: continue   # 환생: already recruited
 		_spawn_enemy(e)
 	for n in MAP.get("npc", []):
 		if not Campaign.roster.has(n[0]): _spawn_npc(n)
@@ -144,7 +144,8 @@ func _spawn_enemy(e: Array) -> Unit:
 		var elite = opts.get("elite", false) or u.guard
 		u.drop_w = opts.get("drop_w", DROP_W_ELITE if elite else DROP_W)
 		u.drop_i = opts.get("drop_i", DROP_I_ELITE if elite else DROP_I) if u.items().size() > 0 else 0
-	_level_to(u, int(opts.get("lv", 1)) + Campaign.cycle * Campaign.CYCLE_LV)
+	EnemyAI.smart = Campaign.difficulty >= 2
+	_level_to(u, int(opts.get("lv", 1)) + Campaign.enemy_lv)
 	_place(u); return u
 
 ## Deterministic enemy/NPC levels (fixed growth) — chapter difficulty curve lives in maps.gd "lv".
@@ -156,7 +157,7 @@ func _level_to(u: Unit, lv: int) -> void:
 ## Protect-target NPC (team 2): stands its ground; enemies attack it; lose if it falls.
 func _spawn_npc(n: Array) -> Unit:
 	var u = Roster.make_unit(n[1], 1, n[2]); u.team = 2; u.data.name = n[0]; u.inventory = [Weapons.make(n[3])]
-	_level_to(u, (int(n[4]) if n.size() > 4 else 1) + Campaign.cycle * Campaign.CYCLE_LV); u.guard = true
+	_level_to(u, (int(n[4]) if n.size() > 4 else 1) + Campaign.enemy_lv); u.guard = true
 	_place(u); return u
 
 func _btn(t: String, parent: Control, fs = 30) -> Button:
@@ -302,6 +303,7 @@ func open_menu() -> void:
 		["전투 목표", _objective], ["상성표", func(): Menus.triangle_chart(ui)], ["설정", func(): Menus.settings(ui, func(): anim_on = Settings.anim)],
 		["중단 저장", func(): Menus.slots(ui, "save", func(): return [CHAPTER, tm.turn, payload()])],
 		["챕터 재시작", func(): Menus.confirm(ui, "이 장을 처음부터 다시 할까요?\n(이번 장에서 얻은 경험치·아이템은 장 시작 상태로 돌아갑니다)", "재시작", restart_chapter)],
+		["환생", func(): Menus.rebirth_select(ui, func(): get_tree().change_scene_to_file("res://scenes/battle.tscn"))],
 		["타이틀로", func(): Menus.confirm(ui, "타이틀로 돌아갈까요?\n저장하지 않은 진행은 마지막 자동 저장(턴 %d 시작)부터 이어집니다." % tm.turn, "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))],
 		["턴 종료", func(): cl.queue_free(); _on_end_turn()]]
 	for it in items:
@@ -358,7 +360,24 @@ func _occ(u: Unit) -> Array:
 			if EnemyAI.foe(u, o): block[o.cell] = true
 	return [occ, block]
 
+## FE-style: corner windows jump to the bottom when the cursor is in the top part of the view (and back).
+func _screen_y(c: Vector2i) -> float: return (grid.cell_to_pos(c).y - cam.position.y) * cam.zoom.y
+
+func relayout_windows(c: Vector2i) -> void:
+	var vs = _view_size(); var sy = _screen_y(c)
+	var bottom = sy < vs.y * 0.42
+	terrain_win.position.y = vs.y - terrain_win.size.y - 10 if bottom else 10.0
+	unit_win.position.y = vs.y - unit_win.size.y - 10 if bottom else 10.0
+	terrain_win.set_meta("bottom", bottom)
+
+## Forecast panel goes to whichever half doesn't cover the attacker/target.
+func relayout_forecast(cells: Array) -> void:
+	var vs = _view_size(); var top_y = 140.0; var bot_y = vs.y - fc_panel.size.y - 10
+	var covers_top = cells.any(func(c): var y = _screen_y(c); return y > top_y - 40 and y < top_y + fc_panel.size.y + 40)
+	fc_panel.position.y = bot_y if covers_top else top_y
+
 func _show_terrain(c: Vector2i) -> void:
+	relayout_windows(c)
 	var t = grid.terrain.get(c, "wall" if grid.walls.has(c) else "")
 	var names = {"": "평지", "forest": "숲", "fort": "요새", "throne": "옥좌", "door": "문(잠김)", "chest": "보물상자", "chest_open": "빈 상자", "side": "옆문", "wall": "벽"}
 	var b = grid.terrain_bonus(c)
@@ -414,6 +433,7 @@ func _show_forecast() -> void:
 	var old = selected.flags.get("moved", false); selected.flags["moved"] = true
 	var f = BattleManager.forecast(selected, u)
 	selected.flags["moved"] = old
+	relayout_forecast([u.cell, selected.cell])
 	info.text = "%s [%s %d]  HP %d→%d  위력 %d%s 명중 %d%% 치명 %d%%\n%s [%s]  HP %d→%d  위력 %s 명중 %s 치명 %s%s\n[확인]=공격%s" % [
 		f.atk_name, f.atk_weapon, f.atk_uses, f.atk_hp_before, f.atk_hp_after, f.atk_dmg, ("×%d" % f.atk_count) if f.atk_count > 1 else "", f.atk_hit, f.atk_crit,
 		f.def_name, u.weapon().name if u.weapon() else "-", f.def_hp_before, f.def_hp_after, "-" if f.def_dmg < 0 else str(f.def_dmg) + (("×%d" % f.def_count) if f.def_count > 1 else ""),
@@ -451,6 +471,16 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 		if b.hit: bt.append("명중+%d" % b.hit)
 		if b.crit: bt.append("치명+%d" % b.crit)
 		var bl = ItemMenus.label(("랭크·숙련 " + " ".join(bt)) if bt.size() else (w.desc if w else ""), 18, Color8(255, 216, 128)); v.add_child(bl)
+		if u.team == 1:   # what the player may get from this enemy
+			var drops = []
+			if u.drop: drops.append([u.drop, "확정"])
+			if u.drop_w > 0 and u.weapon(): drops.append([u.weapon(), "%d%%" % u.drop_w])
+			if u.drop_i > 0 and u.items().size(): drops.append([u.items()[0], "%d%%" % u.drop_i])
+			if u.gold_drop > 0: v.add_child(ItemMenus.label("드롭 %dG 확정" % u.gold_drop, 18, Color8(255, 216, 32)))
+			for dd in drops:
+				var dr = HBoxContainer.new(); dr.name = "Drop"; v.add_child(dr); dr.add_child(Icons.rect(dd[0], 24))
+				var dl = ItemMenus.label("드롭 %s %s" % [dd[0].name, dd[1]], 18, Color8(255, 216, 32)); dl.autowrap_mode = TextServer.AUTOWRAP_OFF; dr.add_child(dl)
+				for c in dr.get_children(): c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		for c in v.get_children() + wr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fc_panel.visible = true
 
@@ -479,6 +509,8 @@ func _move_selected(c: Vector2i) -> void:
 	if not act.is_empty(): extra.append("[%s]" % act.label)
 	info.text = "%s 이동. 적 탭=예측 %s / [확인]=대기" % [selected.data.name, " ".join(extra)]
 	btn_confirm.disabled = false; btn_open.disabled = act.is_empty()
+	_update_item_btn(selected)
+	if not trade_partners(selected).is_empty(): info.text += "\n[아이템]=교환 가능"
 	busy = false
 
 func _slide(u: Unit, path: Array) -> void:
@@ -508,7 +540,7 @@ func _select(u: Unit) -> void:
 	grid.queue_redraw(); Sfx.play("select")
 	_show_info(u); info.text += "\n파란 칸 탭=경로, 다시 탭=이동 (제자리 탭=행동)"
 	btn_cancel.disabled = false
-	btn_convoy.disabled = u.data.name != "아린" and u.items().is_empty()
+	_update_item_btn(u)
 
 func _show_enemy(u: Unit) -> void:
 	var o = _occ(u)
@@ -546,6 +578,7 @@ func _on_confirm() -> void:
 		await _animate(a, d)
 		log.append_array(_handle_kills(a, d))
 		info.text = "\n".join(log)
+		await show_loot()
 	for r in BattleManager.rank_ups: Menus.toast(ui, r); Sfx.play("levelup")
 	if pending_heal == null and fc_panel: fc_panel.visible = false
 	a.flags["moved"] = false
@@ -570,16 +603,58 @@ func _handle_kills(a: Unit, d: Unit) -> Array:
 			dead.set_meta("counted", true); kills += 1; killed_names.append(dead.data.name)
 		if dead.gold_drop > 0: Campaign.gold += dead.gold_drop; out.append("%dG 획득!" % dead.gold_drop); dead.gold_drop = 0
 		if dead.drop and dead.drop in dead.inventory:
-			var it: WeaponData = dead.drop; dead.drop = null
-			if killer.give(it): out.append("%s 획득 → %s" % [it.name, killer.data.name])
-			else: Campaign.to_convoy(it); out.append("%s → 수송대 (소지품 가득)" % it.name)
-			Campaign.record_progress(killer)
-		for it in random_drops(dead):
-			if killer.give(it): out.append("드롭! %s 획득 → %s" % [it.name, killer.data.name])
-			else: Campaign.to_convoy(it); out.append("드롭! %s → 수송대" % it.name)
-			Campaign.record_progress(killer)
+			var it: WeaponData = dead.drop; dead.drop = null; dead.inventory.erase(it)
+			out.append(grant(killer, it, "확정 드롭"))
+		for it in random_drops(dead): out.append(grant(killer, it, "드롭!"))
 		Campaign.save_campaign()
 	return out
+
+## Give an item to u (or convoy when full) and queue an FE-style pickup popup. Returns the combat-log line.
+var loot_queue: Array = []
+var traded = false
+func grant(u: Unit, it: WeaponData, src: String) -> String:
+	var full = not u.give(it)
+	if full: Campaign.to_convoy(it)
+	Campaign.record_progress(u)
+	loot_queue.append({"item": it, "unit": u, "full": full, "src": src})
+	return "%s %s을(를) 얻었다! → %s" % [src, it.name, "수송대 (소지품 가득)" if full else u.data.name]
+
+## Show queued pickup popups (tap to dismiss). Animation off / headless: short toast only.
+## Full inventory: item already sits in the convoy; choose 수송대로 / 버리기 / 교체 (swap with a carried item).
+func show_loot() -> void:
+	while loot_queue.size():
+		var l = loot_queue.pop_front(); var it: WeaponData = l.item; var u: Unit = l.unit
+		Sfx.play("pickup")
+		var msg = "%s을(를) 얻었다!\n%s" % [it.name, ("소지품이 가득 차 수송대로 보냈다" if l.full else "%s이(가) 받았다" % u.data.name)]
+		if not is_inside_tree() or "--flowtest" in OS.get_cmdline_user_args(): continue
+		if not anim_on and not l.full: Menus.toast(ui, it.name + "을(를) 얻었다!"); continue
+		var o = Menus.overlay(ui, l.src, 40, 380, 380); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "Loot"
+		var h = HBoxContainer.new(); h.alignment = BoxContainer.ALIGNMENT_CENTER; h.add_theme_constant_override("separation", 16); v.add_child(h)
+		h.add_child(Icons.rect(it, 64))
+		var lb = ItemMenus.label(msg, 30, Color8(255, 236, 160)); lb.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(lb)
+		var done = [false]
+		var close = func(): done[0] = true; cl.queue_free()
+		if l.full:
+			var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 10); v.add_child(row)
+			var b1 = ItemMenus.big("수송대로", 84, 26); b1.name = "ToConvoy"; row.add_child(b1); b1.pressed.connect(close)
+			var b2 = ItemMenus.big("버리기", 84, 26); b2.name = "Discard"; row.add_child(b2)
+			b2.pressed.connect(func():
+				var i = Campaign.convoy.rfind(it.to_dict())
+				if i >= 0: Campaign.convoy.remove_at(i); Campaign.save_campaign()
+				close.call())
+			var b3 = ItemMenus.big("교체", 84, 26); b3.name = "Swap"; row.add_child(b3)
+			b3.pressed.connect(func():
+				for c in v.get_children(): if c != h: c.queue_free()
+				v.add_child(ItemMenus.label("수송대로 보낼 소지품을 고르세요", 24))
+				for w in u.inventory.duplicate():
+					var wb = ItemMenus.weapon_btn(w, u); v.add_child(wb)
+					wb.pressed.connect(func():
+						var i = Campaign.convoy.rfind(it.to_dict())
+						if i >= 0: Campaign.convoy.remove_at(i)
+						u.inventory.erase(w); Campaign.to_convoy(w); u.give(it); Campaign.record_progress(u); u.queue_redraw(); close.call()))
+		else:
+			var ok = ItemMenus.big("확인", 84, 28); ok.name = "LootOK"; v.add_child(ok); ok.pressed.connect(close)
+		while not done[0] and is_instance_valid(cl): await get_tree().process_frame
 
 ## Deterministic random drop roll: hash(chapter attempt seed, spawn id, slot). Same result after save/load or restart.
 func roll(u: Unit, slot: String) -> int: return absi(hash([Campaign.drop_seed(CHAPTER), CHAPTER, u.uid, slot])) % 100
@@ -627,7 +702,7 @@ func _action(u: Unit) -> Dictionary:
 		if o.hp > 0 and o.team == 1 and o.talk_from == u.data.name and _dist(o.cell, u.cell) == 1: return {"kind": "talk", "label": "대화", "target": o}
 	var here = grid.terrain.get(u.cell, "")
 	if MAP.goal == "seize" and u.data.name == "아린" and here == "throne": return {"kind": "seize", "label": "제압"}
-	if MAP.goal == "escape" and here == "escape": return {"kind": "escape", "label": "탈출"}
+	if MAP.goal == "escape" and here == "escape" and (u.data.name != "아린" or _others_left(u) == 0): return {"kind": "escape", "label": "탈출"}
 	if here == "village": return {"kind": "village", "label": "방문", "cell": u.cell}
 	if Roster.is_thief(u):
 		for o in units:
@@ -651,9 +726,8 @@ func _do_open() -> void:
 		"steal":
 			var o: Unit = act.target; var it: WeaponData = o.drop
 			o.inventory.erase(it); o.drop = null; stole += 1
-			if selected.give(it): info.text = "%s: %s을(를) 훔쳤다!" % [selected.data.name, it.name]
-			else: Campaign.to_convoy(it); info.text = "%s 훔침 → 수송대" % it.name
-			Campaign.record_progress(selected); Sfx.play("levelup"); _finish_unit(selected); return
+			info.text = grant(selected, it, "훔치기")
+			await show_loot(); _finish_unit(selected); return
 		"crack":
 			grid.break_wall(act.cell); opened.append(act.cell); info.text = "%s: 금 간 벽을 부쉈다! 숨겨진 길이 열렸다." % selected.data.name
 			Sfx.play("crit"); _finish_unit(selected); return
@@ -673,13 +747,14 @@ func _do_open() -> void:
 		var msg = []
 		if ch.get("item", "") != "":
 			var it = Weapons.make(ch.item)
-			if selected.give(it): msg.append("%s 획득!" % it.name)
-			else: Campaign.to_convoy(it); msg.append("%s → 수송대" % it.name)
+			msg.append(grant(selected, it, "보물상자"))
 		var g = ch.get("gold", 0) + (300 if Skills.has(selected, "잭") else 0)
 		if g > 0: Campaign.gold += g; msg.append("%dG 획득!" % g)
 		Campaign.record_progress(selected); info.text = "보물상자: " + " ".join(msg) + keymsg
 	Sfx.play("levelup")
-	_finish_unit(selected)
+	var su = selected
+	await show_loot()
+	selected = su; _finish_unit(su)
 
 func _on_cancel() -> void:
 	if busy: return
@@ -729,7 +804,7 @@ func _talk(u: Unit, o: Unit) -> void:
 ## Enemy/NPC -> party member (keeps its current level, stats, items).
 func recruit_unit(o: Unit) -> void:
 	o.team = 0; o.data.tags = PackedStringArray([]); o.talk_from = ""; o.drop = null; o.guard = false; o.has_acted = true
-	o.data.color = Roster.color_for(o.unit_class.name); o.init_ranks()
+	o.data.color = Roster.color_for(o.unit_class.name); o.init_ranks(); Campaign.apply_carry(o)
 	if not o.data.name in Campaign.recruited: Campaign.recruited.append(o.data.name)
 	Campaign.record_progress(o); deployed.append(o.data.name); o.queue_redraw(); _refresh_intents()
 	if Roster.UNITS.has(o.data.name) and Roster.UNITS[o.data.name][2] != "": info.text += "\n%s: \"%s\"" % [o.data.name, Roster.UNITS[o.data.name][2]]
@@ -741,12 +816,11 @@ func _visit(u: Unit, c: Vector2i) -> void:
 	var msg = []
 	if v.get("item", "") != "":
 		var it = Weapons.make(v.item)
-		if u.give(it): msg.append("%s 획득!" % it.name)
-		else: Campaign.to_convoy(it); msg.append("%s → 수송대" % it.name)
+		msg.append(grant(u, it, "마을"))
 	if v.get("gold", 0) > 0: Campaign.gold += v.gold; msg.append("%dG 획득!" % v.gold)
 	if v.get("recruit", "") != "":
 		var n: String = v.recruit
-	if v.get("recruit", "") != "" and Campaign.roster.has(v.recruit) and Campaign.cycle > 0:
+	if v.get("recruit", "") != "" and Campaign.roster.has(v.recruit) and Campaign.keep_all:
 		Campaign.gold += 500; msg.append("500G 획득! (마을의 감사)")
 	elif v.get("recruit", "") != "":
 		var n: String = v.recruit; Campaign.recruit(n)
@@ -757,7 +831,11 @@ func _visit(u: Unit, c: Vector2i) -> void:
 		msg.append("%s 합류!" % n)
 	visited.append(c); grid.visit_village(c); Campaign.record_progress(u)
 	info.text = "마을 방문: " + " ".join(msg); Sfx.play("levelup")
+	await show_loot()
 	busy = false; _finish_unit(u)
+
+## Ch6 rule: the whole party escapes, 아린 last (allies still on the map).
+func _others_left(u: Unit) -> int: return units.filter(func(o): return o != u and o.team == 0 and o.hp > 0).size()
 
 func _escape(u: Unit) -> void:
 	escaped.append(u.data.name); Campaign.record_progress(u)
@@ -784,10 +862,75 @@ func _open_convoy() -> void:
 		elif fx.has("heal") and u.hp >= u.stats.hp: b.disabled = true
 		b.pressed.connect(func(): cl.queue_free(); use_item(u, w))
 		list.add_child(b)
+	for p in trade_partners(u):
+		var tb = ItemMenus.big("교환 — %s" % p.data.name, 80, 26); tb.name = "Trade_" + p.data.name; list.add_child(tb)
+		var pp = p
+		tb.pressed.connect(func(): cl.queue_free(); open_trade(u, pp))
 	if u.data.name == "아린":
 		var cb = ItemMenus.big("수송대 열기", 80, 26); cb.name = "Convoy"; list.add_child(cb)
 		cb.pressed.connect(func(): cl.queue_free(); _open_convoy_panel())
 	Menus.close_btn(v, cl)
+
+func _update_item_btn(u: Unit) -> void:
+	btn_convoy.disabled = u == null or (u.data.name != "아린" and u.items().is_empty() and trade_partners(u).is_empty())
+
+## Allies next to u (교환 partners).
+func trade_partners(u: Unit) -> Array:
+	if u == null or u.team != 0: return []
+	return units.filter(func(o): return o != u and o.team == 0 and o.hp > 0 and _dist(o.cell, u.cell) == 1)
+
+## 교환 (FE rule): trading doesn't end the action. Before moving you may still move; after moving you can still attack/wait.
+## Tap an item to pick it, then tap an item (swap) or an empty slot (move) on the other side. Tap a picked weapon again = equip.
+func open_trade(a: Unit, b: Unit) -> CanvasLayer:
+	var o = Menus.overlay(ui, "교환", 30, 60, 60); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "TradeUI"
+	var hint = ItemMenus.label("아이템 탭=선택 → 반대편 아이템(교체)/빈 칸(이동)\n선택한 무기 다시 탭=장비", 22, Color8(200, 190, 230)); v.add_child(hint)
+	var cols = HBoxContainer.new(); cols.add_theme_constant_override("separation", 10); cols.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(cols)
+	var state = {"pick": null, "side": -1}
+	var refill = [null]
+	refill[0] = func():
+		for c in cols.get_children(): c.queue_free()
+		for side in 2:
+			var u: Unit = [a, b][side]
+			var col = VBoxContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL; col.add_theme_constant_override("separation", 6); cols.add_child(col)
+			col.add_child(ItemMenus.label("%s (%d/%d)" % [u.data.name, u.inventory.size(), Unit.MAX_ITEMS], 26, Color8(160, 200, 255)))
+			for i in Unit.MAX_ITEMS:
+				var w = u.inventory[i] if i < u.inventory.size() else null
+				var bt: Button
+				if w:
+					bt = ItemMenus.big("%s%s\n%d/%d" % ["▶" if w == u.weapon() else "", w.name, w.uses, w.max_uses], 88, 20); Icons.on_button(bt, w)
+					if u.block_reason(w) != "": bt.add_theme_color_override("font_color", Color8(150, 140, 130))
+				else: bt = ItemMenus.big("(빈 칸)", 88, 20)
+				bt.alignment = HORIZONTAL_ALIGNMENT_LEFT; bt.name = "T%d_%d" % [side, i]
+				if state.pick == w and w != null: bt.modulate = Color(1.3, 1.2, 0.6)
+				col.add_child(bt)
+				var sd = side; var ww = w
+				bt.pressed.connect(func():
+					Sfx.play("select")
+					if state.pick == null:
+						if ww: state.pick = ww; state.side = sd
+					elif ww == state.pick:   # same item again: equip it
+						var ow: Unit = [a, b][sd]
+						if not ww.is_item() and not ww.is_staff(): ow.equip(ww)
+						state.pick = null
+					elif sd == state.side:
+						state.pick = ww
+					else:
+						var src: Unit = [a, b][state.side]; var dst: Unit = [a, b][sd]
+						var pi = src.inventory.find(state.pick)
+						if ww:
+							var di = dst.inventory.find(ww)
+							src.inventory[pi] = ww; dst.inventory[di] = state.pick
+						elif dst.inventory.size() < Unit.MAX_ITEMS:
+							src.inventory.remove_at(pi); dst.inventory.append(state.pick)
+						state.pick = null; traded = true
+					for x in [a, b]: x.queue_redraw()
+					refill[0].call())
+	refill[0].call()
+	Menus.close_btn(v, cl, func():
+		for x in [a, b]: Campaign.record_progress(x)
+		if selected == a: _show_info(a); info.text += "\n교환 완료 — 계속 행동 가능" + ("" if moved else " (이동 가능)")
+		_show_unit_win(a))
+	return cl
 
 func use_item(u: Unit, it: WeaponData) -> void:
 	var fx = it.fx()
@@ -884,6 +1027,7 @@ func _run_enemy_phase() -> void:
 			lines.append_array(BattleManager.resolve(e, plan.target))
 			await _animate(e, plan.target)
 			lines.append_array(_handle_kills(plan.target, e))
+			await show_loot()
 		elif is_inside_tree() and anim_on: await get_tree().create_timer(0.05).timeout
 		for u in units: u.visible = u.hp > 0
 	for u in units: u.visible = u.hp > 0; u.queue_redraw()
@@ -950,7 +1094,7 @@ func goal_text() -> String:
 	match MAP.goal:
 		"boss": return "%s 격파" % MAP.get("boss", "보스")
 		"seize": return "아린이 옥좌에서 [제압]"
-		"escape": return "아린이 탈출 지점에서 [탈출]"
+		"escape": return "전원 탈출 (아린은 마지막에 [탈출])"
 		"defend": return "%d턴 동안 버티기 (현재 %d턴)" % [MAP.turns, tm.turn]
 	return "적 전멸" + (" · %s 보호" % MAP.npc[0][0] if MAP.has("npc") else "")
 
