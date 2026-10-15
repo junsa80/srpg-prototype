@@ -15,7 +15,7 @@ var resume = {}            # battle snapshot to restore on next battle scene loa
 var chapter_start = {}     # campaign dict at chapter start (for 챕터 재시작)
 const CONVOY_MAX = 100
 const CLEAR_GOLD = {"ch1": 1000, "ch2": 1500}
-const NEXT = {"ch1": "ch2", "ch2": "ch3", "ch3": "ch4a", "ch4a": "ch5", "ch4b": "ch5", "ch5": "ch6", "ch6": "end"}
+const NEXT = {"ch1": "ch2", "ch2": "ch3", "ch3": "ch4a", "ch4a": "ch5", "ch4b": "ch5", "ch5": "ch6", "ch6": "ch7", "ch7": "end"}
 const TRAIN_EXP = 10        # 훈련 bonus EXP for each deployed unit after a defeat
 var recruited = []          # names recruited by talk/village/rescue
 var ranks = {}              # chapter -> best rank letter (S/A/B/C)
@@ -249,6 +249,7 @@ func from_dict(c: Dictionary) -> void:
 	recruited = c.get("recruited", []); ranks = c.get("ranks", {}); sides = c.get("sides", {}); route = c.get("route", "")
 	drop_seeds = c.get("drop_seeds", {}); cycle = int(c.get("cycle", 0)); clears = int(c.get("clears", 0))
 	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", [])
+	if chapter == "end" and "ch6" in cleared and not "ch7" in cleared: chapter = "ch7"   # 7장 추가: 1부 완료 세이브는 7장으로
 	# migrate: pre-rework saves only had 강화-style cycles (+3 Lv each, everyone kept)
 	enemy_lv = int(c.get("enemy_lv", cycle * CYCLE_LV)); keep_all = bool(c.get("keep_all", cycle > 0))
 	rb_bonus = c.get("rb_bonus", {}); boosters = c.get("boosters", {})

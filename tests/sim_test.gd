@@ -4,7 +4,8 @@ extends Node
 const PLAN = {   # chapter: [party level, extra weapons, recruits, promote]
 	"ch1": [1, [], [], false], "ch2": [3, [], [], false], "ch3": [5, ["강철"], [], false],
 	"ch4a": [7, ["강철"], ["가렌"], false], "ch4b": [7, ["강철"], ["가렌"], false],
-	"ch5": [9, ["강철"], ["가렌", "카이"], false], "ch6": [3, ["강철", "은"], ["가렌", "카이", "실라"], true]}
+	"ch5": [9, ["강철"], ["가렌", "카이"], false], "ch6": [3, ["강철", "은"], ["가렌", "카이", "실라"], true],
+	"ch7": [5, ["강철", "은"], ["가렌", "카이", "실라"], true]}
 const TRIALS = 16
 var results = {}
 var threat = {}

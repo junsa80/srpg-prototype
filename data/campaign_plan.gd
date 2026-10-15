@@ -4,7 +4,7 @@ class_name CampaignPlan extends RefCounted
 ## ch: [title, enemy lv range, promoted share 0..1, class mix, boss, recruits]
 const BASE_MIX = ["그림자 병사", "그림자 창병", "그림자 궁병", "그림자 술사", "그림자 중갑병", "그림자 기병", "그림자 비룡"]
 static var PLAN = {
-	"ch7": ["마차 호위", [5, 7], 0.0, BASE_MIX, "추격대장 카시안", ["다린", "벤", "엘런"]],
+	"ch7": ["피난민 행렬 (8턴 방어)", [10, 12], 0.0, BASE_MIX, "추격대장 카시안", ["다린", "벤", "엘런"]],
 	"ch8": ["왕 보호 10턴", [6, 8], 0.0, BASE_MIX, "암살자 베일", ["소라", "셀레나", "가브리엘"]],
 	"ch9": ["수문 3개 → 탈출", [6, 9], 0.0, BASE_MIX, "밀수왕 오스만", ["엘렌", "잭", "릴리"]],
 	"ch10": ["보스 격파", [7, 9], 0.0, BASE_MIX, "벨크", ["카린", "드레이크", "브렌"]],
