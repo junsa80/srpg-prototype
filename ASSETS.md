@@ -29,3 +29,7 @@
 - 애니메 초상화 128x128 (금/검정 장식 프레임 없이), 표정 3종
 - 타일셋: 꽃, 돌, 울타리, 집, 요새 벽/바닥/옥좌, 문, 보물상자
 - 보스: 그림자 장군 바르가스 — 흑철 중갑, 양손 대도끼, 그림자 오라 (48x48 맵, 전투 컷)
+
+## 2026-10-15 원본 추가 (assets/user_art/, .gdignore로 웹 빌드 제외)
+- luke/vargas/eileen/leon/extra_mercenary/extra_mage_portrait.jpg — 파일명과 내용이 다름: leon=에일린, vargas=레온, extra_mercenary=바르가스, extra_mage=루크, luke=노아로 사용, eileen=엘리아로 사용
+- mira_portrait_v2.jpg, shadow_commander_portrait.jpg, snow_tileset.jpg, castle_tileset.jpg — 아직 게임에 미적용

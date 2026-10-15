@@ -1,0 +1,11 @@
+# sim_test results (16 trials/chapter, 2026-10-15, commit 8541ffb)
+ch1  16/16  avg turns 3.3  deaths 0.9
+ch2  10/16  avg turns 16.0 deaths 4.1
+ch3   6/16  avg turns 13.7 deaths 4.9
+ch4a  5/16  avg turns 9.0  deaths 5.5
+ch4b  7/16  avg turns 8.9  deaths 4.9
+ch5   6/16  avg turns 12.0 deaths 4.4
+ch6   9/16  avg turns 10.1 deaths 3.9
+# healer-free (SIM_NOHEAL=1: 세라 out, 보리스 in)
+ch1  16/16  avg turns 2.9  deaths 0.4
+ch2   4/16  avg turns 13.5 deaths 4.4
