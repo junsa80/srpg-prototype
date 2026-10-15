@@ -702,7 +702,7 @@ func _action(u: Unit) -> Dictionary:
 		if o.hp > 0 and o.team == 1 and o.talk_from == u.data.name and _dist(o.cell, u.cell) == 1: return {"kind": "talk", "label": "대화", "target": o}
 	var here = grid.terrain.get(u.cell, "")
 	if MAP.goal == "seize" and u.data.name == "아린" and here == "throne": return {"kind": "seize", "label": "제압"}
-	if MAP.goal == "escape" and here == "escape" and (u.data.name != "아린" or _others_left(u) == 0): return {"kind": "escape", "label": "탈출"}
+	if MAP.goal == "escape" and here == "escape": return {"kind": "escape", "label": "탈출"}
 	if here == "village": return {"kind": "village", "label": "방문", "cell": u.cell}
 	if Roster.is_thief(u):
 		for o in units:
@@ -1094,7 +1094,7 @@ func goal_text() -> String:
 	match MAP.goal:
 		"boss": return "%s 격파" % MAP.get("boss", "보스")
 		"seize": return "아린이 옥좌에서 [제압]"
-		"escape": return "전원 탈출 (아린은 마지막에 [탈출])"
+		"escape": return "아린이 탈출 지점에서 [탈출]"
 		"defend": return "%d턴 동안 버티기 (현재 %d턴)" % [MAP.turns, tm.turn]
 	return "적 전멸" + (" · %s 보호" % MAP.npc[0][0] if MAP.has("npc") else "")
 

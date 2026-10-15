@@ -90,8 +90,6 @@ func _ready() -> void:
 	arin = _named(b, "아린")
 	check(Campaign.roster.has("아서"), "아서 joins the roster in ch6")
 	for c in b.grid.terrain: if b.grid.terrain[c] == "escape": _put(b, arin, c)
-	check(b._action(arin).get("kind", "") != "escape", "ch6: 아린 can't escape while allies remain")
-	for o in b.units.duplicate(): if o.team == 0 and o != arin: b._escape(o)
 	b.selected = arin; b.moved = true; await b._do_open()
 	check("아린" in b.escaped and b.ended and Campaign.chapter == "end", "ch6 escape clears the campaign")
 	b.queue_free(); await get_tree().process_frame

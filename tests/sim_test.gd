@@ -124,7 +124,7 @@ func _act(b, u: Unit, target_cell: Vector2i) -> void:
 	# lord objective (seize/escape): walk toward the tile once early fighting has thinned the enemy
 	if b.MAP.goal == "escape" and target_cell.x >= 0:   # everyone runs for the nearest exit; 아린 waits until last
 		var exits = b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "escape")
-		if u.data.name != "아린" or b._others_left(u) == 0:
+		if u.data.name == "아린":
 			var be = u.cell; var bl2 = 9999
 			for c in reach:
 				if b._unit_at(c) and b._unit_at(c) != u: continue
