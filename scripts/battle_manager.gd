@@ -177,6 +177,10 @@ static func resolve(a: Unit, d: Unit) -> Array:
 			var ls = Skills.lifesteal_magic(x)
 			if ls > 0 and w.magic: var h = int(dm * ls); x.hp = mini(x.stats.hp, x.hp + h); log.append("%s HP +%d 흡수" % [x.data.name, h])
 			if y.hp > 0 and rng.randf() < Skills.poison_chance(x): y.poison = 3; log.append("%s 중독!" % y.data.name)
+			if x.aoe:   # 바르가스: splash half damage to the target's allies next to it (never lethal)
+				for o in Skills.units:
+					if o != y and o != x and o.team == y.team and o.hp > 0 and abs(o.cell.x - y.cell.x) + abs(o.cell.y - y.cell.y) == 1:
+						var sp = maxi(1, dm / 2); o.hp = maxi(1, o.hp - sp); log.append("%s의 광역 공격! %s %d 피해" % [x.data.name, o.data.name, sp])
 		else: log.append("%s 빗나감" % x.data.name)
 		ev["x_hp"] = x.hp; ev["y_hp"] = y.hp; events.append(ev)
 		if x.use_item(w): log.append("%s의 %s 파손!" % [x.data.name, w.name])

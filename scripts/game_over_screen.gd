@@ -23,10 +23,10 @@ func _box() -> VBoxContainer:
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); v.offset_left = 40; v.offset_right = -40; v.offset_top = 120; v.offset_bottom = -60
 	v.add_theme_constant_override("separation", 20); return v
 
-func open(all: Array, deployed: Array, attempts: Array) -> void:
+func open(all: Array, deployed: Array, attempts: Array, train_lines = []) -> void:
 	SIZE = deployed.size(); roster = all; choice = deployed.duplicate(); prior = attempts; visible = true; _clear()
 	var v = _box()
-	var t = Label.new(); t.text = "패배…\n(얻은 EXP·레벨은 유지됩니다)"; t.add_theme_font_size_override("font_size", 44)
+	var t = Label.new(); t.text = "패배…\n(얻은 EXP·레벨은 유지됩니다)\n훈련: 출전 유닛 EXP +%d%s\n★ 이번에 쉬었던 유닛은 다음 출격 시 「각성」" % [Campaign.TRAIN_EXP, ("\n" + "\n".join(train_lines)) if train_lines.size() else ""]; t.add_theme_font_size_override("font_size", 44)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; v.add_child(t)
 	var b1 = _big("같은 파티로 재도전"); b1.pressed.connect(func(): retry_same.emit()); v.add_child(b1)
 	var b2 = _big("유닛 교체 후 재도전"); b2.pressed.connect(_open_picker); v.add_child(b2)

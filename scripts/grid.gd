@@ -1,10 +1,16 @@
 class_name Grid extends Node2D
 ## Square grid with ASCII-map terrain. Legend:
 ##  . plain  # wall  F forest  T fort  H throne  D locked door  C chest  S side door (reinforcement spawn)
+##  ~ river (flyers only)  = bridge  ^ mountain  V village  X cracked wall (breakable)  E escape point  R ruins/pillar
 const CELL = 80
 const TERRAIN = {  # def, avo, heal% per turn
-	"forest": [0, 20, 0], "fort": [2, 20, 20], "throne": [2, 20, 20],
+	"forest": [0, 20, 0], "fort": [2, 20, 20], "throne": [2, 20, 20], "mountain": [1, 30, 0], "village": [0, 10, 0],
+	"bridge": [0, 0, 0], "pillar": [1, 20, 0],
 }
+## Ground move cost by terrain for walkers (flyers always 1, can cross river/walls-of-water).
+const COST = {"forest": 2, "mountain": 3, "pillar": 2}
+var ground = "grass"   # grass / snow / sand / castle — set per map
+var water = {}         # river cells (impassable for walkers)
 @export var size = Vector2i(9, 12)
 var astar = AStarGrid2D.new()
 var walls = {}
@@ -25,7 +31,7 @@ func _ready() -> void:
 	if astar.region.size == Vector2i.ZERO: _rebuild()
 
 func load_map(rows: Array) -> void:
-	size = Vector2i(rows[0].length(), rows.size()); walls = {}; terrain = {}; forest = {}; interior = {}
+	size = Vector2i(rows[0].length(), rows.size()); walls = {}; terrain = {}; forest = {}; interior = {}; water = {}
 	for y in rows.size():
 		for x in rows[y].length():
 			var c = Vector2i(x, y)
@@ -37,6 +43,13 @@ func load_map(rows: Array) -> void:
 				"D": terrain[c] = "door"; walls[c] = true
 				"C": terrain[c] = "chest"
 				"S": terrain[c] = "side"
+				"~": terrain[c] = "river"; water[c] = true
+				"=": terrain[c] = "bridge"
+				"^": terrain[c] = "mountain"
+				"V": terrain[c] = "village"
+				"X": terrain[c] = "crack"; walls[c] = true
+				"E": terrain[c] = "escape"
+				"R": terrain[c] = "pillar"
 	# indoor = enclosed region above the first all-wall row containing a gap (fort maps start with a wall border)
 	outdoor_walls = rows[0].count("#") < rows[0].length()
 	if not outdoor_walls:
@@ -55,9 +68,15 @@ func _rebuild() -> void:
 	astar.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
 	astar.update()
 	for w in walls: astar.set_point_solid(w)
+	for w in water: astar.set_point_solid(w)
 
 func open_door(c: Vector2i) -> void:
 	walls.erase(c); terrain.erase(c); astar.set_point_solid(c, false); queue_redraw()
+
+func break_wall(c: Vector2i) -> void: open_door(c)
+
+func ruin_village(c: Vector2i) -> void: terrain[c] = "ruin"; queue_redraw()
+func visit_village(c: Vector2i) -> void: terrain[c] = "village_done"; queue_redraw()
 
 func open_chest(c: Vector2i) -> void:
 	terrain[c] = "chest_open"; queue_redraw()
@@ -70,15 +89,17 @@ func pos_to_cell(p: Vector2) -> Vector2i: return Vector2i(floor(p.x / CELL), flo
 func pixel_size() -> Vector2: return Vector2(size) * CELL
 
 ## BFS reachable cells within move, blocked by walls and enemy units (allies passable).
-func movement_range(from: Vector2i, move: int, blockers: Dictionary, occupied: Dictionary) -> Array:
+func movement_range(from: Vector2i, move: int, blockers: Dictionary, occupied: Dictionary, fly = false) -> Array:
 	var dist = {from: 0}; var q = [from]; var out = []
 	while q.size() > 0:
 		var c: Vector2i = q.pop_front()
 		if not occupied.has(c) or c == from: out.append(c)
 		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var n: Vector2i = c + d
-			if not in_bounds(n) or walls.has(n) or blockers.has(n) or dist.has(n): continue
-			var cost = 2 if forest.has(n) else 1
+			if not in_bounds(n) or blockers.has(n) or dist.has(n): continue
+			if walls.has(n): continue
+			if water.has(n) and not fly: continue
+			var cost = 1 if fly else COST.get(terrain.get(n, ""), 1)
 			if dist[c] + cost > move: continue
 			dist[n] = dist[c] + cost; q.append(n)
 	return out
@@ -107,7 +128,14 @@ func _draw() -> void:
 			var t = terrain.get(c, "")
 			var v = (x * 7 + y * 13) % 11
 			var indoor = interior.has(c)
-			draw_texture_rect(Sprites.tile_tex("floor" if indoor else ("flower" if v == 0 else ("grass2" if v == 3 else "plain"))), r, false)
+			if indoor or ground == "castle": draw_texture_rect(Sprites.tile_tex("floor"), r, false)
+			elif ground == "snow":
+				draw_rect(r, Color8(226, 234, 244) if v % 3 else Color8(208, 220, 236))
+				if v == 0: draw_circle(r.position + Vector2(20, 24), 3, Color.WHITE)
+			elif ground == "sand":
+				draw_rect(r, Color8(226, 196, 130) if v % 3 else Color8(214, 182, 116))
+				if v == 2: draw_line(r.position + Vector2(14, 50), r.position + Vector2(44, 46), Color8(190, 156, 96), 3)
+			else: draw_texture_rect(Sprites.tile_tex("flower" if v == 0 else ("grass2" if v == 3 else "plain")), r, false)
 			if walls.has(c) and t != "door": draw_texture_rect(Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
 			match t:
 				"forest":
@@ -118,6 +146,29 @@ func _draw() -> void:
 					draw_rect(r.grow(-10), Color8(160, 24, 40)); draw_rect(Rect2(r.position + Vector2(22, 8), Vector2(36, 30)), Color8(216, 176, 48))
 					draw_rect(r.grow(-10), Color8(248, 216, 96), false, 3)
 				"door", "side", "chest", "chest_open": draw_texture_rect(Sprites.tile_tex(t), r, false)
+				"river":
+					draw_rect(r, Color8(56, 112, 200))
+					var ph = t_anim * 2.0 + x + y
+					for i in 3: draw_line(r.position + Vector2(10 + i * 22, 30 + sin(ph + i) * 6), r.position + Vector2(24 + i * 22, 30 + sin(ph + i) * 6), Color8(150, 200, 255), 3)
+				"bridge":
+					draw_rect(r, Color8(56, 112, 200)); draw_rect(r.grow_individual(0, -8, 0, -8), Color8(150, 104, 56))
+					for i in 5: draw_line(r.position + Vector2(i * 16 + 8, 8), r.position + Vector2(i * 16 + 8, CELL - 8), Color8(96, 64, 32), 2)
+				"mountain":
+					draw_colored_polygon(PackedVector2Array([r.position + Vector2(6, 72), r.position + Vector2(40, 10), r.position + Vector2(74, 72)]), Color8(130, 112, 96))
+					draw_colored_polygon(PackedVector2Array([r.position + Vector2(30, 28), r.position + Vector2(40, 10), r.position + Vector2(50, 28)]), Color8(240, 240, 250) if ground == "snow" else Color8(176, 160, 140))
+					draw_polyline(PackedVector2Array([r.position + Vector2(6, 72), r.position + Vector2(40, 10), r.position + Vector2(74, 72)]), Color8(60, 48, 40), 3)
+				"village", "village_done":
+					draw_texture_rect(Sprites.tile_tex("house"), r, false)
+					if t == "village": draw_rect(r.grow(-3), Color8(255, 216, 96), false, 3)
+				"ruin":
+					draw_rect(r.grow(-12), Color8(70, 56, 48)); draw_line(r.position + Vector2(14, 14), r.position + Vector2(66, 66), Color8(30, 20, 20), 4)
+				"crack":
+					draw_line(r.position + Vector2(40, 6), r.position + Vector2(30, 34), Color8(20, 16, 20), 3); draw_line(r.position + Vector2(30, 34), r.position + Vector2(48, 52), Color8(20, 16, 20), 3)
+					draw_line(r.position + Vector2(48, 52), r.position + Vector2(36, 76), Color8(20, 16, 20), 3)
+				"escape":
+					draw_rect(r.grow(-4), Color(0.2, 0.9, 0.4, 0.35)); draw_string(f, r.position + Vector2(8, 50), "탈출", HORIZONTAL_ALIGNMENT_CENTER, 64, 22, Color8(230, 255, 230))
+				"pillar":
+					draw_rect(Rect2(r.position + Vector2(24, 8), Vector2(32, 64)), Color8(180, 172, 160)); draw_rect(Rect2(r.position + Vector2(18, 4), Vector2(44, 10)), Color8(200, 192, 180))
 	for c in danger: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(0.75, 0.1, 0.75, 0.3))
 	for c in highlight_attack: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(1, 0.15, 0.1, 0.4))
 	for c in highlight_move: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(0.2, 0.5, 1, 0.5))
@@ -137,7 +188,7 @@ func _draw() -> void:
 
 func _process(dt: float) -> void:
 	t_anim += dt
-	if cursor.x >= 0 or not warnings.is_empty(): queue_redraw()
+	if cursor.x >= 0 or not warnings.is_empty() or not water.is_empty(): queue_redraw()
 
 func _draw_arrow() -> void:
 	if arrow.size() < 2: return

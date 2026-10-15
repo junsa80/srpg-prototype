@@ -27,6 +27,9 @@ var gold_drop = 0
 var guard = false           # AI: hold position unless target reachable
 var boss = false            # AI: never moves
 var weapon_used: WeaponData = null
+var aoe = false            # boss: hits also splash units adjacent to the target
+var raider = false         # AI: goes for villages
+var talk_from = ""         # name of player unit that can recruit this enemy via 대화
 var wexp = {}               # weapon type (int) -> weapon EXP points (players)
 
 func setup(d: UnitData, t: int, c: Vector2i) -> void:
@@ -169,7 +172,7 @@ func has_tag(t: String) -> bool: return t in data.tags
 func move_range() -> int: return unit_class.move + move_bonus + Skills.move_mod(self)
 
 func to_dict() -> Dictionary:
-	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "wexp": wexp, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss}
+	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "wexp": wexp, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss, "aoe": aoe, "raider": raider, "talk": talk_from}
 
 func from_dict(d: Dictionary) -> void:
 	cell = Vector2i(d.cell[0], d.cell[1]); level = d.level; exp = d.exp; hp = d.hp; stats = d.stats; has_acted = d.acted; move_bonus = d.get("move_bonus", 0)

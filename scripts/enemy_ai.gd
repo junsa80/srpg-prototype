@@ -15,15 +15,15 @@ static func expected(e: Unit, f: Unit) -> Dictionary:
 
 static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:
 	var stay = {"unit": e, "move_to": e.cell, "target": null}
-	var foes = units.filter(func(u): return u.team != e.team and u.hp > 0)
+	var foes = units.filter(func(u): return foe(e, u) and u.hp > 0)
 	var w = e.weapon()
 	if foes.is_empty() or w == null: return stay
 	var occ = {}; var block = {}
 	for u in units:
 		if u != e and u.hp > 0:
 			occ[u.cell] = true
-			if u.team != e.team: block[u.cell] = true
-	var reach = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), block, occ)
+			if foe(e, u): block[u.cell] = true
+	var reach = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), block, occ, "flying" in e.tags())
 	var best = {}; var best_score = -INF
 	var old: Vector2i = e.cell
 	for c in reach:
@@ -51,3 +51,6 @@ static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:
 	return {"unit": e, "move_to": dest, "target": null}
 
 static func _d(a: Vector2i, b: Vector2i) -> int: return abs(a.x - b.x) + abs(a.y - b.y)
+
+## Team 1 (shadows) vs everyone else; team 2 = allied NPC.
+static func foe(a: Unit, b: Unit) -> bool: return (a.team == 1) != (b.team == 1)

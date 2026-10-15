@@ -31,7 +31,7 @@ const LIST = {
 	"피지오": [T.STAFF, 0, 100, 0, 3, 15, 1, 4, true, 10],
 	# boss uniques
 	"그림자 창 우르": [T.LANCE, 11, 80, 10, 10, 30, 1, 1, false, 0],
-	"바르가스의 대검": [T.SWORD, 15, 80, 10, 12, 30, 1, 1, false, 0],
+	"파멸의 도끼": [T.AXE, 13, 70, 5, 14, 30, 1, 1, false, 0],
 }
 ## Roles. rank: required weapon rank (0=E..5=S). eff: target tags (might x3). brave: strikes twice.
 ## light: weight never lowers attack speed. heavy: high might, slows. desc: shown in UI.
@@ -66,7 +66,7 @@ const TRAITS = {
 	"볼트": {"rank": 2, "eff": ["armor"], "light": true, "desc": "경량 마법 · 중갑 특효"},
 	"피지오": {"rank": 2, "desc": "원거리 회복: 사거리 1-4, 10+마력"},
 	"그림자 창 우르": {"rank": 3, "eff": ["cavalry"], "desc": "지휘관의 창 · 기병 특효"},
-	"바르가스의 대검": {"rank": 3, "eff": ["armor"], "desc": "바르가스의 유품 · 중갑 특효"},
+	"파멸의 도끼": {"rank": 3, "eff": ["armor", "cavalry"], "heavy": true, "desc": "바르가스의 도끼 · 중갑/기병 특효"},
 }
 const RANKS = ["E", "D", "C", "B", "A", "S"]
 const TYPE_NAMES = {0: "검", 1: "창", 2: "도끼", 3: "활", 4: "마법", 5: "지팡이"}

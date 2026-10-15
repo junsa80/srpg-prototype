@@ -20,6 +20,7 @@ const CLASSES = {
 	"그림자 중갑병": [4, {"hp": 22, "str": 7, "mag": 0, "skl": 3, "spd": 1, "lck": 0, "def": 9, "res": 0}, "", []],
 	"그림자 기병": [7, {"hp": 20, "str": 6, "mag": 0, "skl": 5, "spd": 6, "lck": 0, "def": 5, "res": 1}, "", []],
 	"그림자 비룡": [7, {"hp": 19, "str": 7, "mag": 0, "skl": 4, "spd": 6, "lck": 0, "def": 5, "res": 0}, "", []],
+	"바르가스": [0, {"hp": 38, "str": 12, "mag": 0, "skl": 8, "spd": 4, "lck": 3, "def": 12, "res": 3}, "", []],
 	"그림자 지휘관": [0, {"hp": 30, "str": 10, "mag": 0, "skl": 7, "spd": 5, "lck": 3, "def": 9, "res": 3}, "", []],
 }
 ## Playable units: name -> [class, join_chapter, intro line]
@@ -28,6 +29,9 @@ const UNITS = {
 	"엘리아": ["마법사", "ch1", ""], "카엘": ["기사", "ch1", ""], "루크": ["도적", "ch1", ""], "미라": ["마법사", "ch1", ""],
 	"에일린": ["용병", "ch2", "노아 선배한테 들었어. 나도 같이 갈게!"],
 	"레온": ["기사", "ch2", "방패가 필요하겠지. 앞은 내가 맡겠다."],
+	# recruited during the campaign (talk / village / rescue) — join via Campaign.recruited
+	"가렌": ["용병", "recruit", ""], "카이": ["궁수", "recruit", ""], "리안": ["기사", "recruit", ""], "실라": ["도적", "recruit", ""],
+	"아서": ["성기사", "ch6", "왕성이 함락됐다. 길은 내가 안다, 따라와!"],
 }
 const IRON = {W.SWORD: "철검", W.LANCE: "철창", W.AXE: "철도끼", W.BOW: "철활", W.TOME: "파이어", W.STAFF: "힐"}
 const COLORS = {"용병": Color(0.2, 0.45, 0.95), "궁수": Color(0.2, 0.7, 0.3), "성기사": Color(0.95, 0.85, 0.3),
@@ -55,9 +59,16 @@ static func _base_of(promoted: String) -> String:
 		if CLASSES[k][2] == promoted: return k
 	return ""
 
+const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "end": 6}
 static func joined_by(chapter: String) -> Array:
-	var order = ["ch1", "ch2", "ch3"]; var idx = order.find(chapter)
-	return UNITS.keys().filter(func(n): return order.find(UNITS[n][1]) <= idx)
+	var idx = CH_INDEX.get(chapter, 0)
+	var rec = []
+	var ml = Engine.get_main_loop()
+	var C = ml.root.get_node_or_null("Campaign") if ml is SceneTree else null
+	if C: rec = C.recruited
+	return UNITS.keys().filter(func(n): return (UNITS[n][1] != "recruit" and CH_INDEX.get(UNITS[n][1], 99) <= idx) or n in rec)
+## Recruits join at this level (deterministic fixed-growth level-ups; class base stats untouched).
+const JOIN_LV = {"가렌": 5, "카이": 6, "리안": 6, "실라": 7, "아서": 8}
 
 ## Build a Unit node from a campaign roster entry (or defaults).
 static func make_unit(n: String, team: int, cell: Vector2i, entry = {}) -> Unit:

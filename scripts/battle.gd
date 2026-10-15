@@ -29,6 +29,8 @@ var anim_on = true
 var fc_panel: Panel; var unit_wicon: TextureRect
 var btn_status: Button; var btn_menu: Button
 var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
+var kills = 0; var stole = 0; var chests_got = 0; var escaped: Array = []; var seized = false
+var visited: Array = []; var ruined: Array = []; var killed_names: Array = []; var clear_report = {}
 var drag_from = Vector2.ZERO; var dragging = false; var press_pos = Vector2.ZERO; var pressed = false
 const PANEL_H = 380
 
@@ -44,11 +46,17 @@ func _ready() -> void:
 	if "base" in demo and not Campaign.get_meta("from_base", false) and not "--flowtest" in demo:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/base.tscn"); return
 	if "ch2" in demo and Campaign.chapter == "ch1": Campaign.chapter = "ch2"; Campaign.ensure_roster()
+	var gm = RegEx.create_from_string("goto=(ch\\w+)").search(demo)   # dev: #goto=ch5 jumps to a chapter
+	if gm and Maps.CH.has(gm.get_string(1)) and Campaign.chapter != gm.get_string(1):
+		Campaign.chapter = gm.get_string(1)
+		if Roster.CH_INDEX.get(Campaign.chapter, 0) >= Roster.CH_INDEX.get("ch5", 99): Campaign.recruited = ["가렌", "카이"]
+		Campaign.ensure_roster()
 	var resume: Dictionary = Campaign.resume; Campaign.resume = {}
 	if not resume.is_empty() and Maps.CH.has(resume.get("chapter", "")): Campaign.chapter = resume.chapter
 	CHAPTER = Campaign.chapter if Maps.CH.has(Campaign.chapter) else "ch1"
 	MAP = Maps.CH[CHAPTER].duplicate(true)
 	anim_on = Settings.anim
+	grid.ground = MAP.get("ground", "grass")
 	grid.load_map(MAP.rows)
 	Skills.units = units; Skills.grid = grid
 	cam = Camera2D.new(); add_child(cam); cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT; cam.make_current()
@@ -62,11 +70,18 @@ func _ready() -> void:
 	if not resume.is_empty():
 		_restore(resume); Sfx.start_bgm(); return
 	var lineup: Array = Campaign.deploy.filter(func(n): return n in ROSTER_NAMES)
-	if lineup.size() != MAP.deploy_size: lineup = MAP.default_deploy.filter(func(n): return n in ROSTER_NAMES)
+	if lineup.size() != MAP.deploy_size or not "아린" in lineup:
+		lineup = MAP.get("default_deploy", []).filter(func(n): return n in ROSTER_NAMES)
+		for n in ROSTER_NAMES:
+			if lineup.size() >= MAP.deploy_size: break
+			if not n in lineup: lineup.append(n)
+		if not "아린" in lineup: lineup[-1] = "아린"
+		lineup.erase("아린"); lineup.push_front("아린")
 	deploy_party(lineup)
 	for e in MAP.enemies: _spawn_enemy(e)
+	for n in MAP.get("npc", []): _spawn_npc(n)
 	_focus(MAP.spots[0])
-	info.text = ch.title + " — 목표: " + ch.goal
+	info.text = ch.title + " — 목표: " + goal_text()
 	Campaign.chapter_start = Campaign.to_dict().duplicate(true)
 	if not "--flowtest" in OS.get_cmdline_user_args():
 		Sfx.start_bgm()
@@ -79,6 +94,9 @@ func _ready() -> void:
 			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
 	SaveManager.autosave(CHAPTER, 0, payload())  # chapter start (after preparation)
 	tm.start_player_phase()
+	if "mapview" in demo:   # dev: whole-map overview screenshot
+		var z = minf(_view_size().x / grid.pixel_size().x, _view_size().y / grid.pixel_size().y)
+		cam.zoom = Vector2(z, z); cam.position = Vector2.ZERO
 	if "camtop" in demo: cam.position = Vector2(grid.pixel_size().x - _view_size().x, 0)   # dev: screenshot top-right of map
 	if "combat" in demo: _demo_combat.call_deferred()
 	if "forecast" in demo: _demo_forecast.call_deferred()
@@ -108,6 +126,20 @@ func _spawn_enemy(e: Array) -> Unit:
 	u.data.tags = PackedStringArray(["dark"])
 	if opts.has("drop"): u.drop = Weapons.make(opts.drop); u.inventory.append(u.drop)
 	u.gold_drop = opts.get("gold", 0); u.guard = opts.get("guard", false); u.boss = opts.get("boss", false)
+	u.aoe = opts.get("aoe", false); u.raider = opts.get("raider", false); u.talk_from = opts.get("talk", "")
+	_level_to(u, int(opts.get("lv", 1)))
+	_place(u); return u
+
+## Deterministic enemy/NPC levels (fixed growth) — chapter difficulty curve lives in maps.gd "lv".
+func _level_to(u: Unit, lv: int) -> void:
+	var fg = Unit.fixed_growth; Unit.fixed_growth = true
+	for i in lv - 1: u.level_up()
+	Unit.fixed_growth = fg; u.hp = u.stats.hp
+
+## Protect-target NPC (team 2): stands its ground; enemies attack it; lose if it falls.
+func _spawn_npc(n: Array) -> Unit:
+	var u = Roster.make_unit(n[1], 1, n[2]); u.team = 2; u.data.name = n[0]; u.inventory = [Weapons.make(n[3])]
+	_level_to(u, int(n[4]) if n.size() > 4 else 1); u.guard = true
 	_place(u); return u
 
 func _btn(t: String, parent: Control, fs = 30) -> Button:
@@ -159,7 +191,9 @@ func _snapshot() -> Dictionary:
 	var rd = []
 	for i in MAP.get("reinforcements", []).size(): if MAP.reinforcements[i].get("done", false): rd.append(i)
 	return {"chapter": CHAPTER, "turn": tm.turn, "units": units.filter(func(u): return u.hp > 0).map(func(u): return u.to_dict()),
-		"opened": opened.map(func(c): return [c.x, c.y]), "reinf_done": rd, "deployed": deployed, "chapter_start": Campaign.chapter_start}
+		"opened": opened.map(func(c): return [c.x, c.y]), "reinf_done": rd, "deployed": deployed, "chapter_start": Campaign.chapter_start,
+		"state": {"kills": kills, "stole": stole, "chests": chests_got, "escaped": escaped, "killed": killed_names,
+			"visited": visited.map(func(c): return [c.x, c.y]), "ruined": ruined.map(func(c): return [c.x, c.y])}}
 
 ## Save payload for SaveManager (campaign + mid-battle snapshot).
 func payload() -> Dictionary: return {"campaign": Campaign.to_dict(), "battle": _snapshot()}
@@ -179,13 +213,22 @@ func _restore(r: Dictionary) -> void:
 			if di >= 0 and di < u.inventory.size(): u.drop = u.inventory[di]
 			u.gold_drop = int(d.get("gold", 0)); u.guard = d.get("guard", false); u.boss = d.get("boss", false)
 		u.hp = int(d.hp); u.has_acted = d.get("acted", false); u.awakened = d.get("awakened", false); u.poison = int(d.get("poison", 0))
+		u.aoe = d.get("aoe", false); u.raider = d.get("raider", false); u.talk_from = d.get("talk", ""); u.team = int(d.team)
+		if u.team == 2: u.data.tags = PackedStringArray([])
 		_place(u)
 	for oc in r.get("opened", []):
 		var c = Vector2i(int(oc[0]), int(oc[1]))
-		if grid.terrain.get(c, "") == "door": grid.open_door(c)
+		if grid.terrain.get(c, "") in ["door", "crack"]: grid.open_door(c)
 		elif grid.terrain.get(c, "") == "chest": grid.open_chest(c)
 		opened.append(c)
 	for i in r.get("reinf_done", []): MAP.reinforcements[int(i)]["done"] = true
+	var st: Dictionary = r.get("state", {})
+	kills = int(st.get("kills", 0)); stole = int(st.get("stole", 0)); chests_got = int(st.get("chests", 0)); escaped = st.get("escaped", [])
+	killed_names = st.get("killed", [])
+	for v in st.get("visited", []):
+		var c = Vector2i(int(v[0]), int(v[1])); visited.append(c); grid.visit_village(c)
+	for v in st.get("ruined", []):
+		var c = Vector2i(int(v[0]), int(v[1])); ruined.append(c); grid.ruin_village(c)
 	tm.turn = int(r.turn); tm.phase = TurnManager.Phase.PLAYER
 	_refresh_intents(); _update_warnings(); _update_danger()
 	var first = units.filter(func(u): return u.team == 0)
@@ -257,9 +300,12 @@ func _objective() -> void:
 	var ch = ChapterData.CHAPTERS[CHAPTER]
 	var o = Menus.overlay(ui, "전투 목표", 35, 200, 200); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]
 	var foes = units.filter(func(u): return u.team == 1 and u.hp > 0)
-	var t = "%s\n\n승리 조건: %s\n패배 조건: 아린 사망 / 아군 전멸\n\n턴: %d\n남은 적: %d%s\n출전: %s" % [ch.title, ch.goal, tm.turn, foes.size(),
+	var t = "%s\n\n승리 조건: %s\n패배 조건: 아린 사망 / 아군 전멸%s\n\n턴: %d (기준 %d턴 = 랭크 S)\n남은 적: %d%s\n출전: %s" % [ch.title, goal_text(), (" / %s 사망" % MAP.npc[0][0]) if MAP.has("npc") else "", tm.turn, MAP.get("par", 10), foes.size(),
 		"  (보스: %s)" % MAP.boss if MAP.get("boss", "") != "" else "", ", ".join(units.filter(func(u): return u.team == 0 and u.hp > 0).map(func(u): return u.data.name))]
 	if MAP.get("reinforcements", []).any(func(r): return not r.get("done", false)): t += "\n\n주의: 증원 예정 (느낌표 칸)"
+	if MAP.has("side"):
+		t += "\n\n부가 목표:"
+		for sd in MAP.side: t += "\n · %s (보상: %s)" % [sd.text, sd.reward.get("item", "%sG" % sd.reward.get("gold", 0))]
 	var l = ItemMenus.label(t, 28); l.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(l)
 	Menus.close_btn(v, cl)
 
@@ -284,14 +330,14 @@ func _dist(a: Vector2i, b: Vector2i) -> int: return abs(a.x - b.x) + abs(a.y - b
 func _heal_targets(u: Unit) -> Array:
 	if u.staff() == null: return []
 	var st = u.staff()
-	return units.filter(func(o): return o.team == u.team and o != u and o.hp > 0 and o.hp < o.stats.hp and _dist(o.cell, u.cell) >= st.min_range and _dist(o.cell, u.cell) <= st.max_range)
+	return units.filter(func(o): return (o.team == u.team or o.team == 2) and o != u and o.hp > 0 and o.hp < o.stats.hp and _dist(o.cell, u.cell) >= st.min_range and _dist(o.cell, u.cell) <= st.max_range)
 
 func _occ(u: Unit) -> Array:
 	var occ = {}; var block = {}
 	for o in units:
 		if o.hp > 0 and o != u:
 			occ[o.cell] = true
-			if o.team != u.team: block[o.cell] = true
+			if EnemyAI.foe(u, o): block[o.cell] = true
 	return [occ, block]
 
 func _show_terrain(c: Vector2i) -> void:
@@ -406,9 +452,11 @@ func _move_selected(c: Vector2i) -> void:
 	grid.queue_redraw()
 	var extra = []
 	if not grid.highlight_heal.is_empty(): extra.append("초록=지팡이")
-	if _openable(selected) != null: extra.append("[열기]")
+	var act = _action(selected)
+	btn_open.text = act.get("label", "열기")
+	if not act.is_empty(): extra.append("[%s]" % act.label)
 	info.text = "%s 이동. 적 탭=예측 %s / [확인]=대기" % [selected.data.name, " ".join(extra)]
-	btn_confirm.disabled = false; btn_open.disabled = _openable(selected) == null
+	btn_confirm.disabled = false; btn_open.disabled = act.is_empty()
 	busy = false
 
 func _slide(u: Unit, path: Array) -> void:
@@ -432,7 +480,7 @@ func _show_info(u: Unit) -> void:
 func _select(u: Unit) -> void:
 	selected = u; orig_cell = u.cell; moved = false; pending_target = null; pending_heal = null; pending_dest = Vector2i(-1, -1)
 	var o = _occ(u)
-	grid.highlight_move = grid.movement_range(u.cell, u.move_range(), o[1], o[0])
+	grid.highlight_move = grid.movement_range(u.cell, u.move_range(), o[1], o[0], "flying" in u.tags())
 	var r = _ranges(u)
 	grid.highlight_attack = grid.attack_range(grid.highlight_move, r[0], r[1]) if r[1] > 0 else []
 	grid.queue_redraw(); Sfx.play("select")
@@ -442,13 +490,14 @@ func _select(u: Unit) -> void:
 
 func _show_enemy(u: Unit) -> void:
 	var o = _occ(u)
-	grid.highlight_move = [u.cell] if u.boss else grid.movement_range(u.cell, u.move_range(), o[1], o[0])
+	grid.highlight_move = [u.cell] if u.boss else grid.movement_range(u.cell, u.move_range(), o[1], o[0], "flying" in u.tags())
 	var r = _ranges(u)
 	grid.highlight_attack = grid.attack_range(grid.highlight_move, r[0], r[1]) if r[1] > 0 else []
 	grid.queue_redraw()
 	var intent = ""
 	for i in intents: if i.unit == u: intent = "→ " + (i.target.data.name + " 공격 예정" if i.target else ("대기" if i.move_to == u.cell else "이동 예정"))
-	info.text = "%s HP %d/%d  %s%s\n%s%s" % [u.data.name, u.hp, u.stats.hp, intent, "  (경계)" if u.guard else "",
+	info.text = "%s Lv%d HP %d/%d  %s%s%s%s\n%s%s" % [u.data.name, u.level, u.hp, u.stats.hp, intent, "  (경계)" if u.guard else "",
+		("  [대화: %s]" % u.talk_from) if u.talk_from != "" else "", "  (약탈)" if u.raider else "",
 		_items_text(u), "\n★ 처치 시 획득: " + (u.drop.name if u.drop else "%dG" % u.gold_drop) if (u.drop or u.gold_drop > 0) else ""]
 
 # ---------------------------------------------------------------- actions
@@ -489,6 +538,8 @@ func _handle_kills(a: Unit, d: Unit) -> Array:
 	for pair in [[a, d], [d, a]]:
 		var killer: Unit = pair[0]; var dead: Unit = pair[1]
 		if dead.hp > 0 or dead.team != 1 or killer.team != 0: continue
+		if not dead.has_meta("counted"):
+			dead.set_meta("counted", true); kills += 1; killed_names.append(dead.data.name)
 		if dead.gold_drop > 0: Campaign.gold += dead.gold_drop; out.append("%dG 획득!" % dead.gold_drop); dead.gold_drop = 0
 		if dead.drop and dead.drop in dead.inventory:
 			var it: WeaponData = dead.drop; dead.drop = null
@@ -508,17 +559,52 @@ func _openable(u: Unit):
 		if t == "chest" and _dist(c, u.cell) <= reach_chest: return c
 	return null
 
+const DIRS = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+## Context action for a moved unit: 대화 > 제압 > 탈출 > 방문 > 훔치기 > 열기 > 부수기.
+func _action(u: Unit) -> Dictionary:
+	if u == null or u.team != 0: return {}
+	for o in units:
+		if o.hp > 0 and o.team == 1 and o.talk_from == u.data.name and _dist(o.cell, u.cell) == 1: return {"kind": "talk", "label": "대화", "target": o}
+	var here = grid.terrain.get(u.cell, "")
+	if MAP.goal == "seize" and u.data.name == "아린" and here == "throne": return {"kind": "seize", "label": "제압"}
+	if MAP.goal == "escape" and here == "escape": return {"kind": "escape", "label": "탈출"}
+	if here == "village": return {"kind": "village", "label": "방문", "cell": u.cell}
+	if Roster.is_thief(u):
+		for o in units:
+			if o.team == 1 and o.hp > 0 and not o.boss and _dist(o.cell, u.cell) == 1 and o.drop and o.drop in o.inventory and o.drop != o.weapon() and u.eff("spd") >= o.eff("spd"):
+				return {"kind": "steal", "label": "훔치기", "target": o}
+	var c = _openable(u)
+	if c != null: return {"kind": grid.terrain[c], "label": "열기", "cell": c}
+	for d in DIRS:
+		if grid.terrain.get(u.cell + d, "") == "crack": return {"kind": "crack", "label": "부수기", "cell": u.cell + d}
+	return {}
+
 func _do_open() -> void:
 	if selected == null or not moved: return
-	var c = _openable(selected)
-	if c == null: return
+	var act = _action(selected)
+	if act.is_empty(): return
+	match act.kind:
+		"talk": await _talk(selected, act.target); return
+		"seize": seized = true; info.text = "아린이 옥좌를 제압했다!"; Sfx.play("levelup"); _finish_unit(selected); return
+		"escape": _escape(selected); return
+		"village": await _visit(selected, act.cell); return
+		"steal":
+			var o: Unit = act.target; var it: WeaponData = o.drop
+			o.inventory.erase(it); o.drop = null; stole += 1
+			if selected.give(it): info.text = "%s: %s을(를) 훔쳤다!" % [selected.data.name, it.name]
+			else: Campaign.to_convoy(it); info.text = "%s 훔침 → 수송대" % it.name
+			Campaign.record_progress(selected); Sfx.play("levelup"); _finish_unit(selected); return
+		"crack":
+			grid.break_wall(act.cell); opened.append(act.cell); info.text = "%s: 금 간 벽을 부쉈다! 숨겨진 길이 열렸다." % selected.data.name
+			Sfx.play("crit"); _finish_unit(selected); return
+	var c = act.cell
 	var t = grid.terrain[c]
 	opened.append(c)
 	if t == "door":
 		grid.open_door(c); info.text = "%s: 문을 열었다!" % selected.data.name
 	else:
-		grid.open_chest(c)
-		var ch = MAP.get("chest", {"item": "", "gold": 500})
+		grid.open_chest(c); chests_got += 1
+		var ch = MAP.get("chests", {}).get(c, MAP.get("chest", {"item": "", "gold": 500}))
 		var msg = []
 		if ch.get("item", "") != "":
 			var it = Weapons.make(ch.item)
@@ -561,11 +647,56 @@ func _update_danger() -> void:
 		for e in units:
 			if e.team != 1 or e.hp <= 0: continue
 			var o = _occ(e)
-			var mv = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), o[1], o[0])
+			var mv = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), o[1], o[0], "flying" in e.tags())
 			var r = _ranges(e)
 			for c in grid.attack_range(mv, r[0], r[1]): cells[c] = true
 	grid.danger = cells.keys(); grid.queue_redraw()
 
+
+func _talk(u: Unit, o: Unit) -> void:
+	busy = true
+	var lines = ChapterData.TALK.get(u.data.name + "|" + o.data.name, [[u.data.name, "함께 싸우자."], [o.data.name, "…좋다."]])
+	if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): await dialogue.play(lines)
+	recruit_unit(o)
+	info.text = "%s이(가) 동료가 되었다!" % o.data.name; Sfx.play("levelup")
+	busy = false; _finish_unit(u)
+
+## Enemy/NPC -> party member (keeps its current level, stats, items).
+func recruit_unit(o: Unit) -> void:
+	o.team = 0; o.data.tags = PackedStringArray([]); o.talk_from = ""; o.drop = null; o.guard = false; o.has_acted = true
+	o.data.color = Roster.color_for(o.unit_class.name); o.init_ranks()
+	if not o.data.name in Campaign.recruited: Campaign.recruited.append(o.data.name)
+	Campaign.record_progress(o); deployed.append(o.data.name); o.queue_redraw(); _refresh_intents()
+
+func _visit(u: Unit, c: Vector2i) -> void:
+	busy = true
+	var v: Dictionary = MAP.villages.get(c, {})
+	if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args() and v.has("lines"): await dialogue.play(v.lines)
+	var msg = []
+	if v.get("item", "") != "":
+		var it = Weapons.make(v.item)
+		if u.give(it): msg.append("%s 획득!" % it.name)
+		else: Campaign.to_convoy(it); msg.append("%s → 수송대" % it.name)
+	if v.get("gold", 0) > 0: Campaign.gold += v.gold; msg.append("%dG 획득!" % v.gold)
+	if v.get("recruit", "") != "":
+		var n: String = v.recruit; Campaign.recruit(n)
+		for d in DIRS + [Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+			var cc = c + d
+			if grid.in_bounds(cc) and not grid.walls.has(cc) and not grid.water.has(cc) and _unit_at(cc) == null:
+				var nu = Roster.make_unit(n, 0, cc, Campaign.entry(n)); nu.has_acted = true; _place(nu); deployed.append(n); break
+		msg.append("%s 합류!" % n)
+	visited.append(c); grid.visit_village(c); Campaign.record_progress(u)
+	info.text = "마을 방문: " + " ".join(msg); Sfx.play("levelup")
+	busy = false; _finish_unit(u)
+
+func _escape(u: Unit) -> void:
+	escaped.append(u.data.name); Campaign.record_progress(u)
+	info.text = "%s 탈출!" % u.data.name; Sfx.play("select")
+	units.erase(u); u.queue_free(); selected = null
+	_clear(false)
+	if _check_end(): return
+	_update_danger()
+	if units.filter(func(o): return o.team == 0 and o.hp > 0 and not o.has_acted).is_empty(): _on_end_turn()
 
 # ---------------------------------------------------------------- convoy (lord only, in battle)
 func _open_convoy() -> void:
@@ -629,12 +760,15 @@ func _run_enemy_phase() -> void:
 				if _unit_at(e[2]) == null: _spawn_enemy(e); lines.append("증원 출현!")
 	for e in units.filter(func(u): return u.team == 1 and u.hp > 0):
 		var plan = EnemyAI.plan(e, units, grid)
+		if e.raider: plan = _raid_plan(e, plan)
 		if plan.move_to != e.cell:
 			var o = _occ(e)
-			var path = grid.move_path(e.cell, plan.move_to, grid.movement_range(e.cell, e.move_range(), o[1], o[0]))
+			var path = grid.move_path(e.cell, plan.move_to, grid.movement_range(e.cell, e.move_range(), o[1], o[0], "flying" in e.tags()))
 			e.cell = plan.move_to
 			if anim_on and is_inside_tree(): _focus(e.cell); await _slide(e, path)
 			else: e.position = grid.cell_to_pos(e.cell)
+		if plan.get("ruin", false) and grid.terrain.get(e.cell, "") == "village":
+			grid.ruin_village(e.cell); ruined.append(e.cell); lines.append("%s이(가) 마을을 파괴했다!" % e.data.name)
 		if plan.target:
 			lines.append_array(BattleManager.resolve(e, plan.target))
 			await _animate(e, plan.target)
@@ -645,6 +779,21 @@ func _run_enemy_phase() -> void:
 	if _check_end(): return
 	tm.end_enemy_phase()
 	if lines.size(): info.text = "\n".join(lines.slice(-4)) + "\n" + info.text
+
+## Raiders: reach an unvisited village this turn -> destroy it; otherwise attack if possible, else head for the nearest village.
+func _raid_plan(e: Unit, plan: Dictionary) -> Dictionary:
+	var vill = grid.terrain.keys().filter(func(c): return grid.terrain[c] == "village")
+	if vill.is_empty(): return plan
+	var o = _occ(e)
+	var reach = grid.movement_range(e.cell, e.move_range(), o[1], o[0], "flying" in e.tags())
+	for c in reach:
+		if c in vill: return {"unit": e, "move_to": c, "target": null, "ruin": true}
+	if plan.target: return plan
+	var best = e.cell; var bd = 999
+	for c in reach:
+		for v in vill:
+			if _dist(c, v) < bd: bd = _dist(c, v); best = c
+	return {"unit": e, "move_to": best, "target": null}
 
 ## Phase start for team: poison, 카이젠, terrain healing (fort/throne).
 func _start_of_phase(team: int) -> Array:
@@ -673,31 +822,110 @@ func _end_of_player_turn() -> Array:
 
 # ---------------------------------------------------------------- end conditions
 func _won() -> bool:
-	if MAP.goal == "boss":
-		return units.filter(func(u): return u.team == 1 and u.boss and u.hp > 0).is_empty()
+	match MAP.goal:
+		"boss": return units.filter(func(u): return u.team == 1 and u.boss and u.hp > 0).is_empty()
+		"seize": return seized
+		"escape": return "아린" in escaped
+		"defend": return tm.turn > int(MAP.turns) and tm.phase == TurnManager.Phase.PLAYER
 	return units.filter(func(u): return u.team == 1 and u.hp > 0).is_empty()
 
-func _check_end() -> bool:
+func _lost() -> bool:
 	var p = units.filter(func(u): return u.team == 0 and u.hp > 0).size()
-	if _won():
-		info.text = "승리!"; btn_end.disabled = true
-		for u in units: if u.team == 0: Campaign.record_progress(u, false)
-		var g = Campaign.CLEAR_GOLD.get(CHAPTER, 500)
-		Campaign.record_clear(CHAPTER)  # 각성 removed on clear; advances Campaign.chapter
-		info.text = "승리! 클리어 보상 %dG" % g
-		_after_clear()
-		return true
-	if p == 0 or _unit_named("아린") == null:
+	if "아린" in escaped: return false
+	if p == 0 or _unit_named("아린") == null: return true
+	return units.any(func(u): return u.team == 2 and u.hp <= 0)
+
+func goal_text() -> String:
+	match MAP.goal:
+		"boss": return "%s 격파" % MAP.get("boss", "보스")
+		"seize": return "아린이 옥좌에서 [제압]"
+		"escape": return "아린이 탈출 지점에서 [탈출]"
+		"defend": return "%d턴 동안 버티기 (현재 %d턴)" % [MAP.turns, tm.turn]
+	return "적 전멸" + (" · %s 보호" % MAP.npc[0][0] if MAP.has("npc") else "")
+
+## Side objectives + turn rank. Grants rewards once; returns report for the clear screen.
+func evaluate_clear() -> Dictionary:
+	var rep = {"turns": tm.turn, "par": MAP.get("par", 10), "sides": [], "rank": "C", "bonus": 0}
+	var par = int(rep.par)
+	rep.rank = "S" if tm.turn <= par else ("A" if tm.turn <= par + 3 else ("B" if tm.turn <= par + 6 else "C"))
+	rep.bonus = {"S": 500, "A": 200}.get(rep.rank, 0); Campaign.gold += rep.bonus
+	var order = ["S", "A", "B", "C"]
+	if not Campaign.ranks.has(CHAPTER) or order.find(rep.rank) < order.find(Campaign.ranks[CHAPTER]): Campaign.ranks[CHAPTER] = rep.rank
+	var done: Array = Campaign.sides.get(CHAPTER, [])
+	for sd in MAP.get("side", []):
+		var ok = false
+		match sd.type:
+			"turns": ok = tm.turn <= int(sd.n)
+			"villages": ok = visited.size() == MAP.get("villages", {}).size()
+			"kills": ok = kills >= int(sd.n)
+			"recruit": ok = sd.name in Campaign.recruited
+			"steal": ok = stole > 0
+			"chests": ok = chests_got > 0
+			"kill": ok = sd.name in killed_names
+			"npc_hp": ok = units.any(func(u): return u.team == 2 and u.hp * 100 >= u.stats.hp * int(sd.pct))
+		var reward = ""
+		if ok and not sd.id in done:
+			done.append(sd.id)
+			if sd.reward.has("gold"): Campaign.gold += int(sd.reward.gold); reward = "%dG" % sd.reward.gold
+			if sd.reward.has("item"): Campaign.convoy.append(Weapons.make(sd.reward.item).to_dict()); reward = sd.reward.item + " → 수송대"
+		elif ok: reward = "(이미 획득)"
+		rep.sides.append({"text": sd.text, "ok": ok, "reward": reward})
+	Campaign.sides[CHAPTER] = done
+	for u in units:   # rescued NPC joins (사르한 리안)
+		if u.team == 2 and u.hp > 0 and Roster.UNITS.has(u.data.name): recruit_unit(u)
+	return rep
+
+var ended = false
+func _check_end() -> bool:
+	if ended: return true
+	if _lost():
+		ended = true
 		info.text = "패배..."; btn_end.disabled = true
-		Campaign.record_defeat(CHAPTER, deployed)  # EXP/levels/items already persisted
-		game_over.open(ROSTER_NAMES, deployed, Campaign.attempts.get(CHAPTER, []))
+		var tl = Campaign.record_defeat(CHAPTER, deployed)  # EXP/levels kept + 훈련 bonus
+		game_over.open(ROSTER_NAMES, deployed, Campaign.attempts.get(CHAPTER, []), tl)
+		return true
+	if _won():
+		ended = true
+		btn_end.disabled = true
+		clear_report = evaluate_clear()
+		for u in units: if u.team == 0: Campaign.record_progress(u, false)
+		var g = MAP.get("clear_gold", Campaign.CLEAR_GOLD.get(CHAPTER, 500))
+		Campaign.record_clear(CHAPTER)  # 각성 removed on clear; advances Campaign.chapter
+		clear_report["gold"] = g
+		info.text = "승리! 클리어 보상 %dG · 랭크 %s" % [g, clear_report.rank]
+		_after_clear()
 		return true
 	return false
 
 func _after_clear() -> void:
 	if "--flowtest" in OS.get_cmdline_user_args(): return
+	await _clear_screen()
 	await dialogue.play(ChapterData.CHAPTERS[CHAPTER].post)
+	if MAP.has("branch"): await _branch_choice()
 	get_tree().change_scene_to_file("res://scenes/base.tscn")
+
+signal _closed
+func _clear_screen() -> void:
+	var r = clear_report
+	var o = Menus.overlay(ui, "%s 클리어!" % ChapterData.CHAPTERS[CHAPTER].title, 45, 160, 160); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "ClearScreen"
+	var rk = ItemMenus.label("랭크 %s" % r.rank, 64, {"S": Color8(255, 216, 64), "A": Color8(150, 225, 255)}.get(r.rank, Menus.TXT)); v.add_child(rk)
+	v.add_child(ItemMenus.label("턴 %d (기준 %d)   클리어 보상 %dG%s" % [r.turns, r.par, r.gold, ("  랭크 보너스 %dG" % r.bonus) if r.bonus else ""], 26))
+	v.add_child(ItemMenus.label("— 부가 목표 —", 28, Menus.GOLD))
+	for sd in r.sides:
+		v.add_child(ItemMenus.label(("● " if sd.ok else "○ ") + sd.text + (("  → " + sd.reward) if sd.ok and sd.reward != "" else ""), 26, Menus.TXT if sd.ok else Menus.DIM))
+	var sp = Control.new(); sp.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sp)
+	var b = ItemMenus.big("계속", 100, 34); v.add_child(b); b.name = "Continue"
+	b.pressed.connect(func(): cl.queue_free(); _closed.emit())
+	await _closed
+
+func _branch_choice() -> void:
+	var o = Menus.overlay(ui, "진로 선택", 45, 200, 200); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "Branch"
+	v.add_child(ItemMenus.label("어느 왕국으로 향할까? (다른 지도·다른 동료)", 26, Menus.DIM))
+	for br in MAP.branch:
+		var b = ItemMenus.big("%s\n%s" % [br[1], br[2]], 200, 26); b.name = "B_" + br[0]; v.add_child(b); var dest = br[0]
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.pressed.connect(func(): Campaign.route = dest; Campaign.chapter = dest; Campaign.save_campaign(); cl.queue_free(); _closed.emit())
+	await _closed
 
 func _retry_same() -> void:
 	Campaign.deploy = deployed.duplicate(); Campaign.save_campaign(); get_tree().reload_current_scene()
