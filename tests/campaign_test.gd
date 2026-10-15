@@ -97,6 +97,9 @@ func _ready() -> void:
 	var dr = _named(b, "다린")
 	check(dr != null and dr.team == 1 and dr.talk_from == "아린" and _named(b, "엘런의 마차") != null and b.MAP.goal == "defend", "ch7: 다린 talk recruit, 마차 NPC, defend")
 	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch8", ["가렌", "카이"])
+	check(_named(b, "노르드 왕") != null and _named(b, "베일") != null and _named(b, "베일").boss and b.MAP.villages.values()[0].recruit == "소라" and b.MAP.rout_early, "ch8: 왕 NPC, 베일, 소라 village recruit, early rout win")
+	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
 	Campaign.reset(); Campaign.route = "ch4b"; Campaign.record_clear("ch3")
 	check(Campaign.chapter == "ch4b", "branch: route ch4b after ch3")
