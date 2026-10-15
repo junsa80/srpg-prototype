@@ -176,6 +176,7 @@ func _build_ui() -> void:
 	btn_weapon = _btn("무기", r2, 24); btn_convoy = _btn("아이템", r2, 24); btn_open = _btn("열기", r2, 24)
 	btn_status = _btn("상태", r2, 24); btn_danger = _btn("위험", r2, 24); btn_menu = _btn("메뉴", r2, 24)
 	btn_status.name = "BtnStatus"; btn_menu.name = "BtnMenu"
+	btn_next = _btn("다음", r2, 24); btn_next.name = "BtnNext"; btn_next.pressed.connect(next_unit)
 	var r1 = HBoxContainer.new(); v.add_child(r1); r1.add_theme_constant_override("separation", 10); r1.custom_minimum_size.y = 104
 	btn_cancel = _btn("취소", r1, 34); btn_confirm = _btn("확인", r1, 34); btn_end = _btn("턴 종료", r1, 34)
 	btn_confirm.pressed.connect(_on_confirm); btn_cancel.pressed.connect(_on_cancel); btn_end.pressed.connect(_on_end_turn)
@@ -328,9 +329,27 @@ func _process(_dt: float) -> void:
 		var u = _unit_at(grid.pos_to_cell(get_canvas_transform().affine_inverse() * press_pos))
 		if u: open_status(u)
 
+var btn_next: Button
+## Close overlays opened from the status/list and centre the camera + cursor on u.
+func jump_to(u: Unit) -> void:
+	for n in ["UnitList", "Status", "BattleMenu"]:
+		for c in ui.find_children(n, "CanvasLayer", true, false): c.queue_free()
+	if not is_instance_valid(u) or u.hp <= 0: return
+	_focus(u.cell); grid.cursor = u.cell; _show_terrain(u.cell); _show_unit_win(u); grid.queue_redraw()
+## [다음]: jump to the next ally that hasn't acted yet (cycles). Selects it when nothing is selected.
+func next_unit() -> void:
+	if busy or prep_active or tm.phase != TurnManager.Phase.PLAYER: return
+	var al = units.filter(func(o): return o.team == 0 and o.hp > 0 and not o.has_acted)
+	if al.is_empty(): Menus.toast(ui, "행동할 유닛이 없습니다"); return
+	var cur = selected if selected else _unit_at(grid.cursor)
+	var u: Unit = al[(al.find(cur) + 1) % al.size()] if cur in al else al[0]
+	if selected and selected != u and not moved: _on_cancel()
+	jump_to(u)
+	if selected == null: _select(u)
+
 func open_status(u: Unit) -> void:
 	var same = units.filter(func(o): return o.hp > 0 and o.team == u.team)
-	Menus.status(ui, same, same.find(u))
+	Menus.status(ui, same, same.find(u), jump_to)
 
 func _status_button() -> void:
 	var u = selected if selected else _unit_at(grid.cursor)
@@ -341,7 +360,7 @@ func _status_button() -> void:
 func open_menu() -> void:
 	if busy or prep_active or tm.phase != TurnManager.Phase.PLAYER: return
 	var o = Menus.overlay(ui, "메뉴", 30, 150, 150); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "BattleMenu"
-	var items = [["유닛 목록", func(): Menus.unit_list(ui, units.filter(func(u): return u.team == 0) + units.filter(func(u): return u.team == 1))],
+	var items = [["유닛 목록", func(): Menus.unit_list(ui, units.filter(func(u): return u.team == 0) + units.filter(func(u): return u.team == 1), "유닛 목록", null, jump_to)],
 		["전투 목표", _objective], ["상성표", func(): Menus.triangle_chart(ui)], ["설정", func(): Menus.settings(ui, func(): anim_on = Settings.anim)],
 		["중단 저장", func(): Menus.slots(ui, "save", func(): return [CHAPTER, tm.turn, payload()])],
 		["챕터 재시작", func(): Menus.confirm(ui, "이 장을 처음부터 다시 할까요?\n(이번 장에서 얻은 경험치·아이템은 장 시작 상태로 돌아갑니다)", "재시작", restart_chapter)],

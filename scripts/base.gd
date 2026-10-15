@@ -2,7 +2,11 @@ extends Control
 ## 거점 (between-chapter base): 상점 / 수송 / 장비 / 출전 / 출격. Touch UI, all state in Campaign.
 const PRICES = {"철단검": 300, "강철단검": 500, "철도끼": 270, "강철도끼": 360, "철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
 	"파이어": 560, "라이트": 600, "썬더": 700, "힐": 600, "은검": 1500, "은창": 1200, "은활": 1600, "엘파이어": 1200, "멘드": 1000}
-const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러소드", "킬러랜스", "킬러보우", "피지오"]  # unlocked after ch2 clear
+## Shop stock is staged (2026-10-15): early = iron/basic tomes & staff; after Ch3 clear = steel + utility; after Ch5 clear = silver/killer/advanced staves.
+const BASIC = ["철단검", "철검", "철창", "철도끼", "철활", "파이어", "라이트", "힐"]
+const STEEL = ["강철단검", "강철검", "강철창", "강철도끼", "강철활", "썬더"]
+const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러소드", "킬러랜스", "킬러보우", "해커", "피지오"]
+const MID_AFTER = "ch3"; const LATE_AFTER = "ch5"
 ## Utility weapons: sold from the Ch2 base onward (after Ch1 clear).
 const UTILITY = {"투창": 750, "손도끼": 600, "아머킬러": 900, "호스슬레이어": 950, "볼트": 900, "윈드소드": 1100, "해머": 800, "해커": 1200,
 	"킬러소드": 1300, "킬러랜스": 1200, "킬러보우": 1400, "피지오": 1500}
@@ -66,7 +70,9 @@ func _refresh_head() -> void:
 	gold_lbl.text = "소지금 %dG   수송대 %d/%d" % [Campaign.gold, Campaign.convoy.size(), Campaign.CONVOY_MAX]
 
 func _clear() -> void:
-	for c in body.get_children(): c.queue_free()
+	for c in body.get_children(): c.name = "old_%d" % c.get_instance_id(); c.queue_free()   # rename so new node names stay unique
+	if is_instance_valid(hdr_unit): hdr_unit.queue_free()   # display/convoy unit: changes already recorded
+	hdr_unit = null
 	_refresh_head()
 
 func _unit(n: String) -> Unit:  # temp unit from roster entry (caller must free)
@@ -79,20 +85,64 @@ func _save_unit(u: Unit) -> void:
 func _shop() -> void:
 	_clear(); Sfx.play("select")
 	var row = HBoxContainer.new(); body.add_child(row)
-	var p = TextureRect.new(); p.texture = Sprites.portrait("상인"); p.custom_minimum_size = Vector2(120, 120)
+	var p = TextureRect.new(); p.texture = Sprites.portrait("상인"); p.custom_minimum_size = Vector2(96, 96)
 	p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; row.add_child(p)
-	var line = ItemMenus.label("상인: \"그림자 놈들 때문에 장사가 말이 아니야. 좋은 물건 있을 때 사 가!\"", 26, Color8(255, 232, 176))
+	var line = ItemMenus.label("상인: \"좋은 물건 있을 때 사 가!\"  구입한 무기는 수송대로.", 24, Color8(255, 232, 176))
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(line)
-	body.add_child(ItemMenus.label("구입한 무기는 수송대로 보냅니다.", 22, Color8(180, 180, 200)))
+	var u = _unit_header(_shop)
+	_filter_toggle(_shop)
+	var nxt = ["강철 무기·특수 무기: 3장 클리어 후 입고", "은·킬러 무기, 멘드·피지오: 5장 클리어 후 입고", ""][stage()]
+	if nxt != "": body.add_child(ItemMenus.label("다음 입고 — " + nxt, 22, Color8(180, 180, 200)))
+	var shown = 0
 	for n in stock():
-		var locked = n in SILVER and not "ch2" in Campaign.cleared
 		var w = Weapons.make(n)
-		var b = ItemMenus.big("%s  %dG%s\n위력%d 명중%d 치명%d 무게%d 내구%d · %s" % [n, price(n), "  (2장 클리어 후)" if locked else "", w.might, w.hit, w.crit, w.weight, w.max_uses, Weapons.effect_text(w)], 96, 22)
+		var reason = u.block_reason(w)
+		if Settings.usable_only and reason != "": continue
+		shown += 1
+		var b = ItemMenus.big("%s  %dG\n위력%d 명중%d 치명%d 무게%d 내구%d · %s" % [n, price(n), w.might, w.hit, w.crit, w.weight, w.max_uses, ("× " + reason) if reason != "" else Weapons.effect_text(w)], 96, 22)
 		if w.is_item(): b.text = "%s  %dG\n아이템 · %s" % [n, price(n), w.desc]
+		if reason != "": b.add_theme_color_override("font_color", Color8(150, 140, 130))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w); b.name = "Buy_" + n
-		b.disabled = locked or Campaign.gold < price(n)
+		b.disabled = Campaign.gold < price(n)
 		b.pressed.connect(func(): confirm_buy(n))
 		body.add_child(b)
+	if shown == 0: body.add_child(ItemMenus.label("%s이(가) 쓸 수 있는 물건이 없습니다." % u.data.name, 24))
+
+# ---------------- 선택 유닛 머리글 (초상화 + ◀ ▶ + 좌우 스와이프) — 상점/수송/장비 공용
+var hdr_unit: Unit = null
+func unit_names() -> Array: return Roster.joined_by(Campaign.chapter)
+func cycle_unit(d: int) -> void:
+	var ns = unit_names()
+	var i = ns.find(sel_unit)
+	sel_unit = ns[(maxi(i, 0) + d + ns.size()) % ns.size()] if i >= 0 else ns[0]
+	Sfx.play("cursor")
+func _unit_header(refresh: Callable) -> Unit:
+	if not sel_unit in unit_names(): sel_unit = unit_names()[0]
+	var u = _unit(sel_unit); u.visible = false; add_child(u); hdr_unit = u
+	var pn = Panel.new(); pn.add_theme_stylebox_override("panel", Ornate.frame()); pn.custom_minimum_size.y = 190; pn.name = "UnitHeader"; body.add_child(pn)
+	var h = HBoxContainer.new(); pn.add_child(h); h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 10; h.offset_right = -10; h.offset_top = 10; h.offset_bottom = -10; h.add_theme_constant_override("separation", 10)
+	var prev = ItemMenus.big("◀", 96, 36); prev.name = "UPrev"; prev.custom_minimum_size = Vector2(84, 0); prev.size_flags_horizontal = 0; h.add_child(prev)
+	var pt = TextureRect.new(); pt.texture = Sprites.portrait(sel_unit) if Sprites.portrait(sel_unit) else Sprites.unit_tex(u)
+	pt.custom_minimum_size = Vector2(170, 170); pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; pt.name = "UPortrait"; h.add_child(pt)
+	var w = u.weapon() if u.weapon() else u.staff()
+	var info = ItemMenus.label("%s\n%s Lv%d\nHP %d  %s\n%s" % [sel_unit, u.unit_class.name, u.level, u.stats.hp, ("장비 " + w.name) if w else "장비 없음", Menus._wtypes(u)], 24)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL; info.name = "UInfo"; h.add_child(info)
+	var nx = ItemMenus.big("▶", 96, 36); nx.name = "UNext"; nx.custom_minimum_size = Vector2(84, 0); nx.size_flags_horizontal = 0; h.add_child(nx)
+	prev.pressed.connect(func(): cycle_unit(-1); refresh.call())
+	nx.pressed.connect(func(): cycle_unit(1); refresh.call())
+	var sw = {"x": -1.0}
+	pn.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+			if ev.pressed: sw.x = ev.position.x
+			elif sw.x >= 0:
+				var dx = ev.position.x - sw.x; sw.x = -1.0
+				if absf(dx) > 90: cycle_unit(-1 if dx > 0 else 1); refresh.call())
+	return u
+func _filter_toggle(refresh: Callable) -> void:
+	var b = ItemMenus.big("사용 가능한 것만 보기: " + ("ON" if Settings.usable_only else "OFF"), 64, 24); b.name = "UsableOnly"
+	b.pressed.connect(func(): Settings.usable_only = not Settings.usable_only; Settings.save(); Sfx.play("select"); refresh.call())
+	body.add_child(b)
 
 ## Purchase confirmation: icon, name, price, gold before -> after, 구매/취소.
 func confirm_buy(n: String) -> CanvasLayer:
@@ -113,29 +163,28 @@ func confirm_buy(n: String) -> CanvasLayer:
 
 static func price(n: String) -> int: return PRICES.get(n, UTILITY.get(n, ITEM_PRICES.get(n, 9999)))
 
+static func stage() -> int: return 2 if LATE_AFTER in Campaign.cleared else (1 if MID_AFTER in Campaign.cleared else 0)
 func stock() -> Array:
-	var out = PRICES.keys()
-	if Campaign.chapter != "ch1": out.append_array(UTILITY.keys())
+	var out = BASIC.duplicate()
+	if stage() >= 1: out.append_array(STEEL); out.append_array(UTILITY.keys().filter(func(n): return not n in SILVER))
+	if stage() >= 2: out.append_array(SILVER)
 	out.append("상처약")
 	if Campaign.chapter != "ch1": out.append_array(["문 열쇠", "상자 열쇠"])
 	return out
 
 func buy(n: String) -> bool:
 	if not n in stock(): return false
-	if Campaign.gold < price(n) or (n in SILVER and not "ch2" in Campaign.cleared): return false
+	if Campaign.gold < price(n): return false
 	if Campaign.convoy.size() >= Campaign.CONVOY_MAX: return false
 	Campaign.gold -= price(n); Campaign.to_convoy(Weapons.make(n)); Sfx.play("levelup"); return true
 
-# ---------------- 수송 (pick unit, then deposit/withdraw)
+# ---------------- 수송 (선택 유닛: 맡기기/꺼내기, ◀ ▶ 로 유닛 전환)
 func _convoy() -> void:
 	_clear(); Sfx.play("select")
-	body.add_child(ItemMenus.label("수송대 (%d) — 유닛을 고르면 맡기기/꺼내기" % Campaign.convoy.size(), 26, Color8(255, 216, 128)))
-	for it in Campaign.convoy: body.add_child(ItemMenus.label("· " + ItemMenus.dict_str(it), 24))
-	_unit_buttons(func(n):
-		var u = _unit(n); add_child(u)
-		var panel = ItemMenus.convoy_panel(self, u, func(): pass)
-		var close_btn: Button = _find_close(panel)
-		close_btn.pressed.connect(func(): remove_child(u); _save_unit(u); panel.queue_free(); _convoy()))
+	var u = _unit_header(_convoy)
+	_filter_toggle(_convoy)
+	var list = VBoxContainer.new(); list.add_theme_constant_override("separation", 8); list.name = "ConvoyList"; body.add_child(list)
+	ItemMenus._fill_convoy(list, u, func(): Campaign.record_progress(u, true); _refresh_head())
 
 func _find_close(panel: Control) -> Button:
 	var bs = panel.find_children("*", "Button", true, false)
@@ -159,8 +208,9 @@ func _equip() -> void:
 
 func _equip_unit() -> void:
 	_clear()
+	_unit_header(_equip_unit)
 	var u = _unit(sel_unit)
-	body.add_child(ItemMenus.label("%s  Lv%d %s  EXP %d" % [u.data.name, u.level, u.unit_class.name, u.exp], 30, Color8(160, 200, 255)))
+	body.add_child(ItemMenus.label("EXP %d" % u.exp, 24, Color8(160, 200, 255)))
 	body.add_child(ItemMenus.label("탭=장착 / [→]=다른 유닛에게 주기", 22, Color8(180, 180, 200)))
 	for w in u.inventory:
 		var h = HBoxContainer.new(); body.add_child(h)

@@ -9,6 +9,7 @@ var text_speed = 1   # index into TEXT_SPEEDS
 var growth_fixed = false
 var anim = true
 var weapon_badge = true   # weapon icon badge on map units
+var usable_only = false  # shop/convoy: show only items the selected unit can use
 var map_zoom = 1.0       # battle map zoom (0.75..2.0, snapped to ZOOM_STEPS)
 const ZOOM_STEPS = [0.75, 1.0, 1.25, 1.5, 2.0]
 
@@ -17,13 +18,13 @@ func _ready() -> void:
 		var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 		if typeof(d) == TYPE_DICTIONARY:
 			bgm = int(d.get("bgm", bgm)); sfx = int(d.get("sfx", sfx)); text_speed = int(d.get("text_speed", text_speed))
-			growth_fixed = bool(d.get("growth_fixed", growth_fixed)); anim = bool(d.get("anim", anim)); weapon_badge = bool(d.get("weapon_badge", weapon_badge)); map_zoom = clampf(float(d.get("map_zoom", 1.0)), 0.75, 2.0)
+			growth_fixed = bool(d.get("growth_fixed", growth_fixed)); anim = bool(d.get("anim", anim)); weapon_badge = bool(d.get("weapon_badge", weapon_badge)); usable_only = bool(d.get("usable_only", false)); map_zoom = clampf(float(d.get("map_zoom", 1.0)), 0.75, 2.0)
 	elif FileAccess.file_exists("user://anim_off"): anim = false   # migrate old flag file
 	Unit.fixed_growth = growth_fixed; Unit.show_badge = weapon_badge
 
 func save() -> void:
 	Unit.fixed_growth = growth_fixed; Unit.show_badge = weapon_badge
-	SaveManager.write_atomic(PATH, JSON.stringify({"bgm": bgm, "sfx": sfx, "text_speed": text_speed, "growth_fixed": growth_fixed, "anim": anim, "weapon_badge": weapon_badge, "map_zoom": map_zoom}))
+	SaveManager.write_atomic(PATH, JSON.stringify({"bgm": bgm, "sfx": sfx, "text_speed": text_speed, "growth_fixed": growth_fixed, "anim": anim, "weapon_badge": weapon_badge, "map_zoom": map_zoom, "usable_only": usable_only}))
 	if is_instance_valid(Sfx): Sfx.apply_volumes()
 
 func cps() -> float: return CPS[clampi(text_speed, 0, 3)]

@@ -167,7 +167,7 @@ static func _do_save(ctx: Dictionary, slot: int) -> void:
 	Sfx.play("levelup" if ok else "cancel"); _fill_slots(ctx)
 
 # ------------------------------------------------------------------ unit list
-static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pick = null) -> CanvasLayer:
+static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pick = null, on_jump = null) -> CanvasLayer:
 	Sfx.play("select")
 	var o = overlay(parent, title); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "UnitList"
 	var list = scroll(v)
@@ -197,7 +197,7 @@ static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pi
 		var idx = i
 		b.pressed.connect(func():
 			if on_pick is Callable: on_pick.call(u)
-			status(cl, alive, idx))
+			status(cl, alive, idx, on_jump))
 	close_btn(v, cl)
 	return cl
 
@@ -225,7 +225,7 @@ static func status_text(u: Unit, short = false) -> String:
 
 # ------------------------------------------------------------------ status screen
 ## units: list to cycle through with ◀ ▶; idx = shown.
-static func status(parent: Node, units: Array, idx: int) -> CanvasLayer:
+static func status(parent: Node, units: Array, idx: int, on_jump = null) -> CanvasLayer:
 	Sfx.play("select")
 	var o = overlay(parent, "", 40, 24, 24); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "Status"
 	var body = scroll(v); body.add_theme_constant_override("separation", 10)
@@ -237,6 +237,9 @@ static func status(parent: Node, units: Array, idx: int) -> CanvasLayer:
 	prev.pressed.connect(func(): ctx.idx = (ctx.idx - 1 + units.size()) % units.size(); Sfx.play("cursor"); _fill_status(ctx))
 	nxt.pressed.connect(func(): ctx.idx = (ctx.idx + 1) % units.size(); Sfx.play("cursor"); _fill_status(ctx))
 	h.add_child(prev)
+	if on_jump is Callable:   # battle: close everything and move the camera/cursor to the shown unit
+		var j = ItemMenus.big("위치로", 96, 30); j.name = "Jump"; h.add_child(j)
+		j.pressed.connect(func(): Sfx.play("select"); on_jump.call(ctx.units[ctx.idx]); cl.queue_free())
 	var c = ItemMenus.big("닫기", 96, 32); c.pressed.connect(func(): Sfx.play("cancel"); cl.queue_free()); h.add_child(c)
 	h.add_child(nxt)
 	return cl

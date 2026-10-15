@@ -50,9 +50,9 @@ func _ready() -> void:
 	# ---- base: shop / trade / equip / promote
 	var base = load("res://scenes/base.tscn").instantiate(); add_child(base); await get_tree().process_frame
 	var g0 = Campaign.gold
-	ok = ok and base.buy("강철검") and Campaign.gold == g0 - 600 and Campaign.convoy[-1].name == "강철검"
+	ok = ok and base.buy("철검") and Campaign.gold == g0 - 460 and Campaign.convoy[-1].name == "철검" and not base.buy("강철검")
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 46")
-	ok = ok and not base.buy("은검")   # silver locked until ch2 cleared
+	ok = ok and not base.buy("은검")   # steel after ch3, silver after ch5
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 47")
 	print("shop: gold ", g0, "->", Campaign.gold, " convoy ", Campaign.convoy)
 	ok = ok and base.trade("세라", 0, "엘리아")  # give 힐 to 엘리아
@@ -63,7 +63,7 @@ func _ready() -> void:
 	# equip: give 노아 a 강철검 from convoy, equip it
 	var noa = Roster.make_unit("노아", 0, Vector2i.ZERO, Campaign.entry("노아")); noa.give(Campaign.from_convoy(Campaign.convoy.size() - 1)); Campaign.record_progress(noa); noa.free()
 	base.equip_item("노아", Campaign.roster["노아"].items.size() - 1)
-	ok = ok and Campaign.roster["노아"].items[0].name == "강철검"
+	ok = ok and Campaign.roster["노아"].items[0].name == "철검"
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 55")
 	# promote 엘리아 (마법사 -> 세이지): staves + free 힐
 	Campaign.roster["엘리아"].level = 10

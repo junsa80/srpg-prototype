@@ -43,6 +43,12 @@ static func convoy_panel(parent: Node, u: Unit, on_close: Callable) -> Control:
 
 static func _fill_convoy(list: VBoxContainer, u: Unit, changed: Callable) -> void:
 	for c in list.get_children(): c.queue_free()
+	if list.get_parent() is ScrollContainer:   # overlay (battle): portrait + filter toggle here; base builds its own header
+		var hh = HBoxContainer.new(); hh.add_theme_constant_override("separation", 12); list.add_child(hh)
+		var pt = TextureRect.new(); pt.texture = Sprites.portrait(u.data.name) if Sprites.portrait(u.data.name) else Sprites.unit_tex(u)
+		pt.custom_minimum_size = Vector2(120, 120); pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; pt.name = "UPortrait"; hh.add_child(pt)
+		var fb = big("사용 가능한 것만 보기: " + ("ON" if Settings.usable_only else "OFF"), 64, 22); fb.name = "UsableOnly"; hh.add_child(fb)
+		fb.pressed.connect(func(): Settings.usable_only = not Settings.usable_only; Settings.save(); _fill_convoy(list, u, changed))
 	list.add_child(label("소지품 (%d/%d) — 탭=맡기기" % [u.inventory.size(), Unit.MAX_ITEMS], 26, Color8(160, 200, 255)))
 	for w in u.inventory.duplicate():
 		var b = weapon_btn(w, u, "▶ " if w == u.weapon() else "")
@@ -50,10 +56,14 @@ static func _fill_convoy(list: VBoxContainer, u: Unit, changed: Callable) -> voi
 			u.inventory.erase(w); Campaign.to_convoy(w); changed.call(); Sfx.play("select"); _fill_convoy(list, u, changed))
 		list.add_child(b)
 	list.add_child(label("수송대 (%d) — 탭=꺼내기" % Campaign.convoy.size(), 26, Color8(255, 216, 128)))
+	var hidden = 0
 	for i in Campaign.convoy.size():
 		var idx = i
-		var b = weapon_btn(Weapons.make(Campaign.convoy[i].name, int(Campaign.convoy[i].uses)), u)
+		var cw = Weapons.make(Campaign.convoy[i].name, int(Campaign.convoy[i].uses))
+		if Settings.usable_only and u.block_reason(cw) != "": hidden += 1; continue
+		var b = weapon_btn(cw, u)
 		b.disabled = u.inventory.size() >= Unit.MAX_ITEMS
 		b.pressed.connect(func():
 			var w = Campaign.from_convoy(idx); u.give(w); changed.call(); Sfx.play("select"); _fill_convoy(list, u, changed))
 		list.add_child(b)
+	if hidden > 0: list.add_child(label("(사용 불가 %d개 숨김)" % hidden, 22, Color8(170, 170, 190)))

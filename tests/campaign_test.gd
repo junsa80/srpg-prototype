@@ -274,6 +274,39 @@ func _ready() -> void:
 	check(Campaign.gold == 1000 and Campaign.convoy.size() == cv, "shop confirm: 취소 buys nothing")
 	bc = bs.confirm_buy("상처약"); bc.find_child("BuyYes", true, false).emit_signal("pressed"); await get_tree().process_frame
 	check(Campaign.gold == 700 and Campaign.convoy.size() == cv + 1, "shop confirm: 구매 -> 1000→700")
+	# staged shop
+	var cl0 = Campaign.cleared.duplicate()
+	Campaign.cleared = ["ch1", "ch2"]; check(not "강철검" in bs.stock() and not "투창" in bs.stock() and "철검" in bs.stock() and "라이트" in bs.stock(), "shop early: iron/basic only")
+	Campaign.cleared = ["ch1", "ch2", "ch3"]; check("강철검" in bs.stock() and "투창" in bs.stock() and not "은검" in bs.stock() and not "킬러소드" in bs.stock(), "shop mid (ch3): steel + utility")
+	Campaign.cleared = ["ch1", "ch2", "ch3", "ch4a", "ch5"]; check("은검" in bs.stock() and "킬러보우" in bs.stock() and "피지오" in bs.stock(), "shop late (ch5): silver/killer")
+	# unit header ◀ ▶ + usable filter
+	bs.sel_unit = "아린"; Settings.usable_only = true; bs._shop(); await get_tree().process_frame
+	check(bs.find_child("UPortrait", true, false) != null and bs.find_child("Buy_철검", true, false) != null and bs.find_child("Buy_철창", true, false) == null and bs.find_child("Buy_상처약", true, false) != null, "shop filter: 아린 sees swords + items, no lances")
+	bs.find_child("UNext", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(bs.sel_unit != "아린" and bs.hdr_unit.data.name == bs.sel_unit, "header ▶ switches unit")
+	bs.sel_unit = "세라"; bs._shop(); await get_tree().process_frame
+	check(bs.find_child("Buy_힐", true, false) != null and bs.find_child("Buy_철단검", true, false) != null and bs.find_child("Buy_철검", true, false) == null, "shop filter: 시스터 = staff + dagger only")
+	Campaign.convoy = [{"name": "철창", "uses": 40}, {"name": "철검", "uses": 40}]
+	bs.sel_unit = "아린"; bs._convoy(); await get_tree().process_frame
+	var clist = bs.find_child("ConvoyList", true, false)
+	check(clist.get_children().filter(func(c): return c is Button and c.text.begins_with("철창")).is_empty() and bs.find_child("UPrev", true, false) != null, "convoy filter + ◀ in convoy")
+	bs.find_child("UsableOnly", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(not Settings.usable_only, "filter toggle persisted off"); Settings.usable_only = false
+	bs.sel_unit = "아린"; bs._equip_unit(); await get_tree().process_frame
+	check(bs.find_child("UNext", true, false) != null and bs.find_child("UPortrait", true, false) != null, "equip: portrait + ◀ ▶")
+	Campaign.cleared = cl0
 	bs.queue_free(); await get_tree().process_frame
+	# battle: 다음 (next unmoved ally) + status 위치로
+	var bn = await _battle("ch2")
+	var al = bn.units.filter(func(o): return o.team == 0)
+	bn.next_unit(); await get_tree().process_frame
+	check(bn.selected == al[0] and bn.grid.cursor == al[0].cell, "다음: selects first unmoved ally")
+	bn._on_cancel(); al[0].has_acted = true; bn.next_unit(); await get_tree().process_frame
+	check(bn.selected == al[1], "다음: skips acted unit")
+	bn._on_cancel()
+	var st = Menus.status(bn.ui, al, 0, bn.jump_to); await get_tree().process_frame
+	st.find_child("Next", true, false).emit_signal("pressed"); st.find_child("Jump", true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(bn.grid.cursor == al[1].cell, "status ▶ + 위치로 moves cursor")
+	bn.queue_free(); await get_tree().process_frame
 	print("CAMPAIGNTEST ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	get_tree().quit(0 if fails == 0 else 1)
