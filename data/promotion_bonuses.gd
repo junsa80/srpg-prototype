@@ -12,6 +12,8 @@ const TABLE = {
 	"메이지나이트": {"hp": 3, "mag": 2, "spd": 2, "res": 2, "move": 1},
 	"어쌔신": {"hp": 2, "skl": 3, "spd": 3, "lck": 3},
 	"로그": {"hp": 2, "skl": 2, "spd": 4, "lck": 3},
+	"성기사": {"hp": 4, "str": 2, "def": 2, "res": 1, "move": 1},   # 시스터 → 기마: 이동 6(+1)
+	"비숍": {"hp": 3, "mag": 3, "skl": 1, "res": 3},
 	"발키리": {"hp": 3, "mag": 2, "skl": 2, "res": 3, "move": 1},
 }
 static func for_class(n: String) -> Dictionary: return TABLE.get(n, {})

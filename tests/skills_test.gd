@@ -20,7 +20,7 @@ func _init() -> void:
 	# weapons
 	var w = Weapons.make("은검"); chk("은검 stats", w.might == 12 and w.hit == 85 and w.crit == 5 and w.weight == 6 and w.uses == 20)
 	chk("힐 heal10 staff", Weapons.make("힐").is_staff() and Weapons.make("힐").heal == 10 and Weapons.make("멘드").heal == 20)
-	chk("loadout 성기사", Weapons.loadout("성기사").map(func(x): return x.name) == ["철검", "철창", "힐"])
+	chk("loadout 시스터", Weapons.loadout("시스터").map(func(x): return x.name) == ["힐", "철단검"])
 	chk("loadout 팔라딘", Weapons.loadout("팔라딘").map(func(x): return x.name) == ["철검", "철창"])
 	p = base_pair("X"); var u0 = p[0].weapon().uses; BattleManager.resolve(p[0], p[1]); chk("durability decrements", p[0].weapon() == null or p[0].weapon().uses < u0)
 	var br = mk("X", "철검", Vector2i(0, 0)); br.weapon().uses = 1; br.use_item(br.weapon()); chk("weapon breaks", br.weapon() == null)

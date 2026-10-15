@@ -64,6 +64,7 @@ func block_reason(w: WeaponData) -> String:
 	if not w.type in unit_class.weapon_types: return "병종 불가"
 	if team == 0 and rank(w.type) < w.rank: return "랭크 부족 (%s 필요, 현재 %s)" % [Weapons.RANKS[w.rank], rank_letter(w.type)]
 	if w.type in ClassProfs.LIGHT_ONLY.get(unit_class.name, []) and not (w.light or w.weight <= ClassProfs.LIGHT_WT): return "경량 무기만 사용 가능"
+	if w.type in ClassProfs.DAGGER_ONLY.get(unit_class.name, []) and not w.dagger: return "단검만 사용 가능"
 	return ""
 
 ## Adds weapon EXP; returns new rank letter on rank-up or "".
@@ -166,7 +167,7 @@ func promote(alt := "") -> void:
 	# new weapon types -> free iron weapon of each new type
 	for t in target.weapon_types:
 		if not t in unit_class.weapon_types and Roster.IRON.has(t):
-			var iw = Weapons.make(Roster.IRON[t])
+			var iw = Weapons.make("라이트" if target.name == "비숍" and t == WeaponData.Type.TOME else Roster.IRON[t])
 			if inventory.size() < MAX_ITEMS: inventory.append(iw)
 			else: pending_gift.append(iw)
 	var b = target.get_promotion_bonus()

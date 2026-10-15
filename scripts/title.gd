@@ -43,10 +43,20 @@ func _main() -> void:
 	if _has_save() and Campaign.roster.size() > 0:   # 환생 anytime once a save exists
 		var rb = ItemMenus.big("환생 (★%d → ★%d)" % [Campaign.cycle, Campaign.cycle + 1], 90, 34); rb.name = "Rebirth"; box.add_child(rb)
 		rb.pressed.connect(func(): Menus.rebirth_select(self, func(): _goto("res://scenes/battle.tscn")))
+	if Campaign.has_update_offer(): _update_offer.call_deferred()
 	var st = ItemMenus.big("설정", 90, 34); st.name = "Settings"; st.pressed.connect(func(): Menus.settings(self)); box.add_child(st)
 	var wipe = ItemMenus.big("완전 초기화 새 게임", 80, 28); wipe.name = "Wipe"; box.add_child(wipe)
 	wipe.add_theme_color_override("font_color", Color8(255, 110, 110)); wipe.add_theme_color_override("font_hover_color", Color8(255, 150, 150))
 	wipe.pressed.connect(_wipe_confirm)
+
+## One-time offer after a game update (old save loaded): free restart at Ch1 keeping everything. Declining = continue normally.
+func _update_offer() -> void:
+	var taken = [false]
+	var cl = Menus.confirm(self, "게임이 업데이트되었습니다.\n\n업데이트 재시작 (레벨·숙련도 유지)\nCh1부터 무료로 다시 시작합니다.\n레벨·능력치·숙련도·아이템·골드 유지\n(환생 ★ 증가 없음 · 적 보통 난이도)\n\n한 번만 표시됩니다.", "업데이트 재시작", func():
+		taken[0] = true; Campaign.update_restart(); _goto("res://scenes/battle.tscn"), "그대로 계속")
+	cl.name = "UpdateOffer"
+	cl.tree_exiting.connect(func():
+		if not taken[0] and Campaign.update_offer > 0: Campaign.decline_update())
 
 func _goto(scene: String) -> void: get_tree().change_scene_to_file(scene)
 

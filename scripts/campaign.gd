@@ -32,6 +32,13 @@ var boosters = {}           # unit -> {s: n} stat boosters already used (kept th
 var keep_all = false        # last rebirth was 강화 (units pre-joined as before)
 var camp_seen = []          # chapters whose camp conversation was shown
 var supports_seen = []      # support conversation ids read
+## Content version of the game build. Bump when an update changes classes/maps so old saves get migrated
+## and are offered ONE free 업데이트 재시작 (Ch1, keep everything, no ★, normal enemies).
+const GAME_VERSION = 3      # 3 = 2026-10-15: 세라 시스터 / 성기사 상급
+var game_ver = GAME_VERSION # version the campaign was last saved by
+var update_offer = 0        # >0: version whose 업데이트 재시작 offer is pending (shown once)
+var update_restarts = []    # versions for which the free restart was taken (save marker)
+var update_declined = []    # versions whose offer was declined
 
 func _ready() -> void: load_campaign()
 
@@ -193,6 +200,7 @@ func carry_text(n: String) -> String:
 func mode_tag() -> String:
 	var t = "환생 ★%d %s" % [cycle, DIFFS[difficulty]] if cycle > 0 or difficulty > 0 else ""
 	if grind > 0: t += " [노가다 ×%d]" % grind
+	if update_restarts.size() > 0: t += " [업데이트 재시작]"
 	return t.strip_edges()
 
 
@@ -202,7 +210,7 @@ func wipe_all() -> void:
 	reset(); cycle = 0; clears = 0; save_campaign()
 
 func to_dict() -> Dictionary:
-	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen, "enemy_lv": enemy_lv, "rb_bonus": rb_bonus, "boosters": boosters, "keep_all": keep_all, "difficulty": difficulty, "grind": grind}
+	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen, "enemy_lv": enemy_lv, "rb_bonus": rb_bonus, "boosters": boosters, "keep_all": keep_all, "difficulty": difficulty, "grind": grind, "game_ver": GAME_VERSION, "update_offer": update_offer, "update_restarts": update_restarts, "update_declined": update_declined}
 
 ## Make sure every joined unit has a roster entry (default stats/loadout).
 func ensure_roster() -> void:
@@ -245,9 +253,37 @@ func from_dict(c: Dictionary) -> void:
 	enemy_lv = int(c.get("enemy_lv", cycle * CYCLE_LV)); keep_all = bool(c.get("keep_all", cycle > 0))
 	rb_bonus = c.get("rb_bonus", {}); boosters = c.get("boosters", {})
 	difficulty = int(c.get("difficulty", 0)); grind = int(c.get("grind", cycle))   # old cycles were all keep-all
+	game_ver = int(c.get("game_ver", 1)); update_offer = int(c.get("update_offer", 0))
+	update_restarts = c.get("update_restarts", []).map(func(v): return int(v)); update_declined = c.get("update_declined", []).map(func(v): return int(v))
+	if game_ver < GAME_VERSION:
+		for n in roster: migrate_entry(n, roster[n], game_ver)
+		if roster.size() > 0 and not GAME_VERSION in update_restarts and not GAME_VERSION in update_declined: update_offer = GAME_VERSION
+		game_ver = GAME_VERSION
+
+## Per-unit save migration between content versions (roster entries and battle-snapshot units).
+static func migrate_entry(n: String, e: Dictionary, from_ver: int) -> void:
+	if from_ver < 3 and e.get("class", "") == "성기사" and n != "아서":   # 구 성기사(기본) → 시스터; 아서 joins as 상급 성기사
+		e["class"] = "시스터"
+		var wx = e.get("wexp", {})
+		if typeof(wx) == TYPE_DICTIONARY:
+			for t in [WeaponData.Type.STAFF, WeaponData.Type.SWORD]:
+				if not (wx.has(t) or wx.has(str(t))): wx[str(t)] = ClassProfs.WEXP[ClassProfs.START_RANK["시스터"][t]]
+		# items are kept as-is (철창 etc. stay; unusable ones show 병종 불가 and can go to the convoy)
+
+func has_update_offer() -> bool: return update_offer > 0 and roster.size() > 0
+func decline_update() -> void:
+	if not update_offer in update_declined: update_declined.append(update_offer)
+	update_offer = 0; save_campaign()
+## 업데이트 재시작: free, one-time per version. Back to Ch1 keeping levels/stats/ranks/items/convoy/gold.
+## No ★ (cycle unchanged), no enemy level bonus added, recruits kept.
+func update_restart() -> void:
+	if not update_offer in update_restarts: update_restarts.append(update_offer)
+	update_offer = 0; keep_all = true; difficulty = 0   # 보통 난이도, enemy_lv unchanged (no new bonus)
+	chapter = "ch1"; cleared = []; attempts = {}; deploy = []; ranks = {}; sides = {}; route = ""; drop_seeds = {}; resume = {}; camp_seen = []
+	ensure_roster(); save_campaign()
 
 func reset() -> void:
-	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; drop_seeds = {}; cycle = 0; camp_seen = []; supports_seen = []; enemy_lv = 0; rb_bonus = {}; boosters = {}; keep_all = false; difficulty = 0; grind = 0; save_campaign()
+	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; drop_seeds = {}; cycle = 0; camp_seen = []; supports_seen = []; enemy_lv = 0; rb_bonus = {}; boosters = {}; keep_all = false; difficulty = 0; grind = 0; update_offer = 0; save_campaign()
 
 ## Support conversations unlocked: both units in roster and chapter cleared.
 func supports_open() -> Array:

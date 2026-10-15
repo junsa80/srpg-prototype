@@ -78,8 +78,13 @@ func latest_slot() -> int:
 func apply(slot: int) -> String:
 	var d = load_slot(slot)
 	if d.is_empty(): return ""
-	Campaign.from_dict(d.data.get("campaign", {})); Campaign.playtime = float(d.get("playtime", 0))
-	Campaign.resume = d.data.get("battle", {}); Campaign.save_campaign()
+	var cd: Dictionary = d.data.get("campaign", {}); var from_ver = int(cd.get("game_ver", 1))
+	Campaign.from_dict(cd); Campaign.playtime = float(d.get("playtime", 0))
+	Campaign.resume = d.data.get("battle", {})
+	if from_ver < Campaign.GAME_VERSION and Campaign.resume.has("units"):
+		for u in Campaign.resume.units:
+			if int(u.get("team", 0)) == 0: Campaign.migrate_entry(u.get("name", ""), u, from_ver)
+	Campaign.save_campaign()
 	if not Campaign.resume.is_empty(): return "res://scenes/battle.tscn"
 	return "res://scenes/base.tscn" if Campaign.cleared.size() > 0 else "res://scenes/battle.tscn"
 

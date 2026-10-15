@@ -190,8 +190,34 @@ func _ready() -> void:
 	hcl.find_child("Target_" + hb.data.name, true, false).emit_signal("pressed"); await get_tree().process_frame
 	check(hb.hp == mini(15, hb.stats.hp) and pot.uses == 2 and ha.has_acted, "상처약 on ally: +10, user's item 3->2, ends action")
 	var psera = Roster.make_unit("세라", 0, Vector2i.ZERO)
-	check(psera.inventory.any(func(w): return w.type == WeaponData.Type.LANCE) and psera.rank(WeaponData.Type.LANCE) > psera.rank(WeaponData.Type.SWORD), "성기사: lance primary (D) > sword (E)")
-	psera.apply_progress({"level": 1, "exp": 0, "stats": psera.stats, "wexp": {"0": 30}, "class": "성기사"}); check(psera.rank(WeaponData.Type.LANCE) >= 0, "old 성기사 save gains lance rank")
+	var T = WeaponData.Type
+	check(psera.unit_class.name == "시스터" and psera.move_range() == 5 and psera.stats == Roster.cls("성기사").base_stats, "세라 = 시스터, 이동 5, 기존 수치 그대로")
+	check(psera.inventory.map(func(w): return w.name) == ["힐", "철단검"] and psera.rank(T.STAFF) == 1 and psera.rank(T.SWORD) == 0, "시스터: 힐 + 철단검, 지팡이 D / 검 E")
+	check(psera.block_reason(Weapons.make("철검")) == "단검만 사용 가능" and psera.block_reason(Weapons.make("철창")) == "병종 불가", "시스터: 단검만 (검), 창 불가")
+	check(BattleManager.bonus(psera).crit == 0 and psera.weapon() and psera.weapon().dagger, "시스터 단검: 도적 보너스 없음")
+	psera.level = 10; var sb = psera.stats.duplicate(); psera.promote()
+	check(psera.unit_class.name == "성기사" and psera.move_range() == 7 and psera.stats.hp == sb.hp + 4 and psera.rank(T.LANCE) == 1 and "cavalry" in psera.tags(), "시스터 → 성기사: 기마 이동 7, 창 D, 보너스")
+	check(psera.inventory.any(func(w): return w.name == "철창"), "성기사 전직: 철창 지급")
+	var pb = Roster.make_unit("세라", 0, Vector2i.ZERO); pb.level = 10; pb.promote("비숍")
+	check(pb.unit_class.name == "비숍" and pb.rank(T.TOME) == 1 and pb.inventory.any(func(w): return w.name == "라이트"), "시스터 → 비숍: 빛 마법")
+	var art = Roster.make_unit("아서", 0, Vector2i.ZERO)
+	check(art.unit_class.name == "성기사" and art.unit_class.promotes_to == null, "아서: 상급 성기사로 합류")
+	# old-save migration (pre-v3: 세라 class 성기사)
+	var old = {"roster": {"세라": {"class": "성기사", "level": 7, "exp": 40, "stats": psera.stats.duplicate(), "wexp": {"1": 30, "0": 0, "5": 40}, "items": [{"name": "철검", "uses": 30}, {"name": "철창", "uses": 20}]},
+		"아서": {"class": "성기사", "level": 8, "exp": 0, "stats": art.stats.duplicate(), "wexp": {}}}, "gold": 1234, "chapter": "ch4a", "cleared": ["ch1", "ch2", "ch3"], "cycle": 1}
+	Campaign.from_dict(old)
+	check(Campaign.roster["세라"]["class"] == "시스터" and Campaign.roster["아서"]["class"] == "성기사", "migrate: 세라 → 시스터, 아서 유지")
+	var ms = Roster.make_unit("세라", 0, Vector2i.ZERO, Campaign.roster["세라"])
+	check(ms.level == 7 and ms.rank(T.STAFF) == 1 and ms.rank(T.SWORD) == 0 and ms.inventory.size() == 2, "migrate: 레벨/숙련/아이템 유지")
+	check(Campaign.has_update_offer(), "old save -> 업데이트 재시작 offer")
+	var elv0 = Campaign.enemy_lv
+	Campaign.update_restart()
+	check(Campaign.chapter == "ch1" and Campaign.cycle == 1 and Campaign.gold == 1234 and Campaign.roster["세라"].level == 7 and Campaign.enemy_lv == elv0 and Campaign.difficulty == 0, "업데이트 재시작: Ch1, ★ 그대로, 유지")
+	check(not Campaign.has_update_offer() and 3 in Campaign.update_restarts and "업데이트 재시작" in Campaign.mode_tag(), "one-time + marked")
+	Campaign.from_dict(Campaign.to_dict()); check(not Campaign.has_update_offer(), "no re-offer after reload")
+	Campaign.from_dict(old); Campaign.decline_update(); Campaign.from_dict(Campaign.to_dict()); check(not Campaign.has_update_offer(), "declined: not offered again")
+	Campaign.reset()
+	ms.free(); pb.free(); art.free()
 	var th = Roster.make_unit("루크", 0, Vector2i.ZERO)
 	check(th.weapon() and th.weapon().dagger and BattleManager.bonus(th).crit >= 10, "도적: 단검 + dagger bonus")
 	psera.free(); th.free(); bh.queue_free(); await get_tree().process_frame

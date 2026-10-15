@@ -55,7 +55,7 @@ func _ready() -> void:
 	chk("피지오 range 1-4", Weapons.make("피지오").max_range == 4)
 	# proficiency: 성기사 staff heal +2
 	var sera = mk("세라", 0, "힐", Vector2i(1, 1))
-	chk("성기사 staff prof +2", BattleManager.heal_amount(sera, sera.inventory[0]) == 10 + sera.eff("mag") + 2)
+	chk("시스터 staff prof +2", BattleManager.heal_amount(sera, sera.inventory[0]) == 10 + sera.eff("mag") + 2)
 	# persistence + migration
 	Campaign.record_progress(aren, false)
 	var js = JSON.parse_string(JSON.stringify(Campaign.to_dict()))

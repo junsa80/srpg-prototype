@@ -5,7 +5,10 @@ const W = WeaponData.Type
 const CLASSES = {
 	"용병": [5, {"hp": 20, "str": 6, "mag": 0, "skl": 8, "spd": 8, "lck": 5, "def": 4, "res": 1}, "영웅", [W.SWORD]],
 	"궁수": [5, {"hp": 17, "str": 5, "mag": 0, "skl": 7, "spd": 6, "lck": 4, "def": 3, "res": 1}, "스나이퍼", [W.BOW]],
-	"성기사": [5, {"hp": 19, "str": 5, "mag": 3, "skl": 5, "spd": 5, "lck": 6, "def": 6, "res": 5}, "발키리", [W.LANCE, W.SWORD, W.STAFF]],
+	"시스터": [5, {"hp": 19, "str": 5, "mag": 3, "skl": 5, "spd": 5, "lck": 6, "def": 6, "res": 5}, "성기사", [W.STAFF, W.SWORD]],   # 기본 회복 병종 (구 성기사 수치 그대로)
+	# 성기사 = 상급 (기마). base_stats kept only for units that join already promoted (아서) — numbers unchanged.
+	"성기사": [6, {"hp": 19, "str": 5, "mag": 3, "skl": 5, "spd": 5, "lck": 6, "def": 6, "res": 5}, "", [W.LANCE, W.SWORD, W.STAFF]],
+	"비숍": [5, {}, "", [W.STAFF, W.TOME]],
 	"마법사": [5, {"hp": 15, "str": 0, "mag": 7, "skl": 6, "spd": 6, "lck": 3, "def": 1, "res": 6}, "세이지", [W.TOME]],
 	"기사": [4, {"hp": 22, "str": 7, "mag": 0, "skl": 5, "spd": 3, "lck": 3, "def": 8, "res": 1}, "그레이트나이트", [W.LANCE]],
 	"도적": [6, {"hp": 16, "str": 4, "mag": 0, "skl": 8, "spd": 10, "lck": 7, "def": 2, "res": 1}, "어쌔신", [W.SWORD]],
@@ -27,7 +30,7 @@ const CLASSES = {
 }
 ## Playable units: name -> [class, join_chapter, intro line]
 const UNITS = {
-	"아린": ["용병", "ch1", ""], "노아": ["용병", "ch1", ""], "리나": ["궁수", "ch1", ""], "세라": ["성기사", "ch1", ""],
+	"아린": ["용병", "ch1", ""], "노아": ["용병", "ch1", ""], "리나": ["궁수", "ch1", ""], "세라": ["시스터", "ch1", ""],
 	"엘리아": ["마법사", "ch1", ""], "카엘": ["기사", "ch1", ""], "루크": ["도적", "ch1", ""], "미라": ["마법사", "ch1", ""],
 	"보리스": ["전사", "ch1", "나무만 패던 손이지만, 도끼질이라면 자신 있수다."],
 	"에일린": ["용병", "ch2", "노아 선배한테 들었어. 나도 같이 갈게!"],
@@ -38,13 +41,13 @@ const UNITS = {
 	"아서": ["성기사", "ch6", "왕성이 함락됐다. 길은 내가 안다, 따라와!"],
 }
 const IRON = {W.SWORD: "철검", W.LANCE: "철창", W.AXE: "철도끼", W.BOW: "철활", W.TOME: "파이어", W.STAFF: "힐"}
-const COLORS = {"용병": Color(0.2, 0.45, 0.95), "궁수": Color(0.2, 0.7, 0.3), "성기사": Color(0.95, 0.85, 0.3),
+const COLORS = {"용병": Color(0.2, 0.45, 0.95), "궁수": Color(0.2, 0.7, 0.3), "성기사": Color(0.95, 0.85, 0.3), "시스터": Color(0.95, 0.9, 0.6),
 	"마법사": Color(0.6, 0.3, 0.9), "전사": Color(0.75, 0.4, 0.2), "기사": Color(0.6, 0.65, 0.75), "도적": Color(0.2, 0.75, 0.75),
 	"그림자 병사": Color(0.35, 0.1, 0.4), "그림자 창병": Color(0.45, 0.1, 0.25), "그림자 궁병": Color(0.3, 0.2, 0.45),
 	"그림자 술사": Color(0.5, 0.05, 0.5), "그림자 지휘관": Color(0.15, 0.0, 0.15),
 	"그림자 중갑병": Color(0.3, 0.3, 0.4), "그림자 기병": Color(0.4, 0.2, 0.1), "그림자 비룡": Color(0.2, 0.3, 0.2)}
 ## Alternate promotion (branch): class -> second option (first is CLASSES[..][2]).
-const ALT_PROMOTE = {"전사": "버서커"}
+const ALT_PROMOTE = {"전사": "버서커", "시스터": "비숍"}
 ## Class growth bonuses for NEW classes only (existing classes keep ClassData defaults).
 ## With default personal growths {10,10,0,10,10,20,5,5} 전사 totals 85/55/0/40/40/30/35/15 (hp/str/mag/skl/spd/lck/def/res).
 const GROWTHS = {
