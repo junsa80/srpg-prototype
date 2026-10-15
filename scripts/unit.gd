@@ -26,6 +26,8 @@ var drop: WeaponData = null # enemy droppable item
 var gold_drop = 0
 var guard = false           # AI: hold position unless target reachable
 var boss = false            # AI: never moves
+var weapon_used: WeaponData = null
+var wexp = {}               # weapon type (int) -> weapon EXP points (players)
 
 func setup(d: UnitData, t: int, c: Vector2i) -> void:
 	data = d; team = t; cell = c; level = d.level; unit_class = d.unit_class
@@ -33,11 +35,39 @@ func setup(d: UnitData, t: int, c: Vector2i) -> void:
 		stats[s] = unit_class.base_stats.get(s, 0); growth_accum[s] = 50
 	hp = stats.hp
 	if d.weapon: inventory = [d.weapon]
+	init_ranks()
+
+func init_ranks() -> void:
+	wexp = {}
+	for t in ClassProfs.START_RANK.get(unit_class.name, {}): wexp[int(t)] = ClassProfs.WEXP[ClassProfs.START_RANK[unit_class.name][t]]
+
+func rank(t: int) -> int:
+	if team != 0: return 5 if wexp.is_empty() else ClassProfs.rank_of(wexp.get(t, 0))
+	return ClassProfs.rank_of(int(wexp.get(t, -1))) if wexp.has(t) else -1
+
+func rank_letter(t: int) -> String: return Weapons.RANKS[rank(t)] if rank(t) >= 0 else "-"
+
+func tags() -> Array: return ClassProfs.tags(unit_class.name)
+
+## "" if usable, else the reason (shown greyed out in menus).
+func block_reason(w: WeaponData) -> String:
+	if w.uses <= 0: return "파손"
+	if unit_class.weapon_types.is_empty(): return ""   # enemies: any
+	if not w.type in unit_class.weapon_types: return "병종 불가"
+	if team == 0 and rank(w.type) < w.rank: return "랭크 부족 (%s 필요, 현재 %s)" % [Weapons.RANKS[w.rank], rank_letter(w.type)]
+	if w.type in ClassProfs.LIGHT_ONLY.get(unit_class.name, []) and not (w.light or w.weight <= ClassProfs.LIGHT_WT): return "경량 무기만 사용 가능"
+	return ""
+
+## Adds weapon EXP; returns new rank letter on rank-up or "".
+func gain_wexp(t: int, pts: int) -> String:
+	if team != 0 or not wexp.has(t): return ""
+	var r0 = rank(t); wexp[t] = mini(ClassProfs.WEXP[-1], wexp[t] + pts)
+	return Weapons.RANKS[rank(t)] if rank(t) > r0 else ""
 
 const MAX_ITEMS = 5
 
 func can_use(w: WeaponData) -> bool:
-	return w.uses > 0 and (unit_class.weapon_types.is_empty() or w.type in unit_class.weapon_types)
+	return block_reason(w) == ""
 
 func usable_weapons() -> Array: return inventory.filter(func(w): return not w.is_staff() and can_use(w))
 
@@ -105,6 +135,10 @@ func apply_progress(p: Dictionary) -> void:
 	hp = stats.hp
 	move_bonus = int(p.get("move_bonus", 0))
 	if p.has("class") and p["class"] != unit_class.name: unit_class = Roster.cls(p["class"])
+	if p.has("wexp") and typeof(p.wexp) == TYPE_DICTIONARY and not p.wexp.is_empty():
+		wexp = {}
+		for k in p.wexp: wexp[int(k)] = int(p.wexp[k])
+	else: init_ranks()   # migrate old saves: class starting ranks
 	if p.has("items"): inventory = p.items.map(func(i): return Weapons.make(i.name, int(i.uses)))
 
 func can_promote() -> bool:
@@ -125,15 +159,17 @@ func promote() -> void:
 		else: stats[s] += b[s]
 	if b.has("hp"): hp += b["hp"]
 	unit_class = target; level = 1
+	for t in ClassProfs.START_RANK.get(target.name, {}):   # promotion broadens ranks
+		wexp[int(t)] = maxi(int(wexp.get(int(t), 0)), ClassProfs.WEXP[ClassProfs.START_RANK[target.name][t]])
 
 func atk() -> int:
 	var w = weapon()
-	return (eff("mag") if w and w.magic else eff("str")) + (w.might if w else 0)
+	return (eff("mag") if w and w.magic else eff("str")) + (w.might if w else 0) + (BattleManager.bonus(self).might if w else 0)
 func has_tag(t: String) -> bool: return t in data.tags
 func move_range() -> int: return unit_class.move + move_bonus + Skills.move_mod(self)
 
 func to_dict() -> Dictionary:
-	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss}
+	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "wexp": wexp, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss}
 
 func from_dict(d: Dictionary) -> void:
 	cell = Vector2i(d.cell[0], d.cell[1]); level = d.level; exp = d.exp; hp = d.hp; stats = d.stats; has_acted = d.acted; move_bonus = d.get("move_bonus", 0)

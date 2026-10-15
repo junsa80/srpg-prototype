@@ -15,7 +15,7 @@ func run(battle) -> void:
 	v.offset_left = 16; v.offset_right = -16; v.offset_top = 12; v.offset_bottom = -12; v.add_theme_constant_override("separation", 10)
 	head = ItemMenus.label("", 30, Menus.GOLD); head.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(head)
 	v.add_child(ItemMenus.label("탭=출전/제외 (아린 고정) · 위 지도 파란 칸=배치 위치 · 지도 길게 누르기=상태", 20, Menus.DIM))
-	var sc = ScrollContainer.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; v.add_child(sc)
+	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; v.add_child(sc)
 	grid_box = GridContainer.new(); grid_box.columns = 2; grid_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid_box.add_theme_constant_override("h_separation", 8); grid_box.add_theme_constant_override("v_separation", 8); sc.add_child(grid_box)
 	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 8); v.add_child(row)
@@ -46,6 +46,7 @@ func _refresh() -> void:
 		bt.size_flags_horizontal = Control.SIZE_EXPAND_FILL; bt.add_theme_font_size_override("font_size", 24)
 		bt.text = tag + "%s  Lv%d%s\n%s" % [n, int(e.get("level", 1)), star, e.get("class", Roster.UNITS[n][0])]
 		bt.name = "D_" + n
+		if e.has("items") and e.items.size(): Icons.on_button(bt, Weapons.make(e.items[0].name, int(e.items[0].uses)))
 		if on: bt.add_theme_color_override("font_color", Color8(150, 225, 255))
 		else: bt.add_theme_color_override("font_color", Color8(170, 160, 150))
 		bt.disabled = not on and lineup.size() >= size
@@ -72,6 +73,7 @@ func _items() -> void:
 	var list = Menus.scroll(v)
 	for u in _live():
 		var bt = ItemMenus.big("%s   %s" % [u.data.name, ", ".join(u.inventory.map(func(w): return "%s %d" % [w.name, w.uses]))], 96, 24)
+		Icons.on_button(bt, u.weapon() if u.weapon() else u.staff()); bt.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		bt.name = "I_" + u.data.name; bt.pressed.connect(func(): _unit_items(u)); list.add_child(bt)
 	Menus.close_btn(v, cl)
 
@@ -83,7 +85,7 @@ func _unit_items(u: Unit) -> void:
 		list.add_child(ItemMenus.label("탭=장착 (맨 위가 장비 무기)", 22, Menus.DIM))
 		for w in u.inventory:
 			var eq = w == u.weapon()
-			var bt = ItemMenus.big(("▶ " if eq else "") + ItemMenus.item_str(w) + ("" if u.can_use(w) else "  (사용 불가)"), 88, 26)
+			var bt = ItemMenus.weapon_btn(w, u, "▶ " if eq else "")
 			bt.disabled = not u.can_use(w) or w.is_staff()
 			bt.pressed.connect(func(): u.equip(w); Campaign.record_progress(u); Sfx.play("select"); self_ref.call(self_ref))
 			list.add_child(bt)

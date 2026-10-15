@@ -12,6 +12,12 @@ enum Type { SWORD, LANCE, AXE, BOW, TOME, STAFF }
 @export var max_uses = 40
 @export var uses = 40
 @export var heal = 0  # staves only
+var rank = 0              # required rank 0=E..5=S
+var effective: Array = [] # target tags -> might x3
+var brave = false
+var light = false
+var heavy = false
+var desc = ""
 
 func is_staff() -> bool: return type == Type.STAFF
 func to_dict() -> Dictionary: return {"name": name, "uses": uses}

@@ -1,5 +1,6 @@
 class_name Weapons extends RefCounted
 ## Weapon catalog. [type, might, hit, crit, weight, uses, min_r, max_r, magic, heal]
+## The first 14 entries are the user's base weapons — numbers unchanged; roles come from TRAITS below.
 const T = WeaponData.Type
 const LIST = {
 	"철검": [T.SWORD, 5, 90, 0, 5, 40, 1, 1, false, 0], "강철검": [T.SWORD, 8, 80, 0, 8, 30, 1, 1, false, 0],
@@ -11,9 +12,66 @@ const LIST = {
 	"파이어": [T.TOME, 5, 90, 0, 3, 30, 1, 2, true, 0], "썬더": [T.TOME, 8, 80, 5, 4, 25, 1, 2, true, 0],
 	"엘파이어": [T.TOME, 12, 85, 0, 5, 20, 1, 2, true, 0],
 	"힐": [T.STAFF, 0, 100, 0, 2, 30, 1, 1, true, 10], "멘드": [T.STAFF, 0, 100, 0, 4, 20, 1, 1, true, 20],
-	# enemy-only (not in user's list)
+	# enemy-only base
 	"철도끼": [T.AXE, 8, 75, 0, 10, 45, 1, 1, false, 0],
+	# ---- utility weapons (new)
+	"레이피어": [T.SWORD, 7, 95, 10, 5, 25, 1, 1, false, 0],
+	"아머킬러": [T.SWORD, 8, 80, 0, 11, 20, 1, 1, false, 0],
+	"킬러소드": [T.SWORD, 7, 75, 30, 7, 20, 1, 1, false, 0],
+	"용사의 검": [T.SWORD, 9, 75, 0, 9, 30, 1, 1, false, 0],
+	"윈드소드": [T.SWORD, 7, 70, 0, 9, 25, 1, 2, true, 0],
+	"호스슬레이어": [T.LANCE, 7, 70, 0, 13, 16, 1, 1, false, 0],
+	"투창": [T.LANCE, 6, 65, 0, 11, 20, 1, 2, false, 0],
+	"킬러랜스": [T.LANCE, 8, 70, 30, 9, 20, 1, 1, false, 0],
+	"용사의 창": [T.LANCE, 10, 70, 0, 14, 30, 1, 1, false, 0],
+	"손도끼": [T.AXE, 7, 60, 0, 9, 20, 1, 2, false, 0],
+	"해머": [T.AXE, 10, 55, 0, 15, 20, 1, 1, false, 0],
+	"킬러보우": [T.BOW, 9, 75, 30, 7, 20, 2, 2, false, 0],
+	"볼트": [T.TOME, 6, 80, 0, 5, 20, 1, 2, true, 0],
+	"피지오": [T.STAFF, 0, 100, 0, 3, 15, 1, 4, true, 10],
+	# boss uniques
+	"그림자 창 우르": [T.LANCE, 11, 80, 10, 10, 30, 1, 1, false, 0],
+	"바르가스의 대검": [T.SWORD, 15, 80, 10, 12, 30, 1, 1, false, 0],
 }
+## Roles. rank: required weapon rank (0=E..5=S). eff: target tags (might x3). brave: strikes twice.
+## light: weight never lowers attack speed. heavy: high might, slows. desc: shown in UI.
+const TRAITS = {
+	"철검": {"rank": 0, "desc": "기본 검. 가볍고 다루기 쉽다."},
+	"강철검": {"rank": 1, "heavy": true, "desc": "무겁다: 위력↑ 공속↓"},
+	"은검": {"rank": 3, "desc": "고급 검. 높은 위력."},
+	"철창": {"rank": 0, "desc": "기본 창."},
+	"강철창": {"rank": 1, "heavy": true, "desc": "무겁다: 위력↑ 공속↓"},
+	"은창": {"rank": 3, "desc": "고급 창. 높은 위력."},
+	"철활": {"rank": 0, "eff": ["flying"], "desc": "비행 특효"},
+	"강철활": {"rank": 1, "eff": ["flying"], "heavy": true, "desc": "비행 특효 · 무겁다"},
+	"은활": {"rank": 3, "eff": ["flying"], "desc": "비행 특효 · 고급"},
+	"파이어": {"rank": 0, "desc": "기본 마법. 사거리 1-2."},
+	"썬더": {"rank": 1, "desc": "치명 +5 마법."},
+	"엘파이어": {"rank": 2, "desc": "강력한 화염 마법."},
+	"힐": {"rank": 0, "desc": "인접 아군 HP 10+마력 회복"},
+	"멘드": {"rank": 2, "desc": "인접 아군 HP 20+마력 회복"},
+	"철도끼": {"rank": 0, "heavy": true, "desc": "무겁다"},
+	"레이피어": {"rank": 2, "light": true, "eff": ["armor", "cavalry"], "desc": "경량 · 중갑/기병 특효"},
+	"아머킬러": {"rank": 2, "eff": ["armor"], "desc": "중갑 특효"},
+	"킬러소드": {"rank": 2, "desc": "치명 +30"},
+	"용사의 검": {"rank": 4, "brave": true, "desc": "용사: 공격 시 2회 연속 공격"},
+	"윈드소드": {"rank": 1, "desc": "마법 검: 사거리 1-2, 마력으로 공격(마방 판정)"},
+	"호스슬레이어": {"rank": 2, "eff": ["cavalry"], "heavy": true, "desc": "기병 특효 · 무겁다"},
+	"투창": {"rank": 1, "desc": "투척: 사거리 1-2"},
+	"킬러랜스": {"rank": 2, "desc": "치명 +30"},
+	"용사의 창": {"rank": 4, "brave": true, "heavy": true, "desc": "용사: 2회 연속 공격 · 무겁다"},
+	"손도끼": {"rank": 0, "desc": "투척: 사거리 1-2"},
+	"해머": {"rank": 1, "eff": ["armor"], "heavy": true, "desc": "중갑 특효 · 무겁다"},
+	"킬러보우": {"rank": 2, "eff": ["flying"], "desc": "비행 특효 · 치명 +30"},
+	"볼트": {"rank": 2, "eff": ["armor"], "light": true, "desc": "경량 마법 · 중갑 특효"},
+	"피지오": {"rank": 2, "desc": "원거리 회복: 사거리 1-4, 10+마력"},
+	"그림자 창 우르": {"rank": 3, "eff": ["cavalry"], "desc": "지휘관의 창 · 기병 특효"},
+	"바르가스의 대검": {"rank": 3, "eff": ["armor"], "desc": "바르가스의 유품 · 중갑 특효"},
+}
+const RANKS = ["E", "D", "C", "B", "A", "S"]
+const TYPE_NAMES = {0: "검", 1: "창", 2: "도끼", 3: "활", 4: "마법", 5: "지팡이"}
+const TAG_NAMES = {"armor": "중갑", "cavalry": "기병", "flying": "비행"}
+
 ## Class loadouts (base and promoted).
 const LOADOUT = {
 	"용병": ["철검"], "도적": ["철검"], "기사": ["철창"], "궁수": ["철활"], "마법사": ["파이어"], "성기사": ["철검", "힐"],
@@ -25,7 +83,21 @@ static func make(n: String, uses = -1) -> WeaponData:
 	w.name = n; w.type = d[0]; w.might = d[1]; w.hit = d[2]; w.crit = d[3]; w.weight = d[4]
 	w.max_uses = d[5]; w.uses = d[5] if uses < 0 else uses
 	w.min_range = d[6]; w.max_range = d[7]; w.magic = d[8]; w.heal = d[9]
+	var t: Dictionary = TRAITS.get(n, {})
+	w.rank = t.get("rank", 0); w.effective = t.get("eff", []); w.brave = t.get("brave", false)
+	w.light = t.get("light", false); w.heavy = t.get("heavy", false); w.desc = t.get("desc", "")
 	return w
 
 static func loadout(cls: String) -> Array:
 	return LOADOUT.get(cls, ["철검"]).map(func(n): return make(n))
+
+## One-line role text with effectiveness tags, e.g. "[C] 중갑/기병 특효 · 경량".
+static func effect_text(w: WeaponData) -> String:
+	var parts = ["필요 %s" % RANKS[w.rank]]
+	if not w.effective.is_empty(): parts.append("특효:" + "/".join(w.effective.map(func(t): return TAG_NAMES.get(t, t))))
+	if w.brave: parts.append("용사")
+	if w.light: parts.append("경량")
+	if w.heavy: parts.append("중량")
+	if w.max_range > 1 and w.type in [T.SWORD, T.LANCE, T.AXE]: parts.append("1-%d" % w.max_range)
+	if w.type == T.SWORD and w.magic: parts.append("마법검")
+	return " · ".join(parts)

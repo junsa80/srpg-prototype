@@ -9,7 +9,7 @@ static func _panel(parent: Node, title: String, on_close: Callable) -> Array:
 	var v = VBoxContainer.new(); card.add_child(v); v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 18; v.offset_right = -18; v.offset_top = 16; v.offset_bottom = -16; v.add_theme_constant_override("separation", 10)
 	var t = Label.new(); t.text = title; t.add_theme_font_size_override("font_size", 36); t.add_theme_color_override("font_color", Color8(248, 216, 112)); v.add_child(t)
-	var sc = ScrollContainer.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
+	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
 	var list = VBoxContainer.new(); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; list.add_theme_constant_override("separation", 8); sc.add_child(list)
 	var close = big("닫기"); close.pressed.connect(on_close); v.add_child(close)
 	return [root, list, t]
@@ -21,6 +21,15 @@ static func big(t: String, h = 88, fs = 28) -> Button:
 static func label(t: String, fs = 26, col = Color8(248, 240, 224)) -> Label:
 	var l = Label.new(); l.text = t; l.add_theme_font_size_override("font_size", fs); l.add_theme_color_override("font_color", col)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; return l
+
+## Item button: icon + name/uses + role text; greyed with reason if unit can't use it.
+static func weapon_btn(w: WeaponData, u = null, prefix = "", suffix = "", h = 92) -> Button:
+	var reason = u.block_reason(w) if u != null else ""
+	var b = big("%s%s  %d/%d%s\n%s" % [prefix, w.name, w.uses, w.max_uses, suffix, ("× " + reason) if reason != "" else Weapons.effect_text(w) + ("  " + w.desc if w.desc != "" and w.desc.length() < 14 else "")], h, 22)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w)
+	if reason != "": b.add_theme_color_override("font_color", Color8(140, 130, 120))
+	b.set_meta("reason", reason)
+	return b
 
 static func item_str(w: WeaponData) -> String: return "%s  %d/%d" % [w.name, w.uses, w.max_uses]
 static func dict_str(d: Dictionary) -> String:
@@ -36,14 +45,14 @@ static func _fill_convoy(list: VBoxContainer, u: Unit, changed: Callable) -> voi
 	for c in list.get_children(): c.queue_free()
 	list.add_child(label("소지품 (%d/%d) — 탭=맡기기" % [u.inventory.size(), Unit.MAX_ITEMS], 26, Color8(160, 200, 255)))
 	for w in u.inventory.duplicate():
-		var b = big(("▶ " if w == u.weapon() else "") + item_str(w))
+		var b = weapon_btn(w, u, "▶ " if w == u.weapon() else "")
 		b.pressed.connect(func():
 			u.inventory.erase(w); Campaign.to_convoy(w); changed.call(); Sfx.play("select"); _fill_convoy(list, u, changed))
 		list.add_child(b)
 	list.add_child(label("수송대 (%d) — 탭=꺼내기" % Campaign.convoy.size(), 26, Color8(255, 216, 128)))
 	for i in Campaign.convoy.size():
 		var idx = i
-		var b = big(dict_str(Campaign.convoy[i]))
+		var b = weapon_btn(Weapons.make(Campaign.convoy[i].name, int(Campaign.convoy[i].uses)), u)
 		b.disabled = u.inventory.size() >= Unit.MAX_ITEMS
 		b.pressed.connect(func():
 			var w = Campaign.from_convoy(idx); u.give(w); changed.call(); Sfx.play("select"); _fill_convoy(list, u, changed))

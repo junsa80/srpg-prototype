@@ -21,7 +21,7 @@ static func overlay(parent: Node, title: String, lay = 30, top = 40, bottom = 40
 	return [cl, v]
 
 static func scroll(v: VBoxContainer) -> VBoxContainer:
-	var sc = ScrollContainer.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; v.add_child(sc)
+	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; v.add_child(sc)
 	var list = VBoxContainer.new(); list.size_flags_horizontal = Control.SIZE_EXPAND_FILL; list.add_theme_constant_override("separation", 10); sc.add_child(list)
 	return list
 
@@ -206,7 +206,7 @@ static func status_text(u: Unit, short = false) -> String:
 static func status(parent: Node, units: Array, idx: int) -> CanvasLayer:
 	Sfx.play("select")
 	var o = overlay(parent, "", 40, 24, 24); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "Status"
-	var body = VBoxContainer.new(); body.size_flags_vertical = Control.SIZE_EXPAND_FILL; body.add_theme_constant_override("separation", 10); v.add_child(body)
+	var body = scroll(v); body.add_theme_constant_override("separation", 10)
 	var ctx = {"units": units, "idx": idx, "body": body}
 	_fill_status(ctx)
 	var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 12); v.add_child(h)
@@ -239,6 +239,7 @@ static func _fill_status(ctx: Dictionary) -> void:
 	var hl = ItemMenus.label("HP %d / %d" % [u.hp, u.stats.hp], 26); hl.autowrap_mode = TextServer.AUTOWRAP_OFF; hl.custom_minimum_size.x = 230; hp.add_child(hl)
 	hp.add_child(bar(u.hp, u.stats.hp, 150, 14, _hp_col(u)))
 	info.add_child(ItemMenus.label("이동 %d    무기: %s" % [u.move_range(), _wtypes(u)], 24))
+	if not u.tags().is_empty(): info.add_child(ItemMenus.label("속성: " + "/".join(u.tags().map(func(t): return Weapons.TAG_NAMES.get(t, t))), 22, Color8(255, 150, 150)))
 	# stats
 	var sp = PanelContainer.new(); sp.add_theme_stylebox_override("panel", Ornate.frame(Color8(26, 22, 44))); body.add_child(sp)
 	var g = GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); g.add_theme_constant_override("v_separation", 8); sp.add_child(g)
@@ -249,16 +250,31 @@ static func _fill_status(ctx: Dictionary) -> void:
 		var num = ItemMenus.label(str(val), 28, TXT); num.custom_minimum_size.x = 46; num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; num.autowrap_mode = TextServer.AUTOWRAP_OFF; row.add_child(num)
 		var sep = Control.new(); sep.custom_minimum_size.x = 8; row.add_child(sep)
 		row.add_child(bar(val, STAT_CAP if s != "hp" else 60, 160, 16, Color8(120, 176, 255) if not u.awakened else Color8(255, 200, 32)))
+	# weapon ranks
+	if not enemy:
+		var rr = HBoxContainer.new(); rr.add_theme_constant_override("separation", 14); body.add_child(rr)
+		var rl = ItemMenus.label("무기 랭크", 24, Color8(255, 216, 128)); rl.autowrap_mode = TextServer.AUTOWRAP_OFF; rr.add_child(rl)
+		for t in u.unit_class.weapon_types:
+			var cell = HBoxContainer.new(); cell.add_theme_constant_override("separation", 4); rr.add_child(cell)
+			cell.add_child(Icons.rect(Weapons.make(Roster.IRON.get(t, "철검")), 40))
+			var tn = ItemMenus.label(Weapons.TYPE_NAMES.get(int(t), "?"), 22, TXT); tn.autowrap_mode = TextServer.AUTOWRAP_OFF; cell.add_child(tn)
+			var vv = VBoxContainer.new(); cell.add_child(vv)
+			var lt = ItemMenus.label(u.rank_letter(t), 26, Color8(150, 225, 255)); lt.autowrap_mode = TextServer.AUTOWRAP_OFF; vv.add_child(lt)
+			var r0 = maxi(0, u.rank(t)); var nxt = ClassProfs.WEXP[mini(r0 + 1, 5)]
+			vv.add_child(bar(u.wexp.get(int(t), 0) - ClassProfs.WEXP[r0], maxi(1, nxt - ClassProfs.WEXP[r0]), 60, 8, Color8(150, 225, 255)))
+			vv.alignment = BoxContainer.ALIGNMENT_CENTER
 	# items
 	body.add_child(ItemMenus.label("소지품 (%d/%d)" % [u.inventory.size(), Unit.MAX_ITEMS], 26, Color8(255, 216, 128)))
 	if u.inventory.is_empty(): body.add_child(ItemMenus.label("  없음", 24, DIM))
 	for w in u.inventory:
-		var r = HBoxContainer.new(); body.add_child(r)
+		var r = HBoxContainer.new(); body.add_child(r); r.add_theme_constant_override("separation", 6)
 		var eq = w == u.weapon() or (u.weapon() == null and w == u.staff())
-		var wl = ItemMenus.label(("▶ " if eq else "   ") + "%s  [%s]  위력%d 명중%d" % [w.name, WT_NAMES.get(int(w.type), "?"), w.might, w.hit], 24, TXT if u.can_use(w) else DIM)
+		var ok = u.can_use(w)
+		r.add_child(ItemMenus.label("▶" if eq else " ", 22, GOLD)); r.add_child(Icons.rect(w, 40))
+		var wl = ItemMenus.label("%s  위력%d 명중%d 치명%d 무게%d\n%s" % [w.name, w.might, w.hit, w.crit, w.weight, w.desc if ok else "× " + u.block_reason(w)], 20, TXT if ok else DIM)
 		wl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; wl.autowrap_mode = TextServer.AUTOWRAP_OFF; r.add_child(wl)
-		var ul = ItemMenus.label("%d/%d" % [w.uses, w.max_uses], 24, TXT); ul.custom_minimum_size.x = 80; ul.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; r.add_child(ul)
-		r.add_child(bar(w.uses, w.max_uses, 90, 12, Color8(200, 176, 120)))
+		var ul = ItemMenus.label("%d/%d" % [w.uses, w.max_uses], 22, TXT); ul.custom_minimum_size.x = 76; ul.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; r.add_child(ul)
+		r.add_child(bar(w.uses, w.max_uses, 70, 12, Color8(200, 176, 120)))
 	# skill + status
 	var sk = Skills.LIST.get(u.data.name)
 	body.add_child(ItemMenus.label("개인 스킬", 26, Color8(255, 216, 128)))

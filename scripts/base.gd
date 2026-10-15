@@ -2,11 +2,16 @@ extends Control
 ## 거점 (between-chapter base): 상점 / 수송 / 장비 / 출전 / 출격. Touch UI, all state in Campaign.
 const PRICES = {"철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
 	"파이어": 560, "썬더": 700, "힐": 600, "은검": 1500, "은창": 1200, "은활": 1600, "엘파이어": 1200, "멘드": 1000}
-const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드"]  # unlocked after ch2 clear
+const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러소드", "킬러랜스", "킬러보우", "피지오"]  # unlocked after ch2 clear
+## Utility weapons: sold from the Ch2 base onward (after Ch1 clear).
+const UTILITY = {"투창": 750, "손도끼": 600, "아머킬러": 900, "호스슬레이어": 950, "볼트": 900, "윈드소드": 1100, "해머": 800,
+	"킬러소드": 1300, "킬러랜스": 1200, "킬러보우": 1400, "피지오": 1500}
 var body: VBoxContainer; var gold_lbl: Label; var title: Label
 var sel_unit = ""
 
 func _ready() -> void:
+	if "ch2" in preload("res://scripts/battle.gd").demo_flags() and Campaign.chapter == "ch1":   # dev: #base+ch2 shows the Ch2 shop
+		Campaign.chapter = "ch2"; Campaign.cleared = ["ch1"]; Campaign.gold = 3000
 	Campaign.ensure_roster()
 	var bg = ColorRect.new(); add_child(bg); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); bg.color = Color8(24, 20, 40)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -20,7 +25,7 @@ func _ready() -> void:
 	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["상태", _status], ["저장", _save], ["설정", func(): Menus.settings(self)],
 			["타이틀", func(): Menus.confirm(self, "타이틀로 돌아갈까요?\n(거점 상태는 자동 저장됩니다)", "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))], ["출격 ▶", _sortie]]:
 		var b = ItemMenus.big(t[0], 88, 28); b.name = "T_" + t[0].replace(" ▶", ""); b.pressed.connect(t[1]); tabs.add_child(b)
-	var sc = ScrollContainer.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
+	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
 	body = VBoxContainer.new(); body.size_flags_horizontal = Control.SIZE_EXPAND_FILL; body.add_theme_constant_override("separation", 8); sc.add_child(body)
 	_refresh_head(); _shop()
 	SaveManager.autosave(Campaign.chapter, 0, {"campaign": Campaign.to_dict(), "battle": {}})
@@ -50,18 +55,27 @@ func _shop() -> void:
 	var line = ItemMenus.label("상인: \"그림자 놈들 때문에 장사가 말이 아니야. 좋은 물건 있을 때 사 가!\"", 26, Color8(255, 232, 176))
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(line)
 	body.add_child(ItemMenus.label("구입한 무기는 수송대로 보냅니다.", 22, Color8(180, 180, 200)))
-	for n in PRICES:
+	for n in stock():
 		var locked = n in SILVER and not "ch2" in Campaign.cleared
 		var w = Weapons.make(n)
-		var b = ItemMenus.big("%s   위력%d 명중%d 무게%d 내구%d   %dG%s" % [n, w.might, w.hit, w.weight, w.max_uses, PRICES[n], "  (2장 이후)" if locked else ""], 80, 24)
-		b.disabled = locked or Campaign.gold < PRICES[n]
+		var b = ItemMenus.big("%s  %dG%s\n위력%d 명중%d 치명%d 무게%d 내구%d · %s" % [n, price(n), "  (2장 클리어 후)" if locked else "", w.might, w.hit, w.crit, w.weight, w.max_uses, Weapons.effect_text(w)], 96, 22)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w); b.name = "Buy_" + n
+		b.disabled = locked or Campaign.gold < price(n)
 		b.pressed.connect(func(): buy(n); _shop())
 		body.add_child(b)
 
+static func price(n: String) -> int: return PRICES.get(n, UTILITY.get(n, 9999))
+
+func stock() -> Array:
+	var out = PRICES.keys()
+	if Campaign.chapter != "ch1": out.append_array(UTILITY.keys())
+	return out
+
 func buy(n: String) -> bool:
-	if Campaign.gold < PRICES[n] or (n in SILVER and not "ch2" in Campaign.cleared): return false
+	if not n in stock(): return false
+	if Campaign.gold < price(n) or (n in SILVER and not "ch2" in Campaign.cleared): return false
 	if Campaign.convoy.size() >= Campaign.CONVOY_MAX: return false
-	Campaign.gold -= PRICES[n]; Campaign.to_convoy(Weapons.make(n)); Sfx.play("levelup"); return true
+	Campaign.gold -= price(n); Campaign.to_convoy(Weapons.make(n)); Sfx.play("levelup"); return true
 
 # ---------------- 수송 (pick unit, then deposit/withdraw)
 func _convoy() -> void:
@@ -102,7 +116,7 @@ func _equip_unit() -> void:
 	for w in u.inventory:
 		var h = HBoxContainer.new(); body.add_child(h)
 		var usable = u.can_use(w)
-		var b = ItemMenus.big(("▶ " if w == u.weapon() or w == u.staff() and u.weapon() == null else "") + ItemMenus.item_str(w) + ("" if usable else "  (사용 불가)"), 80, 24)
+		var b = ItemMenus.weapon_btn(w, u, "▶ " if w == u.weapon() or w == u.staff() and u.weapon() == null else "")
 		b.disabled = not usable or w.is_staff()
 		var wref = w
 		b.pressed.connect(func(): equip_item(sel_unit, u.inventory.find(wref)); _equip_unit())

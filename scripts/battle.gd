@@ -26,6 +26,7 @@ var deployed = []
 var busy = false
 var danger_on = false
 var anim_on = true
+var fc_panel: Panel; var unit_wicon: TextureRect
 var btn_status: Button; var btn_menu: Button
 var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
 var drag_from = Vector2.ZERO; var dragging = false; var press_pos = Vector2.ZERO; var pressed = false
@@ -80,6 +81,7 @@ func _ready() -> void:
 	tm.start_player_phase()
 	if "camtop" in demo: cam.position = Vector2(grid.pixel_size().x - _view_size().x, 0)   # dev: screenshot top-right of map
 	if "combat" in demo: _demo_combat.call_deferred()
+	if "forecast" in demo: _demo_forecast.call_deferred()
 	if "--gameover-demo" in OS.get_cmdline_user_args():
 		for u in units: if u.team == 0: u.hp = 0
 		_check_end(); game_over._open_picker()
@@ -139,6 +141,9 @@ func _build_ui() -> void:
 	unit_port = TextureRect.new(); unit_win.add_child(unit_port); unit_port.position = Vector2(10, 10); unit_port.size = Vector2(100, 100)
 	unit_port.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; unit_port.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	unit_lbl = Label.new(); unit_win.add_child(unit_lbl); unit_lbl.position = Vector2(120, 8); unit_lbl.add_theme_font_size_override("font_size", 22)
+	unit_wicon = Icons.rect(null, 32); unit_win.add_child(unit_wicon); unit_wicon.position = Vector2(120, 76); unit_wicon.size = Vector2(32, 32)
+	fc_panel = Panel.new(); ui.add_child(fc_panel); fc_panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 248)))
+	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 300); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
 	terrain_win.visible = false; unit_win.visible = false
 	for w in [terrain_win, unit_win]: w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new(); ui.add_child(banner); banner.add_theme_font_size_override("font_size", 64); banner.visible = false
@@ -164,7 +169,7 @@ func _restore(r: Dictionary) -> void:
 	for d in r.units:
 		var c = Vector2i(int(d.cell[0]), int(d.cell[1])); var u: Unit
 		if int(d.team) == 0:
-			u = Roster.make_unit(d.name, 0, c, {"class": d["class"], "level": d.level, "exp": d.exp, "stats": d.stats, "move_bonus": d.get("move_bonus", 0), "items": d.items})
+			u = Roster.make_unit(d.name, 0, c, {"class": d["class"], "level": d.level, "exp": d.exp, "stats": d.stats, "move_bonus": d.get("move_bonus", 0), "items": d.items, "wexp": d.get("wexp", {})})
 		else:
 			u = Roster.make_unit(d.get("kind", d["class"]), 1, c); u.data.name = d.name; u.data.tags = PackedStringArray(["dark"])
 			u.level = int(d.level)
@@ -278,7 +283,8 @@ func _dist(a: Vector2i, b: Vector2i) -> int: return abs(a.x - b.x) + abs(a.y - b
 
 func _heal_targets(u: Unit) -> Array:
 	if u.staff() == null: return []
-	return units.filter(func(o): return o.team == u.team and o != u and o.hp > 0 and o.hp < o.stats.hp and _dist(o.cell, u.cell) == 1)
+	var st = u.staff()
+	return units.filter(func(o): return o.team == u.team and o != u and o.hp > 0 and o.hp < o.stats.hp and _dist(o.cell, u.cell) >= st.min_range and _dist(o.cell, u.cell) <= st.max_range)
 
 func _occ(u: Unit) -> Array:
 	var occ = {}; var block = {}
@@ -299,7 +305,8 @@ func _show_unit_win(u: Unit) -> void:
 	if u == null: unit_win.visible = false; return
 	unit_port.texture = Sprites.portrait(u.data.name) if Sprites.portrait(u.data.name) else Sprites.unit_tex(u)
 	var w = u.weapon()
-	unit_lbl.text = "%s  Lv%d\nHP %d/%d\n%s" % [u.data.name, u.level, u.hp, u.stats.hp, (w.name + " %d" % w.uses) if w else "-"]
+	unit_lbl.text = "%s  Lv%d\nHP %d/%d\n     %s" % [u.data.name, u.level, u.hp, u.stats.hp, ("%s %d%s" % [w.name, w.uses, (" [%s]" % u.rank_letter(w.type)) if u.team == 0 else ""]) if w else "-"]
+	unit_wicon.texture = Icons.of(w if w else u.staff())
 	unit_win.visible = true
 
 # ---------------------------------------------------------------- tap state machine
@@ -318,7 +325,7 @@ func tap(c: Vector2i) -> void:
 		pending_target = null; pending_heal = u
 		var st = selected.staff()
 		info.text = "%s → %s  %s (%d/%d)\nHP %d → %d\n[확인]으로 회복" % [selected.data.name, u.data.name, st.name, st.uses, st.max_uses,
-			u.hp, mini(u.stats.hp, u.hp + st.heal + selected.eff("mag"))]
+			u.hp, mini(u.stats.hp, u.hp + BattleManager.heal_amount(selected, st))]
 		btn_confirm.disabled = false
 		return
 	if u and u.team == 1 and moved:
@@ -344,11 +351,40 @@ func _show_forecast() -> void:
 	var f = BattleManager.forecast(selected, u)
 	selected.flags["moved"] = old
 	info.text = "%s [%s %d]  HP %d→%d  위력 %d%s 명중 %d%% 치명 %d%%\n%s [%s]  HP %d→%d  위력 %s 명중 %s 치명 %s%s\n[확인]=공격%s" % [
-		f.atk_name, f.atk_weapon, f.atk_uses, f.atk_hp_before, f.atk_hp_after, f.atk_dmg, "×2" if f.atk_x2 else "", f.atk_hit, f.atk_crit,
-		f.def_name, u.weapon().name if u.weapon() else "-", f.def_hp_before, f.def_hp_after, "-" if f.def_dmg < 0 else str(f.def_dmg) + ("×2" if f.def_x2 else ""),
+		f.atk_name, f.atk_weapon, f.atk_uses, f.atk_hp_before, f.atk_hp_after, f.atk_dmg, ("×%d" % f.atk_count) if f.atk_count > 1 else "", f.atk_hit, f.atk_crit,
+		f.def_name, u.weapon().name if u.weapon() else "-", f.def_hp_before, f.def_hp_after, "-" if f.def_dmg < 0 else str(f.def_dmg) + (("×%d" % f.def_count) if f.def_count > 1 else ""),
 		"-" if f.def_hit < 0 else str(f.def_hit) + "%", "-" if f.def_crit < 0 else str(f.def_crit) + "%", " 선공!" if f.vantage else "",
 		"  [무기]=변경" if not btn_weapon.disabled else ""]
+	_fill_forecast(f, selected, u)
 	btn_confirm.disabled = false
+
+## GBA-style forecast window: both sides with weapon icons, rank letter + bonuses, effectiveness.
+func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
+	for c in fc_panel.get_children(): c.queue_free()
+	var h = HBoxContainer.new(); fc_panel.add_child(h); h.position = Vector2(14, 10); h.size = Vector2(672, 280); h.add_theme_constant_override("separation", 10)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sides = [[a, f.atk_w, f.atk_hp_before, f.atk_hp_after, f.atk_dmg, f.atk_count, f.atk_hit, f.atk_crit, f.atk_eff, f.atk_bonus, Color8(120, 176, 255)],
+		[d, f.def_w, f.def_hp_before, f.def_hp_after, f.def_dmg, f.def_count, f.def_hit, f.def_crit, f.def_eff, f.def_bonus, Color8(255, 120, 120)]]
+	for sd in sides:
+		var u: Unit = sd[0]; var w: WeaponData = sd[1]
+		var col = PanelContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_stylebox_override("panel", Ornate.frame(Color8(30, 34, 70) if u.team == 0 else Color8(70, 26, 34), sd[10], 3)); h.add_child(col)
+		var v = VBoxContainer.new(); col.add_child(v); v.add_theme_constant_override("separation", 2)
+		var nm = ItemMenus.label(u.data.name, 26, sd[10]); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(nm)
+		var wr = HBoxContainer.new(); v.add_child(wr); wr.add_child(Icons.rect(w, 32))
+		var wl = ItemMenus.label(("%s%s" % [w.name, (" [%s]" % sd[9].rank) if sd[9].rank != "" else ""]) if w else "-", 22); wl.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(wl)
+		var dm = "-" if sd[4] < 0 else (str(sd[4]) + (" ×%d" % sd[5] if sd[5] > 1 else ""))
+		var t = "HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "  특효!" if sd[8] else "",
+			"-" if sd[6] < 0 else "%d%%" % sd[6], "-" if sd[7] < 0 else "%d%%" % sd[7]]
+		var l = ItemMenus.label(t, 22); l.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(l)
+		var b = sd[9]
+		var bt = []
+		if b.might: bt.append("위력+%d" % b.might)
+		if b.hit: bt.append("명중+%d" % b.hit)
+		if b.crit: bt.append("치명+%d" % b.crit)
+		var bl = ItemMenus.label(("랭크·숙련 " + " ".join(bt)) if bt.size() else (w.desc if w else ""), 18, Color8(255, 216, 128)); v.add_child(bl)
+		for c in v.get_children() + wr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fc_panel.visible = true
 
 func _cycle_weapon() -> void:
 	if selected == null or pending_target == null: return
@@ -433,6 +469,8 @@ func _on_confirm() -> void:
 		await _animate(a, d)
 		log.append_array(_handle_kills(a, d))
 		info.text = "\n".join(log)
+	for r in BattleManager.rank_ups: Menus.toast(ui, r); Sfx.play("levelup")
+	if pending_heal == null and fc_panel: fc_panel.visible = false
 	a.flags["moved"] = false
 	busy = false
 	_finish_unit(a)
@@ -510,6 +548,7 @@ func _finish_unit(u: Unit) -> void:
 func _clear(reset_text = true) -> void:
 	selected = null; pending_target = null; pending_heal = null; moved = false; pending_dest = Vector2i(-1, -1)
 	grid.highlight_move = []; grid.highlight_attack = []; grid.highlight_heal = []; grid.arrow = []; grid.queue_redraw()
+	if fc_panel: fc_panel.visible = false
 	for b in [btn_confirm, btn_cancel, btn_weapon, btn_convoy, btn_open]: b.disabled = true
 	if reset_text: info.text = "유닛을 탭하세요 (드래그=화면 이동)"
 
@@ -665,6 +704,15 @@ func _retry_same() -> void:
 
 func _retry_swap(lineup: Array) -> void:
 	Campaign.deploy = lineup; Campaign.save_campaign(); get_tree().reload_current_scene()
+
+## Dev (#ch2 forecast): 아린 with 아머킬러 (rank C) next to the armored enemy, forecast open.
+func _demo_forecast() -> void:
+	await get_tree().create_timer(0.8).timeout
+	var a = _unit_named("아린")
+	var e = units.filter(func(u): return u.team == 1 and "armor" in u.tags() and not u.boss)
+	if e.is_empty(): return
+	a.wexp[0] = 70; a.inventory.push_front(Weapons.make("아머킬러")); a.cell = e[0].cell + Vector2i(0, 1); a.position = grid.cell_to_pos(a.cell); _focus(a.cell)
+	_select(a); moved = true; grid.highlight_move = []; tap(e[0].cell)
 
 func _demo_combat() -> void:
 	await get_tree().create_timer(1.6).timeout

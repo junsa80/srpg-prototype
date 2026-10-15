@@ -34,7 +34,7 @@ func record_progress(u: Unit, persist = true) -> void:
 	var st = u.stats.duplicate()
 	if u.awakened:
 		for s in st: st[s] -= AWAKEN_HP if s == "hp" else AWAKEN_BONUS
-	roster[u.data.name] = {"class": u.unit_class.name, "level": u.level, "exp": u.exp, "stats": st, "move_bonus": u.move_bonus, "items": u.inventory.map(func(w): return w.to_dict())}
+	roster[u.data.name] = {"class": u.unit_class.name, "level": u.level, "exp": u.exp, "stats": st, "move_bonus": u.move_bonus, "wexp": u.wexp, "items": u.inventory.map(func(w): return w.to_dict())}
 	if persist: save_campaign()
 
 func record_defeat(chapter: String, deployed: Array) -> void:

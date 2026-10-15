@@ -5,12 +5,12 @@ class_name EnemyAI extends RefCounted
 
 static func expected(e: Unit, f: Unit) -> Dictionary:
 	var fc = BattleManager.forecast(e, f)
-	var hits = 2 if fc.atk_x2 else 1
+	var hits = maxi(1, fc.atk_count)
 	var exp_dmg = mini(f.hp, fc.atk_dmg * hits) * fc.atk_hit / 100.0
 	var p_kill = 0.0
 	if fc.def_hp_after == 0: p_kill = pow(fc.atk_hit / 100.0, hits if fc.atk_dmg * 1 < f.hp else 1)
 	var taken = 0.0
-	if fc.def_dmg > 0: taken = fc.def_dmg * (2 if fc.def_x2 else 1) * fc.def_hit / 100.0
+	if fc.def_dmg > 0: taken = fc.def_dmg * maxi(1, fc.def_count) * fc.def_hit / 100.0
 	return {"score": exp_dmg + p_kill * 40.0 - taken * 0.5, "fc": fc}
 
 static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:

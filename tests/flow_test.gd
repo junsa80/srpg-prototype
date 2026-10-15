@@ -32,7 +32,7 @@ func _ready() -> void:
 	kael.hp = 5; kael.cell = sera.cell + Vector2i(0, -1)
 	ch2.tap(sera.cell); await ch2._on_confirm(); ch2.tap(kael.cell); var preview = ch2.info.text; await ch2._on_confirm()
 	print("heal preview: ", preview.replace("\n", " | "), " -> 카엘 hp ", kael.hp, " 힐 uses ", sera.staff().uses)
-	ok = ok and kael.hp == 5 + 10 + sera.eff("mag") and sera.staff().uses == 29 and sera.has_acted
+	ok = ok and kael.hp == 5 + BattleManager.heal_amount(sera, sera.staff()) and sera.staff().uses == 29 and sera.has_acted
 	for u in ch2.units: if u.team == 1: u.hp = 0
 	ch2._check_end()
 	ok = ok and not Campaign.attempts.has("ch1")

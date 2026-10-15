@@ -6,6 +6,7 @@ static var rng = RandomNumberGenerator.new()
 ## Structured record of the last resolve()/heal() for the animated combat scene.
 static var events: Array = []    # {type:"strike", x, y, hit, crit, dmg, x_hp, y_hp, broke} | {type:"heal", ...}
 static var start_hp = {}
+static var rank_ups: Array = []  # ["아린 검 랭크 C!"] from the last resolve()/heal()
 static var exp_events: Array = [] # {unit, gained, before, after, level_before, ups:[gains]}
 
 static func tri(a: Unit, d: Unit) -> int:
@@ -16,8 +17,24 @@ static func tri(a: Unit, d: Unit) -> int:
 static func attack_speed(u: Unit) -> int:
 	var w = u.weapon()
 	if w == null: return u.eff("spd")
+	if w.light: return u.eff("spd")
 	var burden = w.weight - (u.eff("mag") if w.magic else u.eff("str")) - (Skills.weight_relief(u) if w.magic else 0)
 	return u.eff("spd") - maxi(0, burden)
+
+## Weapon-rank bonus [might, hit, crit] (players only) + class proficiency.
+static func bonus(a: Unit) -> Dictionary:
+	var w = a.weapon()
+	if w == null: return {"might": 0, "hit": 0, "crit": 0, "rank": ""}
+	var rb = ClassProfs.RANK_BONUS[a.rank(w.type)] if a.team == 0 and a.rank(w.type) >= 0 else [0, 0, 0]
+	var p = ClassProfs.prof(a.unit_class.name, w.type)
+	return {"might": rb[0] + p.get("might", 0), "hit": rb[1] + p.get("hit", 0), "crit": rb[2] + p.get("crit", 0),
+		"rank": a.rank_letter(w.type) if a.team == 0 else ""}
+
+static func is_effective(a: Unit, d: Unit) -> bool:
+	var w = a.weapon()
+	if w == null or w.effective.is_empty(): return false
+	for t in d.tags(): if t in w.effective: return true
+	return false
 
 static func avoid(d: Unit) -> int:
 	var terrain = Skills.grid.terrain_bonus(d.cell)[1] if Skills.grid else 0
@@ -26,18 +43,19 @@ static func avoid(d: Unit) -> int:
 static func hit_rate(a: Unit, d: Unit) -> int:
 	var w = a.weapon()
 	if w == null: return 0
-	var h = w.hit + a.eff("skl") * 2 + a.eff("lck") / 2 + tri(a, d) * TRIANGLE_HIT + Skills.hit_mod(a, d)
+	var h = w.hit + a.eff("skl") * 2 + a.eff("lck") / 2 + tri(a, d) * TRIANGLE_HIT + Skills.hit_mod(a, d) + bonus(a).hit
 	return clampi(h - avoid(d), 0, 100)
 
 static func crit_rate(a: Unit, d: Unit) -> int:
 	var w = a.weapon()
 	if w == null: return 0
-	return clampi(w.crit + a.eff("skl") / 2 + Skills.crit_mod(a) - d.eff("lck"), 0, 100)
+	return clampi(w.crit + a.eff("skl") / 2 + Skills.crit_mod(a) + bonus(a).crit - d.eff("lck"), 0, 100)
 
 static func damage(a: Unit, d: Unit, initiator = true, strike_no = 1) -> int:
 	var w = a.weapon()
 	if w == null: return 0
-	var base = a.atk() + tri(a, d) * TRIANGLE_DMG - Skills.defense_vs(a, d, w.magic)
+	var power = (a.eff("mag") if w.magic else a.eff("str")) + w.might * (3 if is_effective(a, d) else 1) + bonus(a).might
+	var base = power + tri(a, d) * TRIANGLE_DMG - Skills.defense_vs(a, d, w.magic)
 	return maxi(0, maxi(0, base) + Skills.dmg_mod(a, d, w.magic, initiator, strike_no))
 
 static func doubles(a: Unit, d: Unit) -> bool:
@@ -70,7 +88,16 @@ static func strike_order(a: Unit, d: Unit, extra_a = false, extra_d = false) -> 
 		if counter: o.append([d, a, false])
 	if doubles(a, d) or extra_a: o.append([a, d, true])
 	elif counter and (doubles(d, a) or extra_d): o.append([d, a, false])
-	return o
+	# brave weapons: each of that unit's strikes happens twice in a row
+	var out = []
+	for s in o:
+		out.append(s)
+		var w = s[0].weapon()
+		if w and w.brave: out.append(s)
+	return out
+
+static func strikes(x: Unit, a: Unit, d: Unit) -> int:
+	return strike_order(a, d).filter(func(s): return s[0] == x).size()
 
 static func _extra(u: Unit, foe: Unit) -> bool:
 	var c = Skills.extra_double_chance(u)
@@ -92,7 +119,10 @@ static func forecast(a: Unit, d: Unit) -> Dictionary:
 		"def_dmg": damage(d, a, false, 1) if counter else -1, "def_hit": hit_rate(d, a) if counter else -1,
 		"def_crit": crit_rate(d, a) if counter else -1, "def_x2": counter and doubles(d, a),
 		"atk_weapon": a.weapon().name if a.weapon() else "-", "atk_uses": a.weapon().uses if a.weapon() else 0,
-		"vantage": counter and Skills.vantage(d, a), "triangle": tri(a, d)}
+		"vantage": counter and Skills.vantage(d, a), "triangle": tri(a, d),
+		"atk_count": strikes(a, a, d), "def_count": strikes(d, a, d) if counter else 0,
+		"atk_eff": is_effective(a, d), "def_eff": counter and is_effective(d, a),
+		"atk_bonus": bonus(a), "def_bonus": bonus(d), "atk_w": a.weapon(), "def_w": d.weapon()}
 
 ## FE-like EXP.
 static func exp_for(u: Unit, foe: Unit, dealt: bool, killed: bool) -> int:
@@ -136,7 +166,7 @@ static func resolve(a: Unit, d: Unit) -> Array:
 		if x.hp <= 0 or y.hp <= 0: break
 		var w = x.weapon()
 		if w == null: continue
-		n[x] += 1
+		n[x] += 1; x.weapon_used = w
 		var ev = {"type": "strike", "x": x, "y": y, "hit": false, "crit": false, "dmg": 0}
 		if roll_hit(hit_rate(x, y)):
 			var dm = damage(x, y, s[2], n[x]); var crit = rng.randi_range(0, 99) < crit_rate(x, y)
@@ -150,18 +180,34 @@ static func resolve(a: Unit, d: Unit) -> Array:
 		else: log.append("%s 빗나감" % x.data.name)
 		ev["x_hp"] = x.hp; ev["y_hp"] = y.hp; events.append(ev)
 		if x.use_item(w): log.append("%s의 %s 파손!" % [x.data.name, w.name])
+	rank_ups = []
+	for u in n:
+		if n[u] > 0 and u.hp > 0 and u.weapon_used != null: _wexp(u, u.weapon_used.type, ClassProfs.WEXP_PER_COMBAT, log)
+	for u in [a, d]: u.weapon_used = null
 	log.append_array(award_exp(a, d, a_hp0, d_hp0))
 	return log
+
+static func _wexp(u: Unit, t: int, pts: int, log: Array) -> void:
+	var r = u.gain_wexp(t, pts)
+	if r != "":
+		var line = "%s %s 랭크 %s 달성!" % [u.data.name, Weapons.TYPE_NAMES.get(t, "?"), r]
+		log.append(line); rank_ups.append(line)
 
 ## Staff heal: amount = staff heal + mag. Returns log.
 static func heal(healer: Unit, target: Unit) -> Array:
 	var st = healer.staff()
 	if st == null: return []
 	events = []; exp_events = []
-	var amt = mini(target.stats.hp - target.hp, st.heal + healer.eff("mag"))
+	var amt = mini(target.stats.hp - target.hp, heal_amount(healer, st))
 	target.hp += amt
 	events.append({"type": "heal", "x": healer, "y": target, "amt": amt, "y_hp": target.hp})
 	var log = ["%s → %s HP +%d (%s)" % [healer.data.name, target.data.name, amt, st.name]]
+	rank_ups = []
+	var t = st.type
 	if healer.use_item(st): log.append("%s 파손!" % st.name)
+	_wexp(healer, t, ClassProfs.WEXP_PER_HEAL, log)
 	log.append_array(give_exp(healer, 11))
 	return log
+
+static func heal_amount(healer: Unit, st: WeaponData) -> int:
+	return st.heal + healer.eff("mag") + ClassProfs.prof(healer.unit_class.name, st.type).get("heal", 0)
