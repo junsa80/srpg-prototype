@@ -41,6 +41,9 @@ CLASS = {
     "드래곤마스터": ("armor", C(80, 104, 64), "lance", {"mount": "wyvern", "helm": True, "cape": C(144, 40, 40)}),
     "성기사": ("tunic", C(240, 236, 228), "lance", {"mount": "horse", "trim": GOLD}), "팔라딘": ("armor", C(64, 96, 184), "lance", {"mount": "horse"}),
     "발키리": ("robe", C(240, 236, 228), "tome", {"mount": "horse", "trim": GOLD}),
+    "그레이트나이트": ("plate", C(56, 80, 160), "lance", {"helm": True, "mount": "horse", "plume": GOLD}), "레인저": ("tunic", C(56, 144, 72), "bow", {"mount": "horse", "cape": C(200, 176, 96)}),
+    "메이지나이트": ("robe", C(120, 64, 192), "tome", {"mount": "horse", "trim": GOLD}), "로그": ("tunic", C(64, 112, 64), "dagger", {"hood": C(48, 80, 48)}),
+    "드래곤나이트": ("armor", C(112, 136, 88), "lance", {"mount": "wyvern", "helm": True, "cape": C(48, 80, 160)}),
     "도적": ("tunic", C(40, 136, 136), "dagger", {"hood": C(40, 104, 104)}), "어쌔신": ("tunic", C(40, 40, 64), "dagger", {"hood": C(32, 32, 48), "scarf": C(176, 32, 48)}),
     "마법사": ("robe", C(120, 64, 192), "tome", {}), "세이지": ("robe", C(96, 48, 160), "tome", {"trim": GOLD, "cape": C(240, 236, 228)}),
     "시스터": ("robe", C(240, 240, 248), "staff", {"veil": C(64, 96, 192), "trim": C(64, 96, 192)}),
@@ -207,7 +210,10 @@ if __name__ == "__main__":
     os.makedirs("assets/units", exist_ok=True); prev = []
     for c in CLASS: class_sheet(c).save("assets/units/%s.png" % c)
     for n, (hair, style, acc, base, promos) in UNITS.items():
-        for c in [base] + promos:
+        BR = {"용병": ["영웅", "검성"], "궁수": ["스나이퍼", "레인저"], "시스터": ["성기사", "비숍"], "마법사": ["세이지", "메이지나이트"],
+              "아머나이트": ["제네럴", "그레이트나이트"], "소셜나이트": ["팔라딘", "그레이트나이트"], "비룡기사": ["드래곤마스터", "드래곤나이트"],
+              "도적": ["어쌔신", "로그"], "전사": ["워리어", "버서커"]}
+        for c in [base] + list(dict.fromkeys(promos + BR.get(base, []))):
             cloth = acc if c == base and acc else None
             im = class_sheet(c, hair, style, cloth); im.save("assets/units/%s@%s.png" % (n, c))
             if c == base: prev.append((n, im))

@@ -73,6 +73,12 @@ func _ready() -> void:
 	print("promote 엘리아: ", el["class"], " items ", el.items)
 	ok = ok and el["class"] == "세이지" and el.items.filter(func(i): return i.name == "힐").size() == 2
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 61")
+	Campaign.roster["노아"].level = 12; base.sel_unit = "노아"; base._promote_pick("노아"); await get_tree().process_frame
+	var bk = base.find_child("Branch_검성", true, false)
+	ok = ok and base.find_child("Branch_영웅", true, false) != null and bk != null
+	if bk: bk.emit_signal("pressed"); await get_tree().process_frame
+	ok = ok and Campaign.roster["노아"]["class"] == "검성" and int(Campaign.roster["노아"].level) == 1
+	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT branch")
 	var pal = Roster.make_unit("카엘", 0, Vector2i.ZERO, Campaign.entry("카엘")); pal.level = 10; pal.promote("제네럴")
 	print("promote 카엘: ", pal.unit_class.name, " items ", pal.inventory.map(func(w): return w.name), " sword usable ", pal.can_use(Weapons.make("철검")))
 	ok = ok and pal.can_use(Weapons.make("철검")) and pal.can_use(Weapons.make("철창")); pal.free()

@@ -223,13 +223,32 @@ func _equip_unit() -> void:
 		var t = ItemMenus.big("→", 80, 30); t.custom_minimum_size.x = 100; t.size_flags_horizontal = 0
 		t.pressed.connect(func(): _trade_pick(u.inventory.find(wref))); h.add_child(t)
 	if u.can_promote():
-		var pb = ItemMenus.big("전직 → %s" % u.unit_class.promotes_to.name, 90, 30)
-		pb.pressed.connect(func(): promote(sel_unit); _equip_unit()); body.add_child(pb)
-		if Roster.ALT_PROMOTE.has(u.unit_class.name):
-			var alt = Roster.ALT_PROMOTE[u.unit_class.name]
-			var pb2 = ItemMenus.big("전직 → %s" % alt, 90, 30)
-			pb2.pressed.connect(func(): promote(sel_unit, alt); _equip_unit()); body.add_child(pb2)
+		var pb = ItemMenus.big("전직 (%s)" % " / ".join(Roster.branches(u.unit_class.name)), 90, 30); pb.name = "Promote"
+		pb.pressed.connect(func(): _promote_pick(sel_unit)); body.add_child(pb)
+	elif u.unit_class.promotes_to != null:
+		body.add_child(ItemMenus.label("전직: Lv%d부터 가능 (Lv20 전직 시 성장분 이득)" % ClassCaps.PROMOTE_MIN_LV, 22, Color8(180, 180, 200)))
 	var back = ItemMenus.big("← 유닛 목록", 80, 26); back.pressed.connect(_equip); body.add_child(back)
+	u.free()
+
+## Promotion branch compare: both classes' bonus, caps, weapons, move, tags.
+func _promote_pick(n: String) -> void:
+	_clear()
+	var u = _unit(n)
+	body.add_child(ItemMenus.label("%s Lv%d %s — 전직할 클래스를 고르세요" % [n, u.level, u.unit_class.name], 28))
+	if u.level < ClassCaps.MAX_LEVEL: body.add_child(ItemMenus.label("Lv%d에 전직하면 남은 레벨업 %d회분 성장을 잃습니다 (레벨 1로 초기화)." % [u.level, ClassCaps.MAX_LEVEL - u.level], 20, Color8(255, 200, 140)))
+	for cn in Roster.branches(u.unit_class.name):
+		var c = Roster.cls(cn); var b = PromotionBonuses.for_class(cn); var cp = ClassCaps.caps(cn)
+		var bon = []
+		for s in Unit.STATS:
+			if b.has(s): bon.append("%s+%d" % [Menus.STAT_NAMES[s], b[s]])
+		var caps = []
+		for s in Unit.STATS: caps.append("%s %d" % [Menus.STAT_NAMES[s], cp.get(s, 0)])
+		var tg = ClassProfs.tags(cn).map(func(t): return Weapons.TAG_NAMES.get(t, t))
+		var txt = "[%s]  이동 %d%s\n무기: %s\n보너스: %s\n상한: %s" % [cn, c.move + int(b.get("move", 0)), ("  " + " ".join(tg.map(func(t): return "[" + t + "]"))) if not tg.is_empty() else "",
+			"·".join(c.weapon_types.map(func(t): return Weapons.TYPE_NAMES.get(int(t), "?"))), ", ".join(bon), " ".join(caps)]
+		var bt = ItemMenus.big(txt, 210, 22); bt.name = "Branch_" + cn; bt.alignment = HORIZONTAL_ALIGNMENT_LEFT; bt.autowrap_mode = TextServer.AUTOWRAP_WORD
+		bt.pressed.connect(func(): promote(n, cn); _equip_unit()); body.add_child(bt)
+	var back = ItemMenus.big("← 취소", 80, 26); back.pressed.connect(_equip_unit); body.add_child(back)
 	u.free()
 
 func equip_item(n: String, idx: int) -> void:

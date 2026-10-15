@@ -22,7 +22,10 @@ const CLASSES = {
 	"워리어": [6, {}, "", [W.AXE, W.BOW]], "버서커": [6, {}, "", [W.AXE]],
 	"영웅": [6, {}, "", [W.SWORD, W.AXE]], "스나이퍼": [6, {}, "", [W.BOW]], "발키리": [6, {}, "", [W.LANCE, W.SWORD, W.TOME, W.STAFF]],
 	"세이지": [6, {}, "", [W.TOME, W.STAFF]], "제네럴": [5, {}, "", [W.SWORD, W.LANCE]],
-	"팔라딘": [7, {}, "", [W.SWORD, W.LANCE]], "어쌔신": [7, {}, "", [W.SWORD]], "검성": [6, {}, "", [W.SWORD]],
+	"팔라딘": [7, {}, "", [W.SWORD, W.LANCE]],
+	# 2nd promotion branches (FE8): 그레이트나이트 (아머나이트/소셜나이트 공통, 중갑+기마), 레인저(기마 궁), 메이지나이트(기마 마도), 로그(도적), 드래곤나이트(비행 고속)
+	"그레이트나이트": [6, {}, "", [W.SWORD, W.LANCE, W.AXE]], "레인저": [7, {}, "", [W.SWORD, W.BOW]],
+	"메이지나이트": [7, {}, "", [W.TOME, W.STAFF]], "로그": [7, {}, "", [W.SWORD]], "드래곤나이트": [8, {}, "", [W.LANCE, W.SWORD]], "어쌔신": [7, {}, "", [W.SWORD]], "검성": [6, {}, "", [W.SWORD]],
 	# enemies
 	"그림자 병사": [5, {"hp": 18, "str": 7, "mag": 0, "skl": 3, "spd": 4, "lck": 0, "def": 3, "res": 0}, "", []],
 	"그림자 창병": [4, {"hp": 19, "str": 6, "mag": 0, "skl": 4, "spd": 3, "lck": 0, "def": 5, "res": 0}, "", []],
@@ -56,7 +59,8 @@ const COLORS = {"용병": Color(0.2, 0.45, 0.95), "궁수": Color(0.2, 0.7, 0.3)
 	"그림자 술사": Color(0.5, 0.05, 0.5), "그림자 지휘관": Color(0.15, 0.0, 0.15),
 	"그림자 중갑병": Color(0.3, 0.3, 0.4), "그림자 기병": Color(0.4, 0.2, 0.1), "그림자 비룡": Color(0.2, 0.3, 0.2)}
 ## Alternate promotion (branch): class -> second option (first is CLASSES[..][2]).
-const ALT_PROMOTE = {"전사": "버서커", "시스터": "비숍"}
+const ALT_PROMOTE = {"전사": "버서커", "시스터": "비숍", "용병": "검성", "궁수": "레인저", "마법사": "메이지나이트", "도적": "로그",
+	"아머나이트": "그레이트나이트", "소셜나이트": "그레이트나이트", "비룡기사": "드래곤나이트"}
 ## Class growth bonuses for NEW classes only (existing classes keep ClassData defaults).
 ## With default personal growths {10,10,0,10,10,20,5,5} 전사 totals 85/55/0/40/40/30/35/15 (hp/str/mag/skl/spd/lck/def/res).
 const GROWTHS = {
@@ -64,7 +68,7 @@ const GROWTHS = {
 	"워리어": {"hp": 75, "str": 45, "mag": 0, "skl": 30, "spd": 30, "lck": 10, "def": 30, "res": 10},
 	"버서커": {"hp": 75, "str": 45, "mag": 0, "skl": 30, "spd": 30, "lck": 10, "def": 30, "res": 10},
 }
-const THIEF_CLASSES = ["도적", "어쌔신"]
+const THIEF_CLASSES = ["도적", "어쌔신", "로그"]
 
 ## Promotion branches (first = CLASSES[..][2]).
 static func branches(base: String) -> Array:
@@ -87,9 +91,10 @@ static func cls(n: String) -> ClassData:
 static func color_for(class_name_: String) -> Color:
 	return COLORS.get(class_name_, COLORS.get(_base_of(class_name_), Color.GRAY))
 
+
 static func _base_of(promoted: String) -> String:
 	for k in CLASSES:
-		if CLASSES[k][2] == promoted: return k
+		if promoted in branches(k): return k
 	return ""
 
 const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "end": 6}

@@ -329,6 +329,12 @@ func _ready() -> void:
 	print("NEWUNITS ", gr.inventory.map(func(w): return w.name), ri.inventory.map(func(w): return w.name), ri.rank_letter(1), ri.rank_letter(2), gr.stats, " ", Roster.make_unit("카스", 0, Vector2i.ZERO).stats, " ", ri.stats)
 	gr.free(); ri.free()
 	kael.free(); sk.free()
+	var bases = ["용병", "궁수", "시스터", "마법사", "아머나이트", "소셜나이트", "비룡기사", "도적", "전사"]; var br_ok = true
+	for b9 in bases:
+		var br = Roster.branches(b9); br_ok = br_ok and br.size() == 2
+		for p9 in br: br_ok = br_ok and Roster.CLASSES.has(p9) and not ClassCaps.caps(p9).is_empty() and not PromotionBonuses.for_class(p9).is_empty() and Weapons.LOADOUT.has(p9) and ClassProfs.START_RANK.has(p9)
+		print("BRANCH ", b9, " -> ", br)
+	check(br_ok, "every base class has 2 complete branches")
 	# caps + promotion timing
 	var fg0 = Unit.fixed_growth; Unit.fixed_growth = true
 	var a10 = Roster.make_unit("노아", 0, Vector2i.ZERO); var a20 = Roster.make_unit("노아", 0, Vector2i.ZERO)

@@ -22,10 +22,12 @@ const PROF = {
 	"팔라딘": {W.SWORD: {"hit": 5}, W.LANCE: {"hit": 5}},
 	"어쌔신": {W.SWORD: {"crit": 20}},
 	"검성": {W.SWORD: {"hit": 15, "crit": 10}},
+	"그레이트나이트": {W.LANCE: {"hit": 5}, W.SWORD: {}, W.AXE: {}}, "레인저": {W.BOW: {"hit": 5}, W.SWORD: {"hit": 5}},
+	"메이지나이트": {W.TOME: {"hit": 5}, W.STAFF: {"heal": 2}}, "로그": {W.SWORD: {"crit": 10}}, "드래곤나이트": {W.LANCE: {"hit": 10}, W.SWORD: {"hit": 5}},
 }
 ## Classes that may only use light weapons of a type (weight <= LIGHT_WT or light trait).
 ## 단검 specialists: bonus when wielding a dagger (sword subtype).
-const DAGGER_PROF = {"도적": {"hit": 10, "crit": 10}, "어쌔신": {"hit": 10, "crit": 15}}
+const DAGGER_PROF = {"도적": {"hit": 10, "crit": 10}, "어쌔신": {"hit": 10, "crit": 15}, "로그": {"hit": 15, "crit": 10}}
 const LIGHT_ONLY = {"도적": [W.SWORD]}
 ## Classes whose sword use is daggers only (호신용). No dagger bonus (DAGGER_PROF is thieves only).
 const DAGGER_ONLY = {"시스터": [W.SWORD]}
@@ -37,9 +39,12 @@ const START_RANK = {
 	"영웅": {W.SWORD: 2, W.AXE: 1}, "스나이퍼": {W.BOW: 2}, "발키리": {W.LANCE: 2, W.SWORD: 1, W.TOME: 1, W.STAFF: 2},
 	"세이지": {W.TOME: 2, W.STAFF: 1}, "제네럴": {W.LANCE: 2, W.SWORD: 1}, "팔라딘": {W.SWORD: 1, W.LANCE: 1},
 	"어쌔신": {W.SWORD: 2}, "검성": {W.SWORD: 3},
+	"그레이트나이트": {W.LANCE: 2, W.SWORD: 1, W.AXE: 1}, "레인저": {W.BOW: 2, W.SWORD: 1}, "메이지나이트": {W.TOME: 2, W.STAFF: 1},
+	"로그": {W.SWORD: 2}, "드래곤나이트": {W.LANCE: 2, W.SWORD: 1},
 }
 ## Unit tags for weapon effectiveness.
 const TAGS = {"아머나이트": ["armor"], "제네럴": ["armor"], "소셜나이트": ["cavalry"], "비룡기사": ["flying"], "드래곤마스터": ["flying"], "팔라딘": ["cavalry"], "발키리": ["cavalry"], "성기사": ["cavalry"],
+	"그레이트나이트": ["armor", "cavalry"], "레인저": ["cavalry"], "메이지나이트": ["cavalry"], "드래곤나이트": ["flying"],
 	"그림자 중갑병": ["armor"], "그림자 기병": ["cavalry"], "그림자 비룡": ["flying"], "그림자 지휘관": ["armor"], "바르가스": ["armor"],
 	"그림자 기사": ["armor", "cavalry"], "그림자 비룡기사": ["flying"]}
 ## Weapon EXP thresholds for E D C B A S.

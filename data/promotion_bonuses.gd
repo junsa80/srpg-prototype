@@ -15,6 +15,8 @@ const TABLE = {
 	"성기사": {"hp": 4, "str": 2, "def": 2, "res": 1},   # 이동 7은 클래스 자체 값   # 시스터 → 기마: 이동 6(+1)
 	"비숍": {"hp": 3, "mag": 3, "skl": 1, "res": 3},
 	"드래곤마스터": {"hp": 4, "str": 2, "spd": 1, "def": 2},
+	"그레이트나이트": {"hp": 3, "str": 2, "skl": 2, "spd": 2, "def": 1, "res": 1},   # FE8 그레이트나이트 기준
+	"드래곤나이트": {"hp": 3, "str": 1, "skl": 3, "spd": 3, "def": 1, "res": 1},
 	"발키리": {"hp": 3, "mag": 2, "skl": 2, "res": 3, "move": 1},
 }
 static func for_class(n: String) -> Dictionary: return TABLE.get(n, {})
