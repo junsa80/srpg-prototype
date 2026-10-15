@@ -308,5 +308,10 @@ func _ready() -> void:
 	st.find_child("Next", true, false).emit_signal("pressed"); st.find_child("Jump", true, false).emit_signal("pressed"); await get_tree().process_frame
 	check(bn.grid.cursor == al[1].cell, "status ▶ + 위치로 moves cursor")
 	bn.queue_free(); await get_tree().process_frame
+	# chibi sprites: name@class > name > class > procedural
+	var sp1 = Roster.make_unit("세라", 0, Vector2i.ZERO); var sp2 = Roster.make_unit("그림자 기병", 1, Vector2i.ZERO)
+	check(Sprites.user_sheet(sp1).resource_path.ends_with("세라@시스터.png") and Sprites.user_sheet(sp2).resource_path.ends_with("그림자 기병.png"), "sprite loader: 세라@시스터, enemy class sheet")
+	sp1.level = 10; sp1.promote(); check(Sprites.user_sheet(sp1).resource_path.ends_with("세라@성기사.png"), "sprite follows promotion")
+	sp1.free(); sp2.free()
 	print("CAMPAIGNTEST ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	get_tree().quit(0 if fails == 0 else 1)

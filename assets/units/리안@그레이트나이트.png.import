@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dg4rlr6nev6kd"
-path="res://.godot/imported/아린.png-0e3de72e9489123ed29669cacbe4fc8c.ctex"
+uid="uid://6cybqaqpyoe0"
+path="res://.godot/imported/리안@그레이트나이트.png-c98ff7aa88cc5e80ed0aee0aff4c20b9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/아린.png"
-dest_files=["res://.godot/imported/아린.png-0e3de72e9489123ed29669cacbe4fc8c.ctex"]
+source_file="res://assets/units/리안@그레이트나이트.png"
+dest_files=["res://.godot/imported/리안@그레이트나이트.png-c98ff7aa88cc5e80ed0aee0aff4c20b9.ctex"]
 
 [params]
 

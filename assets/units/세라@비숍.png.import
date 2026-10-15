@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c8cb8sbjyrdq6"
-path="res://.godot/imported/리나.png-984e58a05f44bde705c5756af498d19b.ctex"
+uid="uid://bu0uguodiyoao"
+path="res://.godot/imported/세라@비숍.png-533c8f84d15d8f6adeaf55d170889812.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/units/리나.png"
-dest_files=["res://.godot/imported/리나.png-984e58a05f44bde705c5756af498d19b.ctex"]
+source_file="res://assets/units/세라@비숍.png"
+dest_files=["res://.godot/imported/세라@비숍.png-533c8f84d15d8f6adeaf55d170889812.ctex"]
 
 [params]
 

@@ -62,6 +62,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - **무기 숙련**: 도적 = 단검 특화(검 하위 분류 `dagger`, 도적 명중+10 치명+10 / 어쌔신 명중+10 치명+15). 시스터 = 지팡이 주무기 + 단검(E)만, 단검 보너스 없음.
 - **회복 병종**: 시스터(기본, 도보 이동5) → 성기사(상급 기마 이동7, 창/검/지팡이) 또는 비숍(지팡이+빛 마법). 세라 = 시스터. 발키리는 데이터에 남아 있음(구 저장의 전직 세라용, 신규 진입 경로 없음).
 - **저장 버전**: `Campaign.GAME_VERSION`. 클래스/맵이 바뀌는 업데이트마다 올리고 `Campaign.migrate_entry()`에 이전 규칙 추가. 구버전 저장 → 1회 "업데이트 재시작" 제안 (`update_restart()`: ★·enemy_lv 그대로, 난이도 보통, 전부 유지).
+- **맵 스프라이트**: `tools/chibi.py` 재실행으로 모든 SD 시트 재생성 (유닛 추가 시 UNITS 표에 한 줄). 비룡 클래스 시트는 미리 만들어 둠(아군 비룡 미구현, 제안만).
 - **상점 입고**: `base.gd` BASIC(처음) / STEEL+UTILITY(`ch3` 클리어 후) / SILVER(은·킬러·해커·멘드·피지오, `ch5` 클리어 후). 드롭·상자는 그대로. 필터 `Settings.usable_only` = `Unit.block_reason()` 기준.
 - **맵 확대/축소**: `battle.gd` `set_zoom()/zoom_step()/_pinch_input()`, `Settings.map_zoom`, 단계 `Settings.ZOOM_STEPS`. 카메라는 왼쪽 위 기준, `_clamp_cam`은 화면 크기/배율로 계산.
 - **오디오**: 백그라운드에서 BGM/SFX 일시정지 (`scripts/audio.gd`).
