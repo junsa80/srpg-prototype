@@ -223,6 +223,14 @@ func _ready() -> void:
 	psera.free(); th.free(); bh.queue_free(); await get_tree().process_frame
 	# ---- UI pass: trade / loot / relayout / badge / shop confirm
 	var bt = await _battle("ch2")
+	# map zoom: steps, clamp, tap mapping at any zoom, persisted
+	var zc = Vector2i(3, 4)
+	for z in [0.75, 1.5, 2.0, 1.0]:
+		bt.set_zoom(z); bt._focus(zc); await get_tree().process_frame
+		var sp = bt.get_canvas_transform() * bt.grid.cell_to_pos(zc)
+		check(is_equal_approx(bt.cam.zoom.x, z) and bt.grid.pos_to_cell(bt.get_canvas_transform().affine_inverse() * sp) == zc and Settings.map_zoom == z, "zoom %.2f: tap maps to cell" % z)
+	bt.set_zoom(5.0); check(bt.cam.zoom.x == 2.0, "zoom clamped to 2x"); bt.set_zoom(1.1); check(bt.cam.zoom.x == 1.0, "zoom snaps to step")
+	bt.zoom_step(1); check(bt.cam.zoom.x == 1.25 and bt.find_child("ZoomIn", true, false) != null, "HUD +/- step"); bt.set_zoom(1.0)
 	var ta = _named(bt, "아린"); var tb = bt.units.filter(func(u): return u.team == 0 and u != ta)[0]
 	_put(bt, tb, ta.cell + Vector2i(1, 0))
 	check(tb in bt.trade_partners(ta), "adjacent ally is a trade partner")

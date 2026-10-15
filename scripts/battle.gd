@@ -61,7 +61,7 @@ func _ready() -> void:
 	grid.ground = MAP.get("ground", "grass"); grid.theme = MAP.get("tiles", "")
 	grid.load_map(MAP.rows)
 	Skills.units = units; Skills.grid = grid
-	cam = Camera2D.new(); add_child(cam); cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT; cam.make_current()
+	cam = Camera2D.new(); add_child(cam); cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT; cam.make_current(); cam.zoom = Vector2.ONE * Settings.map_zoom
 	_build_ui()
 	Campaign.ensure_roster()
 	ROSTER_NAMES = Roster.joined_by(CHAPTER)
@@ -192,6 +192,11 @@ func _build_ui() -> void:
 	unit_port.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; unit_port.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	unit_lbl = Label.new(); unit_win.add_child(unit_lbl); unit_lbl.position = Vector2(120, 8); unit_lbl.add_theme_font_size_override("font_size", 22)
 	unit_wicon = Icons.rect(null, 32); unit_win.add_child(unit_wicon); unit_wicon.position = Vector2(120, 76); unit_wicon.size = Vector2(32, 32)
+	var zb = HBoxContainer.new(); ui.add_child(zb); zb.name = "ZoomButtons"; zb.add_theme_constant_override("separation", 8)
+	zb.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT); zb.offset_left = -148; zb.offset_right = -12; zb.offset_top = -PANEL_H - 76; zb.offset_bottom = -PANEL_H - 12
+	for d in [-1, 1]:
+		var b = ItemMenus.big("-" if d < 0 else "+", 64, 40); b.name = "ZoomOut" if d < 0 else "ZoomIn"; b.custom_minimum_size = Vector2(64, 64)
+		b.modulate = Color(1, 1, 1, 0.85); b.pressed.connect(func(): zoom_step(d)); zb.add_child(b)
 	fc_panel = Panel.new(); ui.add_child(fc_panel); fc_panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 248)))
 	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 300); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
 	terrain_win.visible = false; unit_win.visible = false
@@ -259,14 +264,51 @@ func _restore(r: Dictionary) -> void:
 func _view_size() -> Vector2: return get_viewport().get_visible_rect().size - Vector2(0, PANEL_H)
 
 func _clamp_cam() -> void:
-	var vs = _view_size(); var ps = grid.pixel_size()
+	var vs = _view_size() / cam.zoom.x; var ps = grid.pixel_size()   # visible world size at current zoom
 	cam.position.x = clampf(cam.position.x, minf(0, ps.x - vs.x), maxf(0, ps.x - vs.x)) if ps.x > vs.x else (ps.x - vs.x) / 2
 	cam.position.y = clampf(cam.position.y, 0, maxf(0, ps.y - vs.y)) if ps.y > vs.y else 0.0
 
 func _focus(c: Vector2i) -> void:
-	cam.position = grid.cell_to_pos(c) - _view_size() / 2; _clamp_cam()
+	cam.position = grid.cell_to_pos(c) - _view_size() / cam.zoom.x / 2; _clamp_cam()
+
+# ---- map zoom: pinch (touch / trackpad) + HUD -/+ ; snapped to Settings.ZOOM_STEPS so pixels stay crisp
+var touches = {}; var pinch_d0 = 0.0; var pinch_z0 = 1.0
+## Zoom keeping the world point under screen pos `at` fixed.
+func set_zoom(z: float, at = null, snap = true) -> void:
+	if snap:
+		var best = Settings.ZOOM_STEPS[0]
+		for s in Settings.ZOOM_STEPS: if absf(s - z) < absf(best - z): best = s
+		z = best
+	z = clampf(z, Settings.ZOOM_STEPS[0], Settings.ZOOM_STEPS[-1])
+	var sp: Vector2 = at if at != null else _view_size() / 2
+	var world = cam.position + sp / cam.zoom.x
+	cam.zoom = Vector2(z, z); cam.position = world - sp / z; _clamp_cam()
+	if snap and Settings.map_zoom != z: Settings.map_zoom = z; Settings.save()
+func zoom_step(d: int) -> void:
+	var i = Settings.ZOOM_STEPS.find(Settings.map_zoom)
+	if i < 0: i = 1
+	set_zoom(Settings.ZOOM_STEPS[clampi(i + d, 0, Settings.ZOOM_STEPS.size() - 1)])
+func _pinch_input(ev: InputEvent) -> bool:
+	if ev is InputEventMagnifyGesture: set_zoom(cam.zoom.x * ev.factor, ev.position, false); return true
+	if ev is InputEventScreenTouch:
+		if ev.pressed: touches[ev.index] = ev.position
+		else:
+			touches.erase(ev.index)
+			if pinch_d0 > 0 and touches.size() < 2: pinch_d0 = 0.0; set_zoom(cam.zoom.x); pressed = false; dragging = true
+		if touches.size() == 2:
+			var p = touches.values(); pinch_d0 = maxf(1.0, p[0].distance_to(p[1])); pinch_z0 = cam.zoom.x; pressed = false
+		return pinch_d0 > 0
+	if ev is InputEventScreenDrag and touches.has(ev.index):
+		touches[ev.index] = ev.position
+		if touches.size() == 2 and pinch_d0 > 0:
+			var p = touches.values()
+			set_zoom(pinch_z0 * p[0].distance_to(p[1]) / pinch_d0, (p[0] + p[1]) / 2, false); return true
+	return pinch_d0 > 0
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if _pinch_input(ev): return
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		zoom_step(1 if ev.button_index == MOUSE_BUTTON_WHEEL_UP else -1); return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		if ev.pressed:
 			if ev.position.y > get_viewport().get_visible_rect().size.y - PANEL_H: return
@@ -277,7 +319,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				tap(grid.pos_to_cell(get_canvas_transform().affine_inverse() * ev.position))
 	elif ev is InputEventMouseMotion and pressed:
 		if (ev.position - press_pos).length() > 24: dragging = true
-		if dragging: cam.position = drag_from - (ev.position - press_pos); _clamp_cam()
+		if dragging: cam.position = drag_from - (ev.position - press_pos) / cam.zoom.x; _clamp_cam()
 
 ## Long-press (0.5 s) on any unit opens its status screen.
 func _process(_dt: float) -> void:

@@ -62,6 +62,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - **무기 숙련**: 도적 = 단검 특화(검 하위 분류 `dagger`, 도적 명중+10 치명+10 / 어쌔신 명중+10 치명+15). 시스터 = 지팡이 주무기 + 단검(E)만, 단검 보너스 없음.
 - **회복 병종**: 시스터(기본, 도보 이동5) → 성기사(상급 기마 이동7, 창/검/지팡이) 또는 비숍(지팡이+빛 마법). 세라 = 시스터. 발키리는 데이터에 남아 있음(구 저장의 전직 세라용, 신규 진입 경로 없음).
 - **저장 버전**: `Campaign.GAME_VERSION`. 클래스/맵이 바뀌는 업데이트마다 올리고 `Campaign.migrate_entry()`에 이전 규칙 추가. 구버전 저장 → 1회 "업데이트 재시작" 제안 (`update_restart()`: ★·enemy_lv 그대로, 난이도 보통, 전부 유지).
+- **맵 확대/축소**: `battle.gd` `set_zoom()/zoom_step()/_pinch_input()`, `Settings.map_zoom`, 단계 `Settings.ZOOM_STEPS`. 카메라는 왼쪽 위 기준, `_clamp_cam`은 화면 크기/배율로 계산.
 - **오디오**: 백그라운드에서 BGM/SFX 일시정지 (`scripts/audio.gd`).
 - **환생**:
   - 언제든 가능(타이틀·거점·전투 메뉴). 1장부터 다시 시작. 유닛은 합류 레벨로 돌아가고, 동료는 스토리 지점에서 다시 합류.
@@ -116,6 +117,10 @@ ch1 16/16 · ch2 9/16 · ch3 6/16 · ch4a 7/16 · ch4b 7/16 · ch5 9/16 · ch6 1
 | extra_mercenary_portrait | 바르가스 | 바르가스 |
 | extra_mage_portrait | 루크 | 루크 |
 | luke_portrait | (이름표 없는 그림) | 노아 |
+| arin_sprites (저녁) | 마을 타일 | 풀밭 맵 마을/벽/산 |
+| village_tileset (저녁) | 아린 | 아린 맵 스프라이트 |
+| sera_sprites (저녁) | 리나 | 리나 맵 스프라이트 |
+| rina_sprites (저녁) | 금발 갑옷 창병 | 세라 성기사 전직 후 |
 | eileen_portrait | (이름표 없는 그림) | 엘리아 |
 
 예전 묶음 기록은 `ASSETS.md` 참고.

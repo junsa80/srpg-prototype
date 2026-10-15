@@ -146,13 +146,16 @@ func _draw() -> void:
 				draw_rect(r, Color8(226, 196, 130) if v % 3 else Color8(214, 182, 116))
 				if v == 2: draw_line(r.position + Vector2(14, 50), r.position + Vector2(44, 46), Color8(190, 156, 96), 3)
 			else: draw_texture_rect(Sprites.tile_tex("flower" if v == 0 else ("grass2" if v == 3 else "plain")), r, false)
-			if walls.has(c) and t != "door" and t != "crack": draw_texture_rect(_tt("wall") if _tt("wall") else Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
+			var vw = ("village_wall2" if v % 2 else "village_wall") if outdoor_walls and ground == "grass" and theme == "" and Sprites.has_user_tile("village_wall") else ""
+			if walls.has(c) and t != "door" and t != "crack": draw_texture_rect(_tt("wall") if _tt("wall") else Sprites.tile_tex(vw if vw != "" else ("house" if outdoor_walls else "wall")), r, false)
 			if walls.has(c) and t != "door" and _tt("wall"):   # phone readability: walls darker than the stone floor
 				draw_rect(r, Color(0.04, 0.02, 0.1, 0.5)); draw_rect(r, Color8(20, 14, 30), false, 2)
 			elif walls.has(c) and t == "crack": draw_texture_rect(Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
 			var th = {"throne": "throne", "mountain": "rock", "pillar": "pillar"}
 			if th.has(t) and _tt(th[t]) != null:
 				draw_texture_rect(_tt(th[t]), r, false); continue
+			if t == "mountain" and ground == "grass" and theme == "" and Sprites.has_user_tile("village_rock"):
+				draw_texture_rect(Sprites.tile_tex("village_rock"), r, false); continue
 			match t:
 				"forest":
 					if _tt("tree"): draw_texture_rect(_tt("tree" if v % 2 else "tree2"), r, false)
@@ -175,7 +178,8 @@ func _draw() -> void:
 					draw_colored_polygon(PackedVector2Array([r.position + Vector2(30, 28), r.position + Vector2(40, 10), r.position + Vector2(50, 28)]), Color8(240, 240, 250) if ground == "snow" else Color8(176, 160, 140))
 					draw_polyline(PackedVector2Array([r.position + Vector2(6, 72), r.position + Vector2(40, 10), r.position + Vector2(74, 72)]), Color8(60, 48, 40), 3)
 				"village", "village_done":
-					draw_texture_rect(Sprites.tile_tex("house"), r, false)
+					var vk = "village_done" if t == "village_done" else "village_house"
+					draw_texture_rect(Sprites.tile_tex(vk if ground == "grass" and Sprites.has_user_tile(vk) else "house"), r, false)
 					if t == "village": draw_rect(r.grow(-3), Color8(255, 216, 96), false, 3)
 				"ruin":
 					draw_rect(r.grow(-12), Color8(70, 56, 48)); draw_line(r.position + Vector2(14, 14), r.position + Vector2(66, 66), Color8(30, 20, 20), 4)
