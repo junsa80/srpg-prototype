@@ -6,8 +6,34 @@ const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러�
 ## Utility weapons: sold from the Ch2 base onward (after Ch1 clear).
 const UTILITY = {"투창": 750, "손도끼": 600, "아머킬러": 900, "호스슬레이어": 950, "볼트": 900, "윈드소드": 1100, "해머": 800,
 	"킬러소드": 1300, "킬러랜스": 1200, "킬러보우": 1400, "피지오": 1500}
+## Items: 상처약 always; keys from the Ch2 base on.
+const ITEM_PRICES = {"상처약": 300, "문 열쇠": 500, "상자 열쇠": 700}
 var body: VBoxContainer; var gold_lbl: Label; var title: Label
 var sel_unit = ""
+var dialogue: DialogueBox
+
+## 야영 대화: first arrival at the base after a chapter clear.
+func _camp() -> void:
+	if Campaign.cleared.is_empty(): return
+	var last: String = Campaign.cleared.back()
+	if last in Campaign.camp_seen or not ChapterData.CAMP.has(last): return
+	Campaign.camp_seen.append(last); Campaign.save_campaign()
+	if "--flowtest" in OS.get_cmdline_user_args() or "nodialog" in preload("res://scripts/battle.gd").demo_flags(): return
+	await dialogue.play(ChapterData.CAMP[last].filter(func(l): return l[0] == "" or Campaign.roster.has(l[0]) or not Roster.UNITS.has(l[0])))
+
+# ---------------- 지원 대화
+func _supports() -> void:
+	_clear(); Sfx.play("select")
+	var open = Campaign.supports_open()
+	body.add_child(ItemMenus.label("지원 대화 (%d/%d 해금) — 장을 클리어하면 늘어납니다" % [open.size(), ChapterData.SUPPORTS.size()], 26, Color8(255, 216, 128)))
+	for sp in ChapterData.SUPPORTS:
+		var ok = sp in open
+		var b = ItemMenus.big(("%s · %s — %s%s" % [sp.a, sp.b, sp.title, "  NEW" if ok and not sp.id in Campaign.supports_seen else ""]) if ok else "??? (잠김)", 80, 26)
+		b.name = "S_" + sp.id; b.disabled = not ok
+		b.pressed.connect(func():
+			if not sp.id in Campaign.supports_seen: Campaign.supports_seen.append(sp.id); Campaign.save_campaign()
+			await dialogue.play(sp.lines); _supports())
+		body.add_child(b)
 
 func _ready() -> void:
 	if "ch2" in preload("res://scripts/battle.gd").demo_flags() and Campaign.chapter == "ch1":   # dev: #base+ch2 shows the Ch2 shop
@@ -20,20 +46,22 @@ func _ready() -> void:
 	var head = Panel.new(); head.custom_minimum_size.y = 110; head.add_theme_stylebox_override("panel", Ornate.frame()); v.add_child(head)
 	title = ItemMenus.label("거점", 34, Color8(248, 216, 112)); title.autowrap_mode = TextServer.AUTOWRAP_OFF; head.add_child(title); title.position = Vector2(20, 10)
 	gold_lbl = ItemMenus.label("", 28); gold_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF; head.add_child(gold_lbl); gold_lbl.position = Vector2(20, 62)
-	var tabs = GridContainer.new(); tabs.columns = 4; v.add_child(tabs)
+	var tabs = GridContainer.new(); tabs.columns = 5; v.add_child(tabs)
 	tabs.add_theme_constant_override("h_separation", 8); tabs.add_theme_constant_override("v_separation", 8)
-	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["상태", _status], ["저장", _save], ["설정", func(): Menus.settings(self)],
+	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["상태", _status], ["저장", _save], ["지원", _supports], ["설정", func(): Menus.settings(self)],
 			["타이틀", func(): Menus.confirm(self, "타이틀로 돌아갈까요?\n(거점 상태는 자동 저장됩니다)", "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))], ["출격 ▶", _sortie]]:
 		var b = ItemMenus.big(t[0], 88, 28); b.name = "T_" + t[0].replace(" ▶", ""); b.pressed.connect(t[1]); tabs.add_child(b)
 	var sc = TouchScroll.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
 	body = VBoxContainer.new(); body.size_flags_horizontal = Control.SIZE_EXPAND_FILL; body.add_theme_constant_override("separation", 8); sc.add_child(body)
+	dialogue = DialogueBox.new(); add_child(dialogue)
 	_refresh_head(); _shop()
+	_camp.call_deferred()
 	SaveManager.autosave(Campaign.chapter, 0, {"campaign": Campaign.to_dict(), "battle": {}})
 	if not "--flowtest" in OS.get_cmdline_user_args(): Sfx.start_bgm()
 
 func _refresh_head() -> void:
 	var nxt = ChapterData.CHAPTERS.get(Campaign.chapter, {}).get("title", Campaign.chapter)
-	title.text = "거점 — 다음: " + nxt
+	title.text = "거점 — 다음: " + nxt + (("  [환생 %d회차]" % (Campaign.cycle + 1)) if Campaign.cycle > 0 else "")
 	gold_lbl.text = "소지금 %dG   수송대 %d/%d" % [Campaign.gold, Campaign.convoy.size(), Campaign.CONVOY_MAX]
 
 func _clear() -> void:
@@ -59,16 +87,19 @@ func _shop() -> void:
 		var locked = n in SILVER and not "ch2" in Campaign.cleared
 		var w = Weapons.make(n)
 		var b = ItemMenus.big("%s  %dG%s\n위력%d 명중%d 치명%d 무게%d 내구%d · %s" % [n, price(n), "  (2장 클리어 후)" if locked else "", w.might, w.hit, w.crit, w.weight, w.max_uses, Weapons.effect_text(w)], 96, 22)
+		if w.is_item(): b.text = "%s  %dG\n아이템 · %s" % [n, price(n), w.desc]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w); b.name = "Buy_" + n
 		b.disabled = locked or Campaign.gold < price(n)
 		b.pressed.connect(func(): buy(n); _shop())
 		body.add_child(b)
 
-static func price(n: String) -> int: return PRICES.get(n, UTILITY.get(n, 9999))
+static func price(n: String) -> int: return PRICES.get(n, UTILITY.get(n, ITEM_PRICES.get(n, 9999)))
 
 func stock() -> Array:
 	var out = PRICES.keys()
 	if Campaign.chapter != "ch1": out.append_array(UTILITY.keys())
+	out.append("상처약")
+	if Campaign.chapter != "ch1": out.append_array(["문 열쇠", "상자 열쇠"])
 	return out
 
 func buy(n: String) -> bool:
@@ -183,6 +214,10 @@ func _deploy() -> void:
 
 func _sortie() -> void:
 	if not Maps.CH.has(Campaign.chapter):
-		_clear(); body.add_child(ItemMenus.label("%s은(는) 아직 준비 중입니다." % ChapterData.CHAPTERS.get(Campaign.chapter, {}).get("title", "다음 장"), 30)); return
+		_clear()
+		body.add_child(ItemMenus.label("제1부 완결! 축하합니다.\n\n[환생] 레벨·능력치·무기 랭크·아이템·골드를 그대로 가지고 1장부터 다시 시작합니다.\n적은 회차마다 강해집니다 (Lv +%d)." % Campaign.CYCLE_LV, 28))
+		var rb = ItemMenus.big("환생 — %d회차 시작" % (Campaign.cycle + 2), 96, 32); rb.name = "Rebirth"; body.add_child(rb)
+		rb.pressed.connect(func(): Menus.confirm(self, "환생할까요?\n유닛·아이템은 유지되고 1장부터 다시 시작합니다.", "환생", func(): Campaign.rebirth(); get_tree().reload_current_scene()))
+		return
 	Campaign.save_campaign(); Campaign.set_meta("from_base", true); Campaign.resume = {}
 	get_tree().change_scene_to_file("res://scenes/battle.tscn")

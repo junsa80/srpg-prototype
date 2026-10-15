@@ -21,6 +21,15 @@ const SHAPES = {
 	5: ["..........kkk...", ".........kslsk..", "........kssssk..", "........ksssk...", ".......kgkkk....", "......khk.......",
 		".....khk........", "....khk.........", "...khk..........", "..khk...........", ".khk............", "khk.............",
 		"kk..............", "................", "................", "................"],
+	6: ["................", "....kkkk........", "...kgggkk.......", "..kgk..kgk......", "..kgk..kgk......", "...kgggkgk......",
+		"....kkkgk.......", "......kgk.......", "......kgk.......", "......kggk......", "......kgkk......", "......kggk......",
+		"......kgk.......", "......kkk.......", "................", "................"],
+	7: ["................", "......kkkk......", "......khhk......", ".......kk.......", "......kmmk......", ".....kmllmk.....",
+		"....kmmmlmmk....", "....krrrrrrk....", "...krrrrrrrrk...", "...krrsrrrrrk...", "...krrrrrrrrk...", "...krrrrrrrrk...",
+		"....krrrrrrk....", ".....kkkkkk.....", "................", "................"],
+	8: ["................", "................", "......kkkk......", ".....kssssk.....", "......kssk......", "....kkgkkgkk....",
+		"...kgk....kgk...", "..kgk......kgk..", "..kgk......kgk..", "..kgk......kgk..", "...kgk....kgk...", "....kkggggkk....",
+		"......kkkk......", "................", "................", "................"],
 }
 const TINTS = {  # [metal, light]
 	"iron": [Color8(150, 150, 160), Color8(220, 220, 228)], "steel": [Color8(96, 110, 140), Color8(170, 186, 214)],
@@ -47,6 +56,10 @@ static func tint_for(w: WeaponData) -> String:
 
 static func of(w: WeaponData) -> Texture2D:
 	if w == null: return null
+	if w.is_item():
+		var ic = w.fx().get("icon", "potion")
+		if ic == "staff": return make(5, "holy")
+		return make({"key": 6, "potion": 7, "ring": 8}[ic], "silver" if w.name == "마스터 키" else "iron")
 	return make(int(w.type), tint_for(w))
 
 static func make(t: int, tint: String) -> Texture2D:

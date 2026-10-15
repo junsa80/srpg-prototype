@@ -32,6 +32,21 @@ const LIST = {
 	# boss uniques
 	"그림자 창 우르": [T.LANCE, 11, 80, 10, 10, 30, 1, 1, false, 0],
 	"파멸의 도끼": [T.AXE, 13, 70, 5, 14, 30, 1, 1, false, 0],
+	# ---- items (T.ITEM: never equipped; effect in ITEMS)
+	"상처약": [T.ITEM, 0, 0, 0, 1, 3, 0, 0, false, 10], "엘릭서": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 99],
+	"문 열쇠": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0], "상자 열쇠": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0],
+	"마스터 키": [T.ITEM, 0, 0, 0, 1, 3, 0, 0, false, 0], "해제의 지팡이": [T.ITEM, 0, 0, 0, 1, 2, 1, 5, false, 0],
+	"힘의 반지": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0], "스피드링": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0],
+	"여신의 상": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0], "드래곤 실드": [T.ITEM, 0, 0, 0, 1, 1, 0, 0, false, 0],
+}
+## Item effects. key: "door"/"chest"/"both" (any holder can open; thieves still open free). heal: HP restored.
+## stat: permanent +n (rare boosters). icon: key/potion/ring/staff.
+const ITEMS = {
+	"상처약": {"heal": 10, "icon": "potion", "desc": "HP 10 회복 (3회)"}, "엘릭서": {"heal": 99, "icon": "potion", "desc": "HP 전부 회복"},
+	"문 열쇠": {"key": "door", "icon": "key", "desc": "인접한 문 1개를 연다"}, "상자 열쇠": {"key": "chest", "icon": "key", "desc": "보물상자 1개를 연다"},
+	"마스터 키": {"key": "both", "icon": "key", "desc": "문·상자를 연다 (3회)"}, "해제의 지팡이": {"key": "both", "range": 5, "icon": "staff", "desc": "5칸 이내 문·상자를 연다 (2회)"},
+	"힘의 반지": {"stat": "str", "n": 2, "icon": "ring", "desc": "힘 +2 (영구)"}, "스피드링": {"stat": "spd", "n": 2, "icon": "ring", "desc": "속도 +2 (영구)"},
+	"여신의 상": {"stat": "hp", "n": 5, "icon": "ring", "desc": "최대 HP +5 (영구)"}, "드래곤 실드": {"stat": "def", "n": 2, "icon": "ring", "desc": "수비 +2 (영구)"},
 }
 ## Roles. rank: required weapon rank (0=E..5=S). eff: target tags (might x3). brave: strikes twice.
 ## light: weight never lowers attack speed. heavy: high might, slows. desc: shown in UI.
@@ -69,12 +84,12 @@ const TRAITS = {
 	"파멸의 도끼": {"rank": 3, "eff": ["armor", "cavalry"], "heavy": true, "desc": "바르가스의 도끼 · 중갑/기병 특효"},
 }
 const RANKS = ["E", "D", "C", "B", "A", "S"]
-const TYPE_NAMES = {0: "검", 1: "창", 2: "도끼", 3: "활", 4: "마법", 5: "지팡이"}
+const TYPE_NAMES = {0: "검", 1: "창", 2: "도끼", 3: "활", 4: "마법", 5: "지팡이", 6: "아이템"}
 const TAG_NAMES = {"armor": "중갑", "cavalry": "기병", "flying": "비행"}
 
 ## Class loadouts (base and promoted).
 const LOADOUT = {
-	"용병": ["철검"], "도적": ["철검"], "기사": ["철창"], "궁수": ["철활"], "마법사": ["파이어"], "성기사": ["철검", "힐"],
+	"용병": ["철검", "상처약"], "도적": ["철검", "상처약"], "기사": ["철창", "상처약"], "궁수": ["철활"], "마법사": ["파이어"], "성기사": ["철검", "힐"],
 	"세이지": ["파이어", "힐"], "발키리": ["파이어", "힐"], "팔라딘": ["철검", "철창"], "그레이트나이트": ["철검", "철창"],
 }
 
@@ -85,7 +100,7 @@ static func make(n: String, uses = -1) -> WeaponData:
 	w.min_range = d[6]; w.max_range = d[7]; w.magic = d[8]; w.heal = d[9]
 	var t: Dictionary = TRAITS.get(n, {})
 	w.rank = t.get("rank", 0); w.effective = t.get("eff", []); w.brave = t.get("brave", false)
-	w.light = t.get("light", false); w.heavy = t.get("heavy", false); w.desc = t.get("desc", "")
+	w.light = t.get("light", false); w.heavy = t.get("heavy", false); w.desc = t.get("desc", ITEMS.get(n, {}).get("desc", ""))
 	return w
 
 static func loadout(cls: String) -> Array:
@@ -93,6 +108,7 @@ static func loadout(cls: String) -> Array:
 
 ## One-line role text with effectiveness tags, e.g. "[C] 중갑/기병 특효 · 경량".
 static func effect_text(w: WeaponData) -> String:
+	if w.is_item(): return "아이템"
 	var parts = ["필요 %s" % RANKS[w.rank]]
 	if not w.effective.is_empty(): parts.append("특효:" + "/".join(w.effective.map(func(t): return TAG_NAMES.get(t, t))))
 	if w.brave: parts.append("용사")

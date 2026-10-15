@@ -16,7 +16,7 @@ func _ready() -> void:
 	var sub = ItemMenus.label("Shadow Legion Tactics", 26, Color8(200, 190, 230)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(sub); sub.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); sub.offset_top = 560; sub.offset_bottom = 600
 	box = VBoxContainer.new(); add_child(box); box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	box.offset_left = 90; box.offset_right = -90; box.offset_top = -600; box.offset_bottom = -80; box.add_theme_constant_override("separation", 18)
+	box.offset_left = 90; box.offset_right = -90; box.offset_top = -600; box.offset_bottom = -80; box.add_theme_constant_override("separation", 12)
 	_main()
 	Sfx.start_bgm()
 
@@ -30,16 +30,23 @@ func _has_save() -> bool: return SaveManager.latest_slot() >= 0 or (FileAccess.f
 
 func _main() -> void:
 	_clear()
-	var cont = ItemMenus.big("이어하기", 104, 36); cont.name = "Continue"; cont.disabled = not _has_save(); cont.pressed.connect(_continue); box.add_child(cont)
+	var cont = ItemMenus.big("이어하기", 90, 34); cont.name = "Continue"; cont.disabled = not _has_save(); cont.pressed.connect(_continue); box.add_child(cont)
 	var info_t = ""
 	var ls = SaveManager.latest_slot()
 	if ls >= 0:
 		var m = SaveManager.slot_metadata()[ls]
 		info_t = "  %s · %s · %s" % [m.chapter_title, ("턴 %d" % m.turn) if m.in_battle else "거점", m.timestamp]
+	if Campaign.cycle > 0: info_t += "  [환생 %d회차]" % (Campaign.cycle + 1)
 	box.add_child(ItemMenus.label(info_t, 22, Color8(200, 190, 230)))
-	var ng = ItemMenus.big("새 게임", 104, 36); ng.name = "NewGame"; ng.pressed.connect(_new_game_confirm); box.add_child(ng)
-	var ld = ItemMenus.big("불러오기", 104, 36); ld.name = "Load"; ld.pressed.connect(func(): Menus.slots(self, "load", null, _goto)); box.add_child(ld)
-	var st = ItemMenus.big("설정", 104, 36); st.name = "Settings"; st.pressed.connect(func(): Menus.settings(self)); box.add_child(st)
+	var ng = ItemMenus.big("새 게임", 90, 34); ng.name = "NewGame"; ng.pressed.connect(_new_game_confirm); box.add_child(ng)
+	var ld = ItemMenus.big("불러오기", 90, 34); ld.name = "Load"; ld.pressed.connect(func(): Menus.slots(self, "load", null, _goto)); box.add_child(ld)
+	if Campaign.clears > 0 and Campaign.roster.size() > 0:
+		var rb = ItemMenus.big("환생 (%d회차로)" % (Campaign.cycle + 2), 90, 34); rb.name = "Rebirth"; box.add_child(rb)
+		rb.pressed.connect(func(): Menus.confirm(self, "환생할까요?\n레벨·능력치·랭크·아이템·골드를 유지하고\n1장부터 다시 시작합니다. 적이 강해집니다.", "환생", func(): Campaign.rebirth(); SaveManager.delete_slot(0); _goto("res://scenes/battle.tscn")))
+	var st = ItemMenus.big("설정", 90, 34); st.name = "Settings"; st.pressed.connect(func(): Menus.settings(self)); box.add_child(st)
+	var wipe = ItemMenus.big("완전 초기화 새 게임", 80, 28); wipe.name = "Wipe"; box.add_child(wipe)
+	wipe.add_theme_color_override("font_color", Color8(255, 110, 110)); wipe.add_theme_color_override("font_hover_color", Color8(255, 150, 150))
+	wipe.pressed.connect(_wipe_confirm)
 
 func _goto(scene: String) -> void: get_tree().change_scene_to_file(scene)
 
@@ -58,3 +65,9 @@ func _new_game_confirm() -> void:
 
 func _new_game() -> void:
 	Campaign.reset(); SaveManager.delete_slot(0); _goto("res://scenes/battle.tscn")
+
+## 완전 초기화: wipes campaign + every save slot. Two confirmations (danger).
+func _wipe_confirm() -> void:
+	Menus.confirm(self, "!! 완전 초기화 !!\n모든 진행·저장 슬롯·환생 기록이\n삭제됩니다.", "삭제 진행", func():
+		Menus.confirm(self, "정말로 삭제할까요?\n되돌릴 수 없습니다!", "영구 삭제", func():
+			Campaign.wipe_all(); Menus.toast(self, "모든 데이터를 삭제했습니다"); _main()))

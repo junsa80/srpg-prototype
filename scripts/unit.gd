@@ -28,6 +28,9 @@ var guard = false           # AI: hold position unless target reachable
 var boss = false            # AI: never moves
 var weapon_used: WeaponData = null
 var aoe = false            # boss: hits also splash units adjacent to the target
+var uid = -1               # spawn index (random drop roll key)
+var drop_w = 0             # random drop chance % for equipped weapon
+var drop_i = 0             # random drop chance % for carried item
 var raider = false         # AI: goes for villages
 var talk_from = ""         # name of player unit that can recruit this enemy via 대화
 var wexp = {}               # weapon type (int) -> weapon EXP points (players)
@@ -55,6 +58,7 @@ func tags() -> Array: return ClassProfs.tags(unit_class.name)
 ## "" if usable, else the reason (shown greyed out in menus).
 func block_reason(w: WeaponData) -> String:
 	if w.uses <= 0: return "파손"
+	if w.is_item(): return ""
 	if unit_class.weapon_types.is_empty(): return ""   # enemies: any
 	if not w.type in unit_class.weapon_types: return "병종 불가"
 	if team == 0 and rank(w.type) < w.rank: return "랭크 부족 (%s 필요, 현재 %s)" % [Weapons.RANKS[w.rank], rank_letter(w.type)]
@@ -72,7 +76,13 @@ const MAX_ITEMS = 5
 func can_use(w: WeaponData) -> bool:
 	return block_reason(w) == ""
 
-func usable_weapons() -> Array: return inventory.filter(func(w): return not w.is_staff() and can_use(w))
+func usable_weapons() -> Array: return inventory.filter(func(w): return not w.is_staff() and not w.is_item() and can_use(w))
+func items() -> Array: return inventory.filter(func(w): return w.is_item())
+## First key-type item that can open terrain kind ("door"/"chest").
+func key_for(kind: String) -> WeaponData:
+	for w in inventory:
+		if w.is_item() and w.fx().get("key", "") in [kind, "both"] and w.uses > 0: return w
+	return null
 
 func equip(w: WeaponData) -> void:
 	if w in inventory: inventory.erase(w); inventory.push_front(w)
@@ -83,7 +93,7 @@ func give(w: WeaponData) -> bool:
 
 func weapon() -> WeaponData:
 	for w in inventory:
-		if not w.is_staff() and can_use(w): return w
+		if not w.is_staff() and not w.is_item() and can_use(w): return w
 	return null
 
 func staff() -> WeaponData:
@@ -172,7 +182,7 @@ func has_tag(t: String) -> bool: return t in data.tags
 func move_range() -> int: return unit_class.move + move_bonus + Skills.move_mod(self)
 
 func to_dict() -> Dictionary:
-	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "wexp": wexp, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss, "aoe": aoe, "raider": raider, "talk": talk_from}
+	return {"name": data.name, "team": team, "cell": [cell.x, cell.y], "level": level, "exp": exp, "hp": hp, "move_bonus": move_bonus, "class": unit_class.name, "stats": stats, "acted": has_acted, "awakened": awakened, "items": inventory.map(func(w): return w.to_dict()), "poison": poison, "wexp": wexp, "kind": unit_class.name, "drop": inventory.find(drop) if drop else -1, "gold": gold_drop, "guard": guard, "boss": boss, "aoe": aoe, "raider": raider, "talk": talk_from, "uid": uid, "dw": drop_w, "di": drop_i}
 
 func from_dict(d: Dictionary) -> void:
 	cell = Vector2i(d.cell[0], d.cell[1]); level = d.level; exp = d.exp; hp = d.hp; stats = d.stats; has_acted = d.acted; move_bonus = d.get("move_bonus", 0)

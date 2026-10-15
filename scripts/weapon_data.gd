@@ -1,5 +1,5 @@
 class_name WeaponData extends Resource
-enum Type { SWORD, LANCE, AXE, BOW, TOME, STAFF }
+enum Type { SWORD, LANCE, AXE, BOW, TOME, STAFF, ITEM }
 @export var magic = false  # uses mag vs res
 @export var name = "Iron Sword"
 @export var type: Type = Type.SWORD
@@ -20,6 +20,8 @@ var heavy = false
 var desc = ""
 
 func is_staff() -> bool: return type == Type.STAFF
+func is_item() -> bool: return type == Type.ITEM
+func fx() -> Dictionary: return Weapons.ITEMS.get(name, {})
 func to_dict() -> Dictionary: return {"name": name, "uses": uses}
 
 ## sword > axe > lance > sword. Returns +1 advantage, -1 disadvantage, 0 neutral.

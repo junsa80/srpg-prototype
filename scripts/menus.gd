@@ -199,6 +199,11 @@ static func status_text(u: Unit, short = false) -> String:
 	if u.has_acted and u.team == 0: s.append("행동 완료")
 	if u.boss: s.append("보스")
 	if u.guard: s.append("경계" if short else "경계 (사거리 안에 들어오면 공격)")
+	if u.team == 1:
+		if u.drop: s.append("★드롭 %s" % u.drop.name)
+		if u.drop_w > 0 and u.weapon(): s.append("드롭 %d%%" % u.drop_w if short else "드롭 ? %s %d%%" % [u.weapon().name, u.drop_w])
+		if u.drop_i > 0 and u.items().size(): s.append("" if short else "드롭 ? %s %d%%" % [u.items()[0].name, u.drop_i])
+	s = s.filter(func(x): return x != "")
 	return " · ".join(s) if s.size() else ("" if short else "이상 없음")
 
 # ------------------------------------------------------------------ status screen
@@ -286,3 +291,22 @@ static func _fill_status(ctx: Dictionary) -> void:
 static func _wtypes(u: Unit) -> String:
 	if u.unit_class.weapon_types.is_empty(): return "/".join(u.inventory.map(func(w): return WT_NAMES.get(int(w.type), "?")))
 	return "/".join(u.unit_class.weapon_types.map(func(t): return WT_NAMES.get(int(t), "?")))
+
+## 상성표: weapon triangle + effectiveness reference.
+static func triangle_chart(parent: Node) -> CanvasLayer:
+	var o = overlay(parent, "상성표", 35, 120, 120); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "TriChart"
+	var list = scroll(v)
+	list.add_child(ItemMenus.label("무기 상성 (유리: 명중 +15, 위력 +1)", 28, Color8(248, 216, 112)))
+	for r in [[0, 2], [2, 1], [1, 0]]:
+		var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 12); list.add_child(h)
+		h.add_child(Icons.rect(Weapons.make(["철검", "철창", "철도끼"][r[0]]), 40))
+		var l1 = ItemMenus.label("%s  ▲ 유리 →" % Weapons.TYPE_NAMES[r[0]], 28, Color8(96, 230, 120)); l1.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(l1)
+		h.add_child(Icons.rect(Weapons.make(["철검", "철창", "철도끼"][r[1]]), 40))
+		var l2 = ItemMenus.label(Weapons.TYPE_NAMES[r[1]], 28); l2.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(l2)
+	list.add_child(ItemMenus.label("반대 방향은 ▼ 불리 (명중 -15, 위력 -1).\n활·마법·지팡이는 상성 없음.\n예측 창의 무기 이름 옆 ▲/▼ 로 표시됩니다.", 24))
+	list.add_child(ItemMenus.label("\n특효 (위력 ×3)", 28, Color8(248, 216, 112)))
+	list.add_child(ItemMenus.label("활 → 비행 (비룡)\n아머킬러·해머·볼트 → 중갑\n호스슬레이어 → 기병\n킬러보우 → 비행\n파멸의 도끼 → 중갑·기병\n그림자 창 우르 → 기병", 24))
+	list.add_child(ItemMenus.label("\n마법 vs 물리", 28, Color8(248, 216, 112)))
+	list.add_child(ItemMenus.label("마법·마법검은 상대의 마방으로, 물리는 수비로 계산.\n경량 무기는 무게로 공속이 떨어지지 않음, 중량 무기는 위력↑ 공속↓.", 24))
+	close_btn(v, cl)
+	return cl

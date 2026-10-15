@@ -102,6 +102,66 @@ func _ready() -> void:
 	var tl = Campaign.record_defeat("ch2", ["아린"])
 	print("   after ", Campaign.roster.get("아린", {}).get("exp"))
 	check(tl.size() > 0 and Campaign.roster["아린"].get("exp", 0) != e0, "defeat -> 훈련 bonus %s" % [tl])
+	# 7. keys / items / random drops
+	b = await _battle("ch2")
+	var noah2 = _named(b, "노아"); noah2.inventory = [Weapons.make("철검"), Weapons.make("문 열쇠"), Weapons.make("상자 열쇠")]
+	_put(b, noah2, Vector2i(2, 3))
+	check(b._action(noah2).get("kind", "") == "door", "non-thief with 문 열쇠 can open door")
+	b.selected = noah2; b.moved = true; await b._do_open()
+	check(not b.grid.walls.has(Vector2i(2, 2)) and noah2.key_for("door") == null, "door opened, 문 열쇠 consumed")
+	noah2.has_acted = false; _put(b, noah2, Vector2i(1, 1))
+	check(b._action(noah2).get("kind", "") == "chest", "상자 열쇠 holder standing on chest -> 열기")
+	b.selected = noah2; b.moved = true; await b._do_open()
+	check(b.chests_got == 1 and noah2.key_for("chest") == null, "chest opened with 상자 열쇠")
+	var lina2 = _named(b, "리나"); lina2.inventory.append(Weapons.make("상처약")); lina2.inventory.append(Weapons.make("힘의 반지"))
+	lina2.hp = 3; var str0 = lina2.stats.str
+	b.use_item(lina2, lina2.items()[0])
+	check(lina2.hp == mini(13, lina2.stats.hp) and lina2.items()[0].uses == 2 and lina2.has_acted, "상처약 heals 10, 3 uses -> 2, ends action")
+	b.use_item(lina2, lina2.items()[1])
+	check(lina2.stats.str == str0 + 2 and lina2.items().size() == 1, "힘의 반지 str +2 and consumed")
+	check(lina2.weapon() != null and not lina2.weapon().is_item(), "items never equipped as weapons")
+	var foes = b.units.filter(func(u): return u.team == 1 and not u.boss and u.drop == null)
+	var e1 = foes[0]
+	check(e1.drop_w == 8 and b.drop_text(e1).contains("?8%"), "random drop shown: %s" % b.drop_text(e1).strip_edges())
+	var r1 = b.roll(e1, "w"); var r2 = b.roll(e1, "w")
+	check(r1 == r2 and r1 >= 0 and r1 < 100, "drop roll deterministic per seed (%d)" % r1)
+	var seed0 = Campaign.drop_seed("ch2")
+	var snap2 = b.payload()
+	e1.drop_w = 100; var got = b.random_drops(e1)
+	check(got.size() == 1 and not got[0].is_item(), "100%% weapon drop -> %s" % [got.map(func(w): return w.name)])
+	var guard = b.units.filter(func(u): return u.team == 1 and u.guard and u.drop == null)
+	check(guard.is_empty() or guard[0].drop_w == 15, "elite/guard drop 15%")
+	var boss2 = b.units.filter(func(u): return u.boss)[0]
+	check(boss2.drop_w == 0 and boss2.drop != null, "boss: fixed drop only")
+	# forecast triangle arrow (sword vs axe)
+	var ar = _named(b, "아린"); var axe = b.units.filter(func(u): return u.team == 1 and u.weapon() and u.weapon().type == WeaponData.Type.AXE)[0]
+	ar.equip(ar.usable_weapons()[0])
+	b._fill_forecast(BattleManager.forecast(ar, axe), ar, axe)
+	await get_tree().process_frame
+	var tris = b.fc_panel.find_children("Tri", "Label", true, false)
+	check(tris.size() == 2 and tris.any(func(l): return l.text == "▲") and tris.any(func(l): return l.text == "▼"), "forecast shows ▲/▼ triangle arrows")
+	var tc = Menus.triangle_chart(b.ui); await get_tree().process_frame
+	check(tc.name == "TriChart", "상성표 screen opens"); tc.queue_free()
+	b.queue_free(); await get_tree().process_frame
+	# save/load: same seed restored -> same rolls
+	Campaign.from_dict(snap2.campaign)
+	check(Campaign.drop_seed("ch2") == seed0, "drop seed persisted in save")
+	# 8. 환생 / 완전 초기화 / supports / events
+	Campaign.reset(); Campaign.ensure_roster(); Campaign.cleared = ["ch1", "ch2", "ch3"]; Campaign.chapter = "ch3"
+	Campaign.recruit("가렌"); Campaign.gold = 1234
+	var lv0 = Campaign.roster["아린"].level
+	check(Campaign.supports_open().size() >= 4, "supports unlocked: %d" % Campaign.supports_open().size())
+	Campaign.chapter = "end"; Campaign.clears = 1
+	Campaign.rebirth()
+	check(Campaign.cycle == 1 and Campaign.chapter == "ch1" and Campaign.cleared.is_empty() and Campaign.gold == 1234 and Campaign.roster["아린"].level == lv0 and Campaign.roster.has("가렌"), "환생: back to ch1 keeping units/gold, cycle 1")
+	Campaign.chapter = "ch3"
+	var b3 = load("res://scenes/battle.tscn").instantiate(); add_child(b3); await get_tree().process_frame
+	var e3 = b3.units.filter(func(u): return u.data.name == "바르가스")[0]
+	check(e3.level == 2 + Campaign.CYCLE_LV and b3.units.filter(func(u): return u.data.name == "가렌" and u.team == 1).is_empty() and "가렌" in b3.ROSTER_NAMES, "cycle 2: enemies Lv+%d, 가렌 not re-spawned as enemy but in party pool" % Campaign.CYCLE_LV)
+	b3.queue_free(); await get_tree().process_frame
+	Campaign.wipe_all()
+	check(Campaign.cycle == 0 and Campaign.clears == 0 and Campaign.roster.is_empty() and SaveManager.latest_slot() < 0, "완전 초기화 wipes everything")
+	check(ChapterData.EVENTS.ch1.has(1) and ChapterData.CAMP.has("ch2") and ChapterData.PROLOGUE.size() > 5, "story: prologue/events/camp present")
 	Campaign.reset()
 	print("CAMPAIGNTEST ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	get_tree().quit(0 if fails == 0 else 1)

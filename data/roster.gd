@@ -30,7 +30,8 @@ const UNITS = {
 	"에일린": ["용병", "ch2", "노아 선배한테 들었어. 나도 같이 갈게!"],
 	"레온": ["기사", "ch2", "방패가 필요하겠지. 앞은 내가 맡겠다."],
 	# recruited during the campaign (talk / village / rescue) — join via Campaign.recruited
-	"가렌": ["용병", "recruit", ""], "카이": ["궁수", "recruit", ""], "리안": ["기사", "recruit", ""], "실라": ["도적", "recruit", ""],
+	"가렌": ["용병", "recruit", "돈보다 나은 이유를 찾았다. 이 검, 맡기지."], "카이": ["궁수", "recruit", "마을을 지켜 준 빚은 화살로 갚지."],
+	"리안": ["기사", "recruit", "살아남은 기사의 몫을 하겠다."], "실라": ["도적", "recruit", "루크 빚까지 내가 갚아 줄게. 농담이야."],
 	"아서": ["성기사", "ch6", "왕성이 함락됐다. 길은 내가 안다, 따라와!"],
 }
 const IRON = {W.SWORD: "철검", W.LANCE: "철창", W.AXE: "철도끼", W.BOW: "철활", W.TOME: "파이어", W.STAFF: "힐"}
@@ -65,7 +66,7 @@ static func joined_by(chapter: String) -> Array:
 	var rec = []
 	var ml = Engine.get_main_loop()
 	var C = ml.root.get_node_or_null("Campaign") if ml is SceneTree else null
-	if C: rec = C.recruited
+	if C: rec = C.recruited + (C.roster.keys() if C.cycle > 0 else [])   # 환생: everyone you had stays
 	return UNITS.keys().filter(func(n): return (UNITS[n][1] != "recruit" and CH_INDEX.get(UNITS[n][1], 99) <= idx) or n in rec)
 ## Recruits join at this level (deterministic fixed-growth level-ups; class base stats untouched).
 const JOIN_LV = {"가렌": 5, "카이": 6, "리안": 6, "실라": 7, "아서": 8}

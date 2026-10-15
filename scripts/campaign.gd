@@ -21,6 +21,12 @@ var recruited = []          # names recruited by talk/village/rescue
 var ranks = {}              # chapter -> best rank letter (S/A/B/C)
 var sides = {}              # chapter -> Array of completed side objective ids
 var route = ""              # "ch4a" / "ch4b" after the Ch3 branch
+var drop_seeds = {}         # chapter -> random-drop seed for the current attempt (fixed until cleared: no save/load scumming)
+var cycle = 0               # 환생 count (New Game+): enemies +CYCLE_LV levels per cycle
+var clears = 0              # times the final chapter was cleared (unlocks 환생 on title)
+const CYCLE_LV = 3
+var camp_seen = []          # chapters whose camp conversation was shown
+var supports_seen = []      # support conversation ids read
 
 func _ready() -> void: load_campaign()
 
@@ -70,10 +76,26 @@ func record_clear(ch: String) -> void:
 	if not ch in cleared: cleared.append(ch); gold += Maps.CH.get(ch, {}).get("clear_gold", CLEAR_GOLD.get(ch, 500))
 	chapter = NEXT.get(ch, "end")
 	if ch == "ch3" and route != "": chapter = route
+	drop_seeds.erase(ch)
+	if chapter == "end": clears += 1
 	ensure_roster(); save_campaign()
 
+func drop_seed(ch: String) -> int:
+	if not drop_seeds.has(ch): drop_seeds[ch] = randi() % 1000000007
+	return int(drop_seeds[ch])
+
+## 환생 (New Game+): back to Ch1 keeping units (levels, stats, ranks, items), convoy and gold. Enemies scale up.
+func rebirth() -> void:
+	cycle += 1; chapter = "ch1"; cleared = []; attempts = {}; deploy = []; ranks = {}; sides = {}; route = ""; drop_seeds = {}; resume = {}; camp_seen = []
+	ensure_roster(); save_campaign()
+
+## 완전 초기화: wipe everything (campaign + all save slots).
+func wipe_all() -> void:
+	for i in 4: SaveManager.delete_slot(i)
+	reset(); cycle = 0; clears = 0; save_campaign()
+
 func to_dict() -> Dictionary:
-	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route}
+	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen}
 
 ## Make sure every joined unit has a roster entry (default stats/loadout).
 func ensure_roster() -> void:
@@ -109,6 +131,12 @@ func from_dict(c: Dictionary) -> void:
 	roster = c.get("roster", {}); attempts = c.get("attempts", {}); deploy = c.get("deploy", [])
 	gold = int(c.get("gold", 0)); convoy = c.get("convoy", []); chapter = c.get("chapter", "ch1"); cleared = c.get("cleared", []); playtime = float(c.get("playtime", 0))
 	recruited = c.get("recruited", []); ranks = c.get("ranks", {}); sides = c.get("sides", {}); route = c.get("route", "")
+	drop_seeds = c.get("drop_seeds", {}); cycle = int(c.get("cycle", 0)); clears = int(c.get("clears", 0))
+	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", [])
 
 func reset() -> void:
-	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; save_campaign()
+	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; recruited = []; ranks = {}; sides = {}; route = ""; resume = {}; drop_seeds = {}; cycle = 0; camp_seen = []; supports_seen = []; save_campaign()
+
+## Support conversations unlocked: both units in roster and chapter cleared.
+func supports_open() -> Array:
+	return ChapterData.SUPPORTS.filter(func(sp): return roster.has(sp.a) and roster.has(sp.b) and sp.after in cleared)
