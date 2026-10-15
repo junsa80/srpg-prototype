@@ -16,6 +16,7 @@ var rank = 0              # required rank 0=E..5=S
 var effective: Array = [] # target tags -> might x3
 var brave = false
 var light = false
+var dagger = false   # 단검: light sword subtype (thief specialty)
 var heavy = false
 var desc = ""
 

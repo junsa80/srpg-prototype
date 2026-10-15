@@ -153,6 +153,8 @@ func apply_progress(p: Dictionary) -> void:
 		wexp = {}
 		for k in p.wexp: wexp[int(k)] = int(p.wexp[k])
 	else: init_ranks()   # migrate old saves: class starting ranks
+	for t in ClassProfs.START_RANK.get(unit_class.name, {}):   # migrate: weapon types added to a class later (e.g. 성기사 창)
+		if not wexp.has(int(t)): wexp[int(t)] = ClassProfs.WEXP[ClassProfs.START_RANK[unit_class.name][t]]
 	if p.has("items"): inventory = p.items.map(func(i): return Weapons.make(i.name, int(i.uses)))
 
 func can_promote() -> bool:

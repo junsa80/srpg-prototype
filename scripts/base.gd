@@ -1,6 +1,6 @@
 extends Control
 ## 거점 (between-chapter base): 상점 / 수송 / 장비 / 출전 / 출격. Touch UI, all state in Campaign.
-const PRICES = {"철도끼": 270, "강철도끼": 360, "철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
+const PRICES = {"철단검": 300, "강철단검": 500, "철도끼": 270, "강철도끼": 360, "철검": 460, "강철검": 600, "철창": 360, "강철창": 480, "철활": 540, "강철활": 720,
 	"파이어": 560, "썬더": 700, "힐": 600, "은검": 1500, "은창": 1200, "은활": 1600, "엘파이어": 1200, "멘드": 1000}
 const SILVER = ["은검", "은창", "은활", "엘파이어", "멘드", "킬러소드", "킬러랜스", "킬러보우", "피지오"]  # unlocked after ch2 clear
 ## Utility weapons: sold from the Ch2 base onward (after Ch1 clear).

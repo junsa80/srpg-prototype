@@ -3,6 +3,8 @@ extends Node
 var players = {}
 var bgm: AudioStreamPlayer
 var muted = false
+var bg = false            # app/tab in background: everything paused (resumes at the same position)
+var _vis_cb = null        # keep the JS callback alive
 const NAMES = ["cursor", "select", "cancel", "hit", "crit", "miss", "levelup", "heal", "phase", "pickup"]
 
 func _ready() -> void:
@@ -14,13 +16,29 @@ func _ready() -> void:
 	bgm.stream = s; bgm.volume_db = -8
 	muted = FileAccess.file_exists("user://muted")
 	apply_volumes(); _apply()
+	if OS.has_feature("web"):   # mobile browsers may not send focus notifications
+		_vis_cb = JavaScriptBridge.create_callback(func(_a): set_background(bool(JavaScriptBridge.eval("document.hidden", true))))
+		JavaScriptBridge.get_interface("document").addEventListener("visibilitychange", _vis_cb)
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED: set_background(true)
+		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED: set_background(false)
+
+## Background pause: stream_paused keeps the BGM position; bus mute silences SFX. User mute stays respected.
+func set_background(on: bool) -> void:
+	if bg == on: return
+	bg = on
+	if bgm: bgm.stream_paused = on
+	for n in players: players[n].stream_paused = on
+	AudioServer.set_bus_mute(0, muted or bg)
 
 func apply_volumes() -> void:
 	for n in players: players[n].volume_db = linear_to_db(Settings.sfx / 10.0) if Settings.sfx > 0 else -80.0
 	if bgm: bgm.volume_db = (linear_to_db(Settings.bgm / 10.0) - 8.0) if Settings.bgm > 0 else -80.0
 
 func play(n: String) -> void:
-	if not muted and players.has(n): players[n].play()
+	if not muted and not bg and players.has(n): players[n].play()
 
 func start_bgm() -> void:
 	if not bgm.playing and not muted: bgm.play()
@@ -32,5 +50,5 @@ func toggle_mute() -> bool:
 	return muted
 
 func _apply() -> void:
-	AudioServer.set_bus_mute(0, muted)
-	if not muted and bgm and not bgm.playing and is_inside_tree(): bgm.play()
+	AudioServer.set_bus_mute(0, muted or bg)
+	if not muted and not bg and bgm and not bgm.playing and is_inside_tree(): bgm.play()

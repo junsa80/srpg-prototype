@@ -122,7 +122,7 @@ func _ready() -> void:
 	check(lina2.weapon() != null and not lina2.weapon().is_item(), "items never equipped as weapons")
 	var foes = b.units.filter(func(u): return u.team == 1 and not u.boss and u.drop == null)
 	var e1 = foes[0]
-	var ew = 15 if e1.guard else 8
+	var ew = 12 if e1.guard else 3
 	check(e1.drop_w == ew and b.drop_text(e1).contains("?%d%%" % ew), "random drop shown: %s" % b.drop_text(e1).strip_edges())
 	var r1 = b.roll(e1, "w"); var r2 = b.roll(e1, "w")
 	check(r1 == r2 and r1 >= 0 and r1 < 100, "drop roll deterministic per seed (%d)" % r1)
@@ -131,7 +131,7 @@ func _ready() -> void:
 	e1.drop_w = 100; e1.drop_i = 0; var got = b.random_drops(e1)
 	check(got.size() == 1 and not got[0].is_item(), "100%% weapon drop -> %s" % [got.map(func(w): return w.name)])
 	var guard = b.units.filter(func(u): return u.team == 1 and u.guard and u.drop == null and u != e1)
-	check(guard.is_empty() or guard[0].drop_w == 15, "elite/guard drop 15%")
+	check(guard.is_empty() or guard[0].drop_w == 12, "elite/guard drop 12%")
 	var boss2 = b.units.filter(func(u): return u.boss)[0]
 	check(boss2.drop_w == 0 and boss2.drop != null, "boss: fixed drop only")
 	# forecast triangle arrow (sword vs axe)
@@ -180,6 +180,21 @@ func _ready() -> void:
 	var d3 = Campaign.to_dict(); d3.erase("difficulty"); d3.erase("grind"); d3.erase("enemy_lv"); d3.cycle = 2
 	Campaign.from_dict(d3); check(Campaign.enemy_lv == 6 and Campaign.grind == 2, "old save migrates (cycle*3)")
 	Campaign.reset()
+	# ---- heal item on adjacent ally, weapon review
+	var bh = await _battle("ch2")
+	var ha = _named(bh, "아린"); var hb = bh.units.filter(func(u): return u.team == 0 and u != ha)[0]
+	_put(bh, hb, ha.cell + Vector2i(1, 0)); hb.hp = 5; ha.hp = ha.stats.hp
+	var pot = Weapons.make("상처약"); ha.inventory.append(pot)
+	check(hb in bh.heal_targets(ha) and not ha in bh.heal_targets(ha), "heal targets: adjacent injured ally only")
+	var hcl = bh.pick_heal_target(ha, pot); await get_tree().process_frame
+	hcl.find_child("Target_" + hb.data.name, true, false).emit_signal("pressed"); await get_tree().process_frame
+	check(hb.hp == mini(15, hb.stats.hp) and pot.uses == 2 and ha.has_acted, "상처약 on ally: +10, user's item 3->2, ends action")
+	var psera = Roster.make_unit("세라", 0, Vector2i.ZERO)
+	check(psera.inventory.any(func(w): return w.type == WeaponData.Type.LANCE) and psera.rank(WeaponData.Type.LANCE) > psera.rank(WeaponData.Type.SWORD), "성기사: lance primary (D) > sword (E)")
+	psera.apply_progress({"level": 1, "exp": 0, "stats": psera.stats, "wexp": {"0": 30}, "class": "성기사"}); check(psera.rank(WeaponData.Type.LANCE) >= 0, "old 성기사 save gains lance rank")
+	var th = Roster.make_unit("루크", 0, Vector2i.ZERO)
+	check(th.weapon() and th.weapon().dagger and BattleManager.bonus(th).crit >= 10, "도적: 단검 + dagger bonus")
+	psera.free(); th.free(); bh.queue_free(); await get_tree().process_frame
 	# ---- UI pass: trade / loot / relayout / badge / shop confirm
 	var bt = await _battle("ch2")
 	var ta = _named(bt, "아린"); var tb = bt.units.filter(func(u): return u.team == 0 and u != ta)[0]

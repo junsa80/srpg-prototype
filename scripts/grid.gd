@@ -9,6 +9,7 @@ const TERRAIN = {  # def, avo, heal% per turn
 }
 ## Ground move cost by terrain for walkers (flyers always 1, can cross river/walls-of-water).
 const COST = {"forest": 2, "mountain": 3, "pillar": 2}
+var theme = ""     # user tile set per map ("snow" ch5, "castle" ch6): assets/tiles/<theme>_<kind>.png
 var ground = "grass"   # grass / snow / sand / castle — set per map
 var water = {}         # river cells (impassable for walkers)
 @export var size = Vector2i(9, 12)
@@ -120,6 +121,11 @@ func path(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
 const COLORS = {"forest": Color(0.12, 0.32, 0.15), "fort": Color(0.55, 0.5, 0.42), "throne": Color(0.6, 0.15, 0.2),
 	"door": Color(0.45, 0.28, 0.1), "chest": Color(0.25, 0.45, 0.25), "chest_open": Color(0.25, 0.45, 0.25), "side": Color(0.3, 0.3, 0.35)}
 
+## Themed tile if the map has a theme and the file exists, else null.
+func _tt(kind: String):
+	if theme != "" and Sprites.has_user_tile(theme + "_" + kind): return Sprites.tile_tex(theme + "_" + kind)
+	return null
+
 func _draw() -> void:
 	var f = Unit.FONT
 	for x in size.x:
@@ -128,7 +134,11 @@ func _draw() -> void:
 			var t = terrain.get(c, "")
 			var v = (x * 7 + y * 13) % 11
 			var indoor = interior.has(c)
-			if indoor or ground == "castle": draw_texture_rect(Sprites.tile_tex("floor"), r, false)
+			var fl = _tt("floor2" if v % 4 == 0 else "floor")
+			var sp = _tt(["plain", "plain2", "plain3"][v % 3]) if not indoor else null
+			if (indoor or ground == "castle") and fl: draw_texture_rect(fl, r, false)
+			elif indoor or ground == "castle": draw_texture_rect(Sprites.tile_tex("floor"), r, false)
+			elif ground == "snow" and sp: draw_texture_rect(sp, r, false)
 			elif ground == "snow":
 				draw_rect(r, Color8(226, 234, 244) if v % 3 else Color8(208, 220, 236))
 				if v == 0: draw_circle(r.position + Vector2(20, 24), 3, Color.WHITE)
@@ -136,16 +146,23 @@ func _draw() -> void:
 				draw_rect(r, Color8(226, 196, 130) if v % 3 else Color8(214, 182, 116))
 				if v == 2: draw_line(r.position + Vector2(14, 50), r.position + Vector2(44, 46), Color8(190, 156, 96), 3)
 			else: draw_texture_rect(Sprites.tile_tex("flower" if v == 0 else ("grass2" if v == 3 else "plain")), r, false)
-			if walls.has(c) and t != "door": draw_texture_rect(Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
+			if walls.has(c) and t != "door" and t != "crack": draw_texture_rect(_tt("wall") if _tt("wall") else Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
+			if walls.has(c) and t != "door" and _tt("wall"):   # phone readability: walls darker than the stone floor
+				draw_rect(r, Color(0.04, 0.02, 0.1, 0.5)); draw_rect(r, Color8(20, 14, 30), false, 2)
+			elif walls.has(c) and t == "crack": draw_texture_rect(Sprites.tile_tex("house" if outdoor_walls else "wall"), r, false)
+			var th = {"throne": "throne", "mountain": "rock", "pillar": "pillar"}
+			if th.has(t) and _tt(th[t]) != null:
+				draw_texture_rect(_tt(th[t]), r, false); continue
 			match t:
 				"forest":
-					if Sprites.has_user_tile("forest"): draw_texture_rect(Sprites.tile_tex(["forest", "forest2", "forest3"][v % 3]), r, false)
+					if _tt("tree"): draw_texture_rect(_tt("tree" if v % 2 else "tree2"), r, false)
+					elif Sprites.has_user_tile("forest"): draw_texture_rect(Sprites.tile_tex(["forest", "forest2", "forest3"][v % 3]), r, false)
 					else: draw_texture_rect(Sprites.tile_tex("tree" if v % 2 else "tree2"), r, false)
-				"fort": draw_texture_rect(Sprites.tile_tex("fort"), r, false)
+				"fort": draw_texture_rect(_tt("fort") if _tt("fort") else Sprites.tile_tex("fort"), r, false)
 				"throne":
 					draw_rect(r.grow(-10), Color8(160, 24, 40)); draw_rect(Rect2(r.position + Vector2(22, 8), Vector2(36, 30)), Color8(216, 176, 48))
 					draw_rect(r.grow(-10), Color8(248, 216, 96), false, 3)
-				"door", "side", "chest", "chest_open": draw_texture_rect(Sprites.tile_tex(t), r, false)
+				"door", "side", "chest", "chest_open": draw_texture_rect(_tt(t) if _tt(t) else Sprites.tile_tex(t), r, false)
 				"river":
 					draw_rect(r, Color8(56, 112, 200))
 					var ph = t_anim * 2.0 + x + y

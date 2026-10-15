@@ -5,13 +5,13 @@ const W = WeaponData.Type
 const CLASSES = {
 	"용병": [5, {"hp": 20, "str": 6, "mag": 0, "skl": 8, "spd": 8, "lck": 5, "def": 4, "res": 1}, "영웅", [W.SWORD]],
 	"궁수": [5, {"hp": 17, "str": 5, "mag": 0, "skl": 7, "spd": 6, "lck": 4, "def": 3, "res": 1}, "스나이퍼", [W.BOW]],
-	"성기사": [5, {"hp": 19, "str": 5, "mag": 3, "skl": 5, "spd": 5, "lck": 6, "def": 6, "res": 5}, "발키리", [W.SWORD, W.STAFF]],
+	"성기사": [5, {"hp": 19, "str": 5, "mag": 3, "skl": 5, "spd": 5, "lck": 6, "def": 6, "res": 5}, "발키리", [W.LANCE, W.SWORD, W.STAFF]],
 	"마법사": [5, {"hp": 15, "str": 0, "mag": 7, "skl": 6, "spd": 6, "lck": 3, "def": 1, "res": 6}, "세이지", [W.TOME]],
 	"기사": [4, {"hp": 22, "str": 7, "mag": 0, "skl": 5, "spd": 3, "lck": 3, "def": 8, "res": 1}, "그레이트나이트", [W.LANCE]],
 	"도적": [6, {"hp": 16, "str": 4, "mag": 0, "skl": 8, "spd": 10, "lck": 7, "def": 2, "res": 1}, "어쌔신", [W.SWORD]],
 	"전사": [5, {"hp": 24, "str": 8, "mag": 0, "skl": 5, "spd": 5, "lck": 3, "def": 5, "res": 0}, "워리어", [W.AXE]],
 	"워리어": [6, {}, "", [W.AXE, W.BOW]], "버서커": [6, {}, "", [W.AXE]],
-	"영웅": [6, {}, "", [W.SWORD, W.AXE]], "스나이퍼": [6, {}, "", [W.BOW]], "발키리": [6, {}, "", [W.SWORD, W.TOME, W.STAFF]],
+	"영웅": [6, {}, "", [W.SWORD, W.AXE]], "스나이퍼": [6, {}, "", [W.BOW]], "발키리": [6, {}, "", [W.LANCE, W.SWORD, W.TOME, W.STAFF]],
 	"세이지": [6, {}, "", [W.TOME, W.STAFF]], "그레이트나이트": [5, {}, "", [W.SWORD, W.LANCE]],
 	"팔라딘": [7, {}, "", [W.SWORD, W.LANCE]], "어쌔신": [7, {}, "", [W.SWORD]], "검성": [6, {}, "", [W.SWORD]],
 	# enemies

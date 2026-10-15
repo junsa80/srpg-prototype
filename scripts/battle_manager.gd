@@ -27,6 +27,7 @@ static func bonus(a: Unit) -> Dictionary:
 	if w == null: return {"might": 0, "hit": 0, "crit": 0, "rank": ""}
 	var rb = ClassProfs.RANK_BONUS[a.rank(w.type)] if a.team == 0 and a.rank(w.type) >= 0 else [0, 0, 0]
 	var p = ClassProfs.prof(a.unit_class.name, w.type)
+	if w.dagger and ClassProfs.DAGGER_PROF.has(a.unit_class.name): p = ClassProfs.DAGGER_PROF[a.unit_class.name]
 	return {"might": rb[0] + p.get("might", 0), "hit": rb[1] + p.get("hit", 0), "crit": rb[2] + p.get("crit", 0),
 		"rank": a.rank_letter(w.type) if a.team == 0 else ""}
 

@@ -33,3 +33,12 @@
 ## 2026-10-15 원본 추가 (assets/user_art/, .gdignore로 웹 빌드 제외)
 - luke/vargas/eileen/leon/extra_mercenary/extra_mage_portrait.jpg — 파일명과 내용이 다름: leon=에일린, vargas=레온, extra_mercenary=바르가스, extra_mage=루크, luke=노아로 사용, eileen=엘리아로 사용
 - mira_portrait_v2.jpg, shadow_commander_portrait.jpg, snow_tileset.jpg, castle_tileset.jpg — 아직 게임에 미적용
+
+## 2026-10-15 (2차) 새 그림 적용 — 이번에도 파일명과 내용이 서로 바뀌어 있었음
+| 파일 | 실제 내용 | 적용 |
+|---|---|---|
+| mira_portrait_v2.jpg | 눈 타일셋 | `assets/tiles/snow_*.png` (plain×3, tree×2, rock) → 5장 |
+| shadow_commander_portrait.jpg | 성 타일셋 | `assets/tiles/castle_*.png` (floor×2, wall, door, side, pillar, throne, fort) → 6장 |
+| snow_tileset.jpg | 그림자 기사단장 초상화 | `assets/portraits/모르간.png` |
+| castle_tileset.jpg | 미라 초상화 (새 버전) | `assets/portraits/미라.png` 교체 |
+- 타일은 원본에서 잘라 32x32로 줄임. 맵 데이터 `"tiles": "snow"/"castle"`로 테마 지정(시각만), 파일이 없으면 기존 그림. 성 벽은 바닥과 구분되게 어둡게 덧칠.

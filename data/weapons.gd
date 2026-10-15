@@ -3,6 +3,7 @@ class_name Weapons extends RefCounted
 ## The first 14 entries are the user's base weapons — numbers unchanged; roles come from TRAITS below.
 const T = WeaponData.Type
 const LIST = {
+	"철단검": [T.SWORD, 4, 95, 10, 2, 40, 1, 1, false, 0], "강철단검": [T.SWORD, 7, 90, 15, 4, 30, 1, 1, false, 0],
 	"철검": [T.SWORD, 5, 90, 0, 5, 40, 1, 1, false, 0], "강철검": [T.SWORD, 8, 80, 0, 8, 30, 1, 1, false, 0],
 	"은검": [T.SWORD, 12, 85, 5, 6, 20, 1, 1, false, 0],
 	"철창": [T.LANCE, 6, 85, 0, 6, 40, 1, 1, false, 0], "강철창": [T.LANCE, 9, 75, 0, 9, 30, 1, 1, false, 0],
@@ -53,6 +54,7 @@ const ITEMS = {
 ## Roles. rank: required weapon rank (0=E..5=S). eff: target tags (might x3). brave: strikes twice.
 ## light: weight never lowers attack speed. heavy: high might, slows. desc: shown in UI.
 const TRAITS = {
+	"철단검": {"rank": 0, "light": true, "dagger": true, "desc": "단검: 가볍고 치명이 잘 난다."}, "강철단검": {"rank": 1, "light": true, "dagger": true, "desc": "단검: 위력↑, 여전히 가볍다."},
 	"철검": {"rank": 0, "desc": "기본 검. 가볍고 다루기 쉽다."},
 	"강철검": {"rank": 1, "heavy": true, "desc": "무겁다: 위력↑ 공속↓"},
 	"은검": {"rank": 3, "desc": "고급 검. 높은 위력."},
@@ -92,7 +94,7 @@ const TAG_NAMES = {"armor": "중갑", "cavalry": "기병", "flying": "비행"}
 
 ## Class loadouts (base and promoted).
 const LOADOUT = {
-	"용병": ["철검", "상처약"], "도적": ["철검", "상처약"], "기사": ["철창", "상처약"], "궁수": ["철활", "상처약"], "마법사": ["파이어", "상처약"], "전사": ["철도끼", "상처약"], "워리어": ["철도끼"], "버서커": ["철도끼"], "성기사": ["철검", "힐"],
+	"용병": ["철검", "상처약"], "도적": ["철단검", "상처약"], "기사": ["철창", "상처약"], "궁수": ["철활", "상처약"], "마법사": ["파이어", "상처약"], "전사": ["철도끼", "상처약"], "워리어": ["철도끼"], "버서커": ["철도끼"], "성기사": ["철검", "철창", "힐"], "어쌔신": ["철단검"],
 	"세이지": ["파이어", "힐"], "발키리": ["파이어", "힐"], "팔라딘": ["철검", "철창"], "그레이트나이트": ["철검", "철창"],
 }
 
@@ -103,7 +105,7 @@ static func make(n: String, uses = -1) -> WeaponData:
 	w.min_range = d[6]; w.max_range = d[7]; w.magic = d[8]; w.heal = d[9]
 	var t: Dictionary = TRAITS.get(n, {})
 	w.rank = t.get("rank", 0); w.effective = t.get("eff", []); w.brave = t.get("brave", false)
-	w.light = t.get("light", false); w.heavy = t.get("heavy", false); w.desc = t.get("desc", ITEMS.get(n, {}).get("desc", ""))
+	w.light = t.get("light", false); w.dagger = t.get("dagger", false); w.heavy = t.get("heavy", false); w.desc = t.get("desc", ITEMS.get(n, {}).get("desc", ""))
 	return w
 
 static func loadout(cls: String) -> Array:

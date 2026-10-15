@@ -28,7 +28,7 @@ var danger_on = false
 var anim_on = true
 var fc_panel: Panel; var unit_wicon: TextureRect
 var btn_status: Button; var btn_menu: Button
-const DROP_W = 8; const DROP_I = 5; const DROP_W_ELITE = 15; const DROP_I_ELITE = 10
+const DROP_W = 3; const DROP_I = 5; const DROP_W_ELITE = 12; const DROP_I_ELITE = 10   # weapon drops lowered (was 8/15)
 var spawn_seq = 0
 var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
 var kills = 0; var stole = 0; var chests_got = 0; var escaped: Array = []; var seized = false
@@ -58,7 +58,7 @@ func _ready() -> void:
 	CHAPTER = Campaign.chapter if Maps.CH.has(Campaign.chapter) else "ch1"
 	MAP = Maps.CH[CHAPTER].duplicate(true)
 	anim_on = Settings.anim
-	grid.ground = MAP.get("ground", "grass")
+	grid.ground = MAP.get("ground", "grass"); grid.theme = MAP.get("tiles", "")
 	grid.load_map(MAP.rows)
 	Skills.units = units; Skills.grid = grid
 	cam = Camera2D.new(); add_child(cam); cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT; cam.make_current()
@@ -859,8 +859,11 @@ func _open_convoy() -> void:
 		var b = ItemMenus.big("%s  %d/%d\n%s" % [it.name, it.uses, it.max_uses, it.desc], 92, 24); b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, it)
 		b.name = "Use_" + it.name
 		if fx.has("key"): b.disabled = true; b.text += "  (문·상자 옆에서 [열기])"
-		elif fx.has("heal") and u.hp >= u.stats.hp: b.disabled = true
-		b.pressed.connect(func(): cl.queue_free(); use_item(u, w))
+		elif fx.has("heal") and heal_targets(u).is_empty(): b.disabled = true
+		b.pressed.connect(func():
+			cl.queue_free()
+			if fx.has("heal"): pick_heal_target(u, w)
+			else: use_item(u, w))
 		list.add_child(b)
 	for p in trade_partners(u):
 		var tb = ItemMenus.big("교환 — %s" % p.data.name, 80, 26); tb.name = "Trade_" + p.data.name; list.add_child(tb)
@@ -932,10 +935,29 @@ func open_trade(a: Unit, b: Unit) -> CanvasLayer:
 		_show_unit_win(a))
 	return cl
 
-func use_item(u: Unit, it: WeaponData) -> void:
+## Healing items: self or an adjacent injured ally.
+func heal_targets(u: Unit) -> Array:
+	return units.filter(func(o): return o.team == 0 and o.hp > 0 and o.hp < o.stats.hp and (o == u or abs(o.cell.x - u.cell.x) + abs(o.cell.y - u.cell.y) == 1))
+
+func pick_heal_target(u: Unit, it: WeaponData) -> CanvasLayer:
+	var tg = heal_targets(u)
+	grid.highlight_heal = tg.map(func(o): return o.cell); grid.queue_redraw()
+	var o = Menus.overlay(ui, "%s — 누구에게?" % it.name, 30, 300, 300); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "HealTarget"
+	for t in tg:
+		var h = mini(int(it.fx().heal), t.stats.hp - t.hp)
+		var b = ItemMenus.big("%s%s  HP %d → %d" % [t.data.name, " (자신)" if t == u else "", t.hp, t.hp + h], 80, 26); b.name = "Target_" + t.data.name; v.add_child(b)
+		var tt = t
+		b.pressed.connect(func(): grid.highlight_heal = []; cl.queue_free(); use_item(u, it, tt))
+	Menus.close_btn(v, cl, func(): grid.highlight_heal = []; grid.queue_redraw())
+	return cl
+
+func use_item(u: Unit, it: WeaponData, target: Unit = null) -> void:
 	var fx = it.fx()
 	if fx.has("heal"):
-		var h = mini(int(fx.heal), u.stats.hp - u.hp); u.hp += h; info.text = "%s: %s 사용 — HP +%d" % [u.data.name, it.name, h]
+		var t: Unit = target if target else u
+		var h = mini(int(fx.heal), t.stats.hp - t.hp); t.hp += h
+		info.text = "%s: %s 사용 — %sHP +%d" % [u.data.name, it.name, ("" if t == u else t.data.name + " "), h]
+		if t != u: Campaign.record_progress(t); t.queue_redraw()
 	elif fx.has("stat"):
 		u.stats[fx.stat] += int(fx.n)
 		if fx.stat == "hp": u.hp += int(fx.n)

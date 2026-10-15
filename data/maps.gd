@@ -62,7 +62,7 @@ const CH = {
 			["그림자 병사", "철도끼", Vector2i(9, 11), {"gold": 300, "item": "상처약", "drop": "문 열쇠"}],
 			["그림자 궁병", "철활", Vector2i(6, 9), {"drop": "철활"}],
 			["그림자 중갑병", "철창", Vector2i(4, 7), {"drop": "아머킬러"}],
-			["그림자 창병", "철창", Vector2i(5, 5), {"guard": true}],
+			["그림자 창병", "철창", Vector2i(5, 5), {"guard": true, "drop": "상자 열쇠"}],
 			["그림자 창병", "투창", Vector2i(6, 5), {"guard": true, "drop": "투창"}],
 			["그림자 궁병", "철활", Vector2i(3, 3), {"guard": true}],
 			["그림자 술사", "볼트", Vector2i(9, 2), {"guard": true, "drop": "볼트"}],
@@ -213,7 +213,7 @@ const CH = {
 	},
 	# ------------------------------------------------------------ 5장 국경 요새 (seize, river crossings, talk 실라, side doors)
 	"ch5": {
-		"ground": "grass",
+		"ground": "snow", "tiles": "snow",   # visuals only (user snow tileset)
 		"rows": [
 			"############",
 			"#....H.....#",
@@ -270,7 +270,7 @@ const CH = {
 	},
 	# ------------------------------------------------------------ 6장 아르덴 왕성 탈출 (escape, secret room, constant reinforcements)
 	"ch6": {
-		"ground": "castle",
+		"ground": "castle", "tiles": "castle",   # visuals only (user castle tileset)
 		"rows": [
 			"##########",
 			"#..T..T..#",
