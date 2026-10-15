@@ -5,6 +5,7 @@ signal finished
 var lines: Array = []
 var idx = 0
 var panel: Control; var box: Panel; var speaker: Label; var body: Label; var skip: Button
+var tw: Tween
 var port_card: Panel; var port: TextureRect; var name_plate: Panel
 
 func _ready() -> void:
@@ -45,6 +46,11 @@ func _show() -> void:
 	var e = lines[idx]
 	var n: String = e[0]
 	speaker.text = n if n != "" else "—"; body.text = e[1]
+	if tw and tw.is_valid(): tw.kill()
+	var cps = Settings.cps() if is_instance_valid(Settings) else 0.0
+	if cps > 0 and is_inside_tree():
+		body.visible_ratio = 0.0; tw = create_tween(); tw.tween_property(body, "visible_ratio", 1.0, body.text.length() / cps)
+	else: body.visible_ratio = 1.0
 	var tex = Sprites.portrait(n) if n != "" else null
 	port_card.visible = tex != null; port.texture = tex
 	name_plate.visible = n != ""
@@ -53,6 +59,7 @@ func _show() -> void:
 
 func _on_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		if tw and tw.is_running(): tw.kill(); body.visible_ratio = 1.0; return   # tap = finish line first
 		idx += 1
 		if idx >= lines.size(): _end()
 		else: _show()

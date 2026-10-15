@@ -13,7 +13,11 @@ func _ready() -> void:
 	s.loop_mode = AudioStreamWAV.LOOP_FORWARD; s.loop_begin = 0; s.loop_end = s.data.size() / 2
 	bgm.stream = s; bgm.volume_db = -8
 	muted = FileAccess.file_exists("user://muted")
-	_apply()
+	apply_volumes(); _apply()
+
+func apply_volumes() -> void:
+	for n in players: players[n].volume_db = linear_to_db(Settings.sfx / 10.0) if Settings.sfx > 0 else -80.0
+	if bgm: bgm.volume_db = (linear_to_db(Settings.bgm / 10.0) - 8.0) if Settings.bgm > 0 else -80.0
 
 func play(n: String) -> void:
 	if not muted and players.has(n): players[n].play()

@@ -16,7 +16,7 @@ func _ready() -> void:
 	var sub = ItemMenus.label("Shadow Legion Tactics", 26, Color8(200, 190, 230)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(sub); sub.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE); sub.offset_top = 560; sub.offset_bottom = 600
 	box = VBoxContainer.new(); add_child(box); box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	box.offset_left = 90; box.offset_right = -90; box.offset_top = -520; box.offset_bottom = -80; box.add_theme_constant_override("separation", 18)
+	box.offset_left = 90; box.offset_right = -90; box.offset_top = -600; box.offset_bottom = -80; box.add_theme_constant_override("separation", 18)
 	_main()
 	Sfx.start_bgm()
 
@@ -26,42 +26,35 @@ func _hash() -> String:
 func _clear() -> void:
 	for c in box.get_children(): c.queue_free()
 
-func _has_save() -> bool: return FileAccess.file_exists(Campaign.PATH) and (Campaign.cleared.size() > 0 or Campaign.roster.size() > 0)
+func _has_save() -> bool: return SaveManager.latest_slot() >= 0 or (FileAccess.file_exists(Campaign.PATH) and (Campaign.cleared.size() > 0 or Campaign.roster.size() > 0))
 
 func _main() -> void:
 	_clear()
-	var cont = ItemMenus.big("이어하기", 110, 36); cont.disabled = not _has_save(); cont.pressed.connect(_continue); box.add_child(cont)
-	var info = ItemMenus.label(("  다음: %s · %dG" % [ChapterData.CHAPTERS.get(Campaign.chapter, {}).get("title", ""), Campaign.gold]) if _has_save() else "", 22, Color8(200, 190, 230))
-	box.add_child(info)
-	var ng = ItemMenus.big("새 게임", 110, 36); ng.pressed.connect(_new_game_confirm); box.add_child(ng)
-	var st = ItemMenus.big("설정", 110, 36); st.pressed.connect(_settings); box.add_child(st)
+	var cont = ItemMenus.big("이어하기", 104, 36); cont.name = "Continue"; cont.disabled = not _has_save(); cont.pressed.connect(_continue); box.add_child(cont)
+	var info_t = ""
+	var ls = SaveManager.latest_slot()
+	if ls >= 0:
+		var m = SaveManager.slot_metadata()[ls]
+		info_t = "  %s · %s · %s" % [m.chapter_title, ("턴 %d" % m.turn) if m.in_battle else "거점", m.timestamp]
+	box.add_child(ItemMenus.label(info_t, 22, Color8(200, 190, 230)))
+	var ng = ItemMenus.big("새 게임", 104, 36); ng.name = "NewGame"; ng.pressed.connect(_new_game_confirm); box.add_child(ng)
+	var ld = ItemMenus.big("불러오기", 104, 36); ld.name = "Load"; ld.pressed.connect(func(): Menus.slots(self, "load", null, _goto)); box.add_child(ld)
+	var st = ItemMenus.big("설정", 104, 36); st.name = "Settings"; st.pressed.connect(func(): Menus.settings(self)); box.add_child(st)
+
+func _goto(scene: String) -> void: get_tree().change_scene_to_file(scene)
 
 func _continue() -> void:
 	Sfx.play("select")
-	if Campaign.cleared.size() > 0:
-		get_tree().change_scene_to_file("res://scenes/base.tscn")
-	else:
-		get_tree().change_scene_to_file("res://scenes/battle.tscn")
+	var ls = SaveManager.latest_slot()
+	if ls >= 0:
+		var scene = SaveManager.apply(ls)
+		if scene != "": _goto(scene); return
+	_goto("res://scenes/base.tscn" if Campaign.cleared.size() > 0 else "res://scenes/battle.tscn")
 
 func _new_game_confirm() -> void:
 	Sfx.play("select")
 	if not _has_save(): _new_game(); return
-	_clear()
-	box.add_child(ItemMenus.label("저장된 진행을 지우고 새로 시작할까요?", 30))
-	var y = ItemMenus.big("예, 새로 시작", 110, 34); y.pressed.connect(_new_game); box.add_child(y)
-	var n = ItemMenus.big("아니요", 110, 34); n.pressed.connect(_main); box.add_child(n)
+	Menus.confirm(self, "새로 시작할까요?\n(저장 슬롯은 그대로 남습니다)", "새로 시작", _new_game)
 
 func _new_game() -> void:
-	Campaign.reset(); get_tree().change_scene_to_file("res://scenes/battle.tscn")
-
-func _settings() -> void:
-	Sfx.play("select"); _clear()
-	var m = ItemMenus.big("음악·효과음: " + ("끔" if Sfx.muted else "켬"), 110, 34)
-	m.pressed.connect(func(): Sfx.toggle_mute(); _settings()); box.add_child(m)
-	var anim = not FileAccess.file_exists("user://anim_off")
-	var a = ItemMenus.big("전투 연출: " + ("켬" if anim else "끔"), 110, 34)
-	a.pressed.connect(func():
-		if anim: FileAccess.open("user://anim_off", FileAccess.WRITE).store_string("1")
-		else: DirAccess.remove_absolute("user://anim_off")
-		_settings()); box.add_child(a)
-	var b = ItemMenus.big("← 돌아가기", 110, 34); b.pressed.connect(_main); box.add_child(b)
+	Campaign.reset(); SaveManager.delete_slot(0); _goto("res://scenes/battle.tscn")

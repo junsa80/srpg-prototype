@@ -26,6 +26,8 @@ var deployed = []
 var busy = false
 var danger_on = false
 var anim_on = true
+var btn_status: Button; var btn_menu: Button
+var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
 var drag_from = Vector2.ZERO; var dragging = false; var press_pos = Vector2.ZERO; var pressed = false
 const PANEL_H = 380
 
@@ -41,31 +43,30 @@ func _ready() -> void:
 	if "base" in demo and not Campaign.get_meta("from_base", false) and not "--flowtest" in demo:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/base.tscn"); return
 	if "ch2" in demo and Campaign.chapter == "ch1": Campaign.chapter = "ch2"; Campaign.ensure_roster()
+	var resume: Dictionary = Campaign.resume; Campaign.resume = {}
+	if not resume.is_empty() and Maps.CH.has(resume.get("chapter", "")): Campaign.chapter = resume.chapter
 	CHAPTER = Campaign.chapter if Maps.CH.has(Campaign.chapter) else "ch1"
 	MAP = Maps.CH[CHAPTER].duplicate(true)
-	anim_on = not FileAccess.file_exists("user://anim_off")
+	anim_on = Settings.anim
 	grid.load_map(MAP.rows)
 	Skills.units = units; Skills.grid = grid
 	cam = Camera2D.new(); add_child(cam); cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT; cam.make_current()
 	_build_ui()
 	Campaign.ensure_roster()
 	ROSTER_NAMES = Roster.joined_by(CHAPTER)
-	var lineup: Array = Campaign.deploy.filter(func(n): return n in ROSTER_NAMES)
-	if lineup.size() != MAP.deploy_size: lineup = MAP.default_deploy.filter(func(n): return n in ROSTER_NAMES)
-	for i in mini(lineup.size(), MAP.spots.size()):
-		var n: String = lineup[i]
-		var u = Roster.make_unit(n, 0, MAP.spots[i], Campaign.entry(n))
-		_place(u)
-		if Campaign.is_awakened(CHAPTER, n): u.apply_awakening()
-	deployed = lineup.duplicate()
-	for e in MAP.enemies: _spawn_enemy(e)
 	var tw = Timer.new(); add_child(tw); tw.wait_time = 0.28; tw.autostart = true
 	tw.timeout.connect(func(): Unit.anim_frame += 1; for u in units: u.queue_redraw())
 	tm.phase_changed.connect(_on_phase)
-	SaveManager.autosave(CHAPTER, 0, _snapshot())  # chapter start
-	_focus(MAP.spots[0])
 	var ch = ChapterData.CHAPTERS[CHAPTER]
+	if not resume.is_empty():
+		_restore(resume); Sfx.start_bgm(); return
+	var lineup: Array = Campaign.deploy.filter(func(n): return n in ROSTER_NAMES)
+	if lineup.size() != MAP.deploy_size: lineup = MAP.default_deploy.filter(func(n): return n in ROSTER_NAMES)
+	deploy_party(lineup)
+	for e in MAP.enemies: _spawn_enemy(e)
+	_focus(MAP.spots[0])
 	info.text = ch.title + " — 목표: " + ch.goal
+	Campaign.chapter_start = Campaign.to_dict().duplicate(true)
 	if not "--flowtest" in OS.get_cmdline_user_args():
 		Sfx.start_bgm()
 		var lines = []
@@ -73,11 +74,26 @@ func _ready() -> void:
 			if Roster.UNITS[n][1] == CHAPTER and Roster.UNITS[n][2] != "" and CHAPTER != "ch1": lines.append([n, Roster.UNITS[n][2]])
 		lines.append_array(ch.pre); lines.append_array(ch.get("boss", []))
 		if not "nodialog" in demo and not "combat" in demo: await dialogue.play(lines)
+		if not "combat" in demo:
+			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
+	SaveManager.autosave(CHAPTER, 0, payload())  # chapter start (after preparation)
 	tm.start_player_phase()
+	if "camtop" in demo: cam.position = Vector2(grid.pixel_size().x - _view_size().x, 0)   # dev: screenshot top-right of map
 	if "combat" in demo: _demo_combat.call_deferred()
 	if "--gameover-demo" in OS.get_cmdline_user_args():
 		for u in units: if u.team == 0: u.hp = 0
 		_check_end(); game_over._open_picker()
+
+## (Re)place the player party at the chapter's deployment spots.
+func deploy_party(lineup: Array) -> void:
+	for u in units.duplicate():
+		if u.team == 0: units.erase(u); u.queue_free()
+	for i in mini(lineup.size(), MAP.spots.size()):
+		var n: String = lineup[i]
+		var u = Roster.make_unit(n, 0, MAP.spots[i], Campaign.entry(n))
+		_place(u)
+		if Campaign.is_awakened(CHAPTER, n): u.apply_awakening()
+	deployed = lineup.duplicate()
 
 func _place(u: Unit) -> void:
 	add_child(u); u.position = grid.cell_to_pos(u.cell); units.append(u)
@@ -106,12 +122,13 @@ func _build_ui() -> void:
 	info.add_theme_font_size_override("font_size", 24); info.add_theme_color_override("font_color", Color8(248, 240, 224)); info.clip_text = true
 	var r2 = HBoxContainer.new(); v.add_child(r2); r2.add_theme_constant_override("separation", 8); r2.custom_minimum_size.y = 74
 	btn_weapon = _btn("무기", r2, 24); btn_convoy = _btn("수송", r2, 24); btn_open = _btn("열기", r2, 24)
-	btn_danger = _btn("위험", r2, 24); btn_anim = _btn("연출", r2, 24); btn_mute = _btn("♪", r2, 24)
+	btn_status = _btn("상태", r2, 24); btn_danger = _btn("위험", r2, 24); btn_menu = _btn("메뉴", r2, 24)
+	btn_status.name = "BtnStatus"; btn_menu.name = "BtnMenu"
 	var r1 = HBoxContainer.new(); v.add_child(r1); r1.add_theme_constant_override("separation", 10); r1.custom_minimum_size.y = 104
 	btn_cancel = _btn("취소", r1, 34); btn_confirm = _btn("확인", r1, 34); btn_end = _btn("턴 종료", r1, 34)
 	btn_confirm.pressed.connect(_on_confirm); btn_cancel.pressed.connect(_on_cancel); btn_end.pressed.connect(_on_end_turn)
 	btn_weapon.pressed.connect(_cycle_weapon); btn_convoy.pressed.connect(_open_convoy); btn_open.pressed.connect(_do_open)
-	btn_danger.pressed.connect(_toggle_danger); btn_anim.pressed.connect(_toggle_anim); btn_mute.pressed.connect(_toggle_mute)
+	btn_danger.pressed.connect(_toggle_danger); btn_status.pressed.connect(_status_button); btn_menu.pressed.connect(open_menu)
 	for b in [btn_confirm, btn_cancel, btn_weapon, btn_convoy, btn_open]: b.disabled = true
 	_refresh_toggle_labels()
 	# terrain + unit windows (top)
@@ -132,11 +149,44 @@ func _build_ui() -> void:
 
 func _refresh_toggle_labels() -> void:
 	btn_danger.text = "위험 " + ("ON" if danger_on else "OFF")
-	btn_anim.text = "연출 " + ("ON" if anim_on else "OFF")
-	btn_mute.text = "♪ " + ("OFF" if Sfx.muted else "ON")
 
 func _snapshot() -> Dictionary:
-	return {"campaign": Campaign.to_dict(), "turn": tm.turn, "units": units.map(func(u): return u.to_dict())}
+	var rd = []
+	for i in MAP.get("reinforcements", []).size(): if MAP.reinforcements[i].get("done", false): rd.append(i)
+	return {"chapter": CHAPTER, "turn": tm.turn, "units": units.filter(func(u): return u.hp > 0).map(func(u): return u.to_dict()),
+		"opened": opened.map(func(c): return [c.x, c.y]), "reinf_done": rd, "deployed": deployed, "chapter_start": Campaign.chapter_start}
+
+## Save payload for SaveManager (campaign + mid-battle snapshot).
+func payload() -> Dictionary: return {"campaign": Campaign.to_dict(), "battle": _snapshot()}
+
+func _restore(r: Dictionary) -> void:
+	deployed = r.get("deployed", []); Campaign.chapter_start = r.get("chapter_start", Campaign.to_dict().duplicate(true))
+	for d in r.units:
+		var c = Vector2i(int(d.cell[0]), int(d.cell[1])); var u: Unit
+		if int(d.team) == 0:
+			u = Roster.make_unit(d.name, 0, c, {"class": d["class"], "level": d.level, "exp": d.exp, "stats": d.stats, "move_bonus": d.get("move_bonus", 0), "items": d.items})
+		else:
+			u = Roster.make_unit(d.get("kind", d["class"]), 1, c); u.data.name = d.name; u.data.tags = PackedStringArray(["dark"])
+			u.level = int(d.level)
+			for s in d.stats: u.stats[s] = int(d.stats[s])
+			u.inventory = d.items.map(func(i): return Weapons.make(i.name, int(i.uses)))
+			var di = int(d.get("drop", -1))
+			if di >= 0 and di < u.inventory.size(): u.drop = u.inventory[di]
+			u.gold_drop = int(d.get("gold", 0)); u.guard = d.get("guard", false); u.boss = d.get("boss", false)
+		u.hp = int(d.hp); u.has_acted = d.get("acted", false); u.awakened = d.get("awakened", false); u.poison = int(d.get("poison", 0))
+		_place(u)
+	for oc in r.get("opened", []):
+		var c = Vector2i(int(oc[0]), int(oc[1]))
+		if grid.terrain.get(c, "") == "door": grid.open_door(c)
+		elif grid.terrain.get(c, "") == "chest": grid.open_chest(c)
+		opened.append(c)
+	for i in r.get("reinf_done", []): MAP.reinforcements[int(i)]["done"] = true
+	tm.turn = int(r.turn); tm.phase = TurnManager.Phase.PLAYER
+	_refresh_intents(); _update_warnings(); _update_danger()
+	var first = units.filter(func(u): return u.team == 0)
+	if first.size(): _focus(first[0].cell)
+	info.text = "%s — 턴 %d 재개\n유닛을 탭하세요 (빈 칸 탭=메뉴)" % [ChapterData.CHAPTERS[CHAPTER].title, tm.turn]
+	btn_end.disabled = false
 
 # ---------------------------------------------------------------- camera / input
 func _view_size() -> Vector2: return get_viewport().get_visible_rect().size - Vector2(0, PANEL_H)
@@ -153,14 +203,60 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		if ev.pressed:
 			if ev.position.y > get_viewport().get_visible_rect().size.y - PANEL_H: return
-			pressed = true; dragging = false; press_pos = ev.position; drag_from = cam.position
+			pressed = true; dragging = false; press_pos = ev.position; drag_from = cam.position; press_ms = Time.get_ticks_msec()
 		elif pressed:
 			pressed = false
-			if not dragging and not busy and tm.phase == TurnManager.Phase.PLAYER:
+			if not dragging and not busy and not prep_active and tm.phase == TurnManager.Phase.PLAYER:
 				tap(grid.pos_to_cell(get_canvas_transform().affine_inverse() * ev.position))
 	elif ev is InputEventMouseMotion and pressed:
 		if (ev.position - press_pos).length() > 24: dragging = true
 		if dragging: cam.position = drag_from - (ev.position - press_pos); _clamp_cam()
+
+## Long-press (0.5 s) on any unit opens its status screen.
+func _process(_dt: float) -> void:
+	if pressed and not dragging and Time.get_ticks_msec() - press_ms > 500:
+		pressed = false
+		var u = _unit_at(grid.pos_to_cell(get_canvas_transform().affine_inverse() * press_pos))
+		if u: open_status(u)
+
+func open_status(u: Unit) -> void:
+	var same = units.filter(func(o): return o.hp > 0 and o.team == u.team)
+	Menus.status(ui, same, same.find(u))
+
+func _status_button() -> void:
+	var u = selected if selected else _unit_at(grid.cursor)
+	if u == null: u = units.filter(func(o): return o.team == 0 and o.hp > 0)[0]
+	open_status(u)
+
+# ---------------------------------------------------------------- battle menu (빈 칸 탭 / [메뉴])
+func open_menu() -> void:
+	if busy or prep_active or tm.phase != TurnManager.Phase.PLAYER: return
+	var o = Menus.overlay(ui, "메뉴", 30, 150, 150); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "BattleMenu"
+	var items = [["유닛 목록", func(): Menus.unit_list(ui, units.filter(func(u): return u.team == 0) + units.filter(func(u): return u.team == 1))],
+		["전투 목표", _objective], ["설정", func(): Menus.settings(ui, func(): anim_on = Settings.anim)],
+		["중단 저장", func(): Menus.slots(ui, "save", func(): return [CHAPTER, tm.turn, payload()])],
+		["챕터 재시작", func(): Menus.confirm(ui, "이 장을 처음부터 다시 할까요?\n(이번 장에서 얻은 경험치·아이템은 장 시작 상태로 돌아갑니다)", "재시작", restart_chapter)],
+		["타이틀로", func(): Menus.confirm(ui, "타이틀로 돌아갈까요?\n저장하지 않은 진행은 마지막 자동 저장(턴 %d 시작)부터 이어집니다." % tm.turn, "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))],
+		["턴 종료", func(): cl.queue_free(); _on_end_turn()]]
+	for it in items:
+		var b = ItemMenus.big(it[0], 92, 32); b.name = "M_" + it[0]; v.add_child(b); var cb: Callable = it[1]
+		b.pressed.connect(func(): Sfx.play("select"); cb.call())
+	Menus.close_btn(v, cl)
+	Sfx.play("select")
+
+func restart_chapter() -> void:
+	if not Campaign.chapter_start.is_empty(): Campaign.from_dict(Campaign.chapter_start)
+	Campaign.resume = {}; Campaign.save_campaign(); get_tree().reload_current_scene()
+
+func _objective() -> void:
+	var ch = ChapterData.CHAPTERS[CHAPTER]
+	var o = Menus.overlay(ui, "전투 목표", 35, 200, 200); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]
+	var foes = units.filter(func(u): return u.team == 1 and u.hp > 0)
+	var t = "%s\n\n승리 조건: %s\n패배 조건: 아린 사망 / 아군 전멸\n\n턴: %d\n남은 적: %d%s\n출전: %s" % [ch.title, ch.goal, tm.turn, foes.size(),
+		"  (보스: %s)" % MAP.boss if MAP.get("boss", "") != "" else "", ", ".join(units.filter(func(u): return u.team == 0 and u.hp > 0).map(func(u): return u.data.name))]
+	if MAP.get("reinforcements", []).any(func(r): return not r.get("done", false)): t += "\n\n주의: 증원 예정 (느낌표 칸)"
+	var l = ItemMenus.label(t, 28); l.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(l)
+	Menus.close_btn(v, cl)
 
 # ---------------------------------------------------------------- helpers
 func _unit_at(c: Vector2i) -> Unit:
@@ -216,6 +312,7 @@ func tap(c: Vector2i) -> void:
 		if u and u.team == 0 and not u.has_acted: _select(u)
 		elif u and u.team == 1: _show_enemy(u)
 		elif u: _show_info(u)
+		else: open_menu()
 		return
 	if u and u.team == 0 and u != selected and u in _heal_targets(selected) and moved:
 		pending_target = null; pending_heal = u
@@ -378,6 +475,7 @@ func _do_open() -> void:
 	var c = _openable(selected)
 	if c == null: return
 	var t = grid.terrain[c]
+	opened.append(c)
 	if t == "door":
 		grid.open_door(c); info.text = "%s: 문을 열었다!" % selected.data.name
 	else:
@@ -429,14 +527,6 @@ func _update_danger() -> void:
 			for c in grid.attack_range(mv, r[0], r[1]): cells[c] = true
 	grid.danger = cells.keys(); grid.queue_redraw()
 
-func _toggle_anim() -> void:
-	anim_on = not anim_on
-	if anim_on: DirAccess.remove_absolute("user://anim_off")
-	else: FileAccess.open("user://anim_off", FileAccess.WRITE).store_string("1")
-	_refresh_toggle_labels()
-
-func _toggle_mute() -> void:
-	Sfx.toggle_mute(); _refresh_toggle_labels()
 
 # ---------------------------------------------------------------- convoy (lord only, in battle)
 func _open_convoy() -> void:
@@ -470,8 +560,8 @@ func _on_phase(phase: int, turn: int) -> void:
 		var lines = _start_of_phase(0)
 		for u in units: u.has_acted = false; u.visible = u.hp > 0; u.queue_redraw()
 		_refresh_intents(); _update_warnings(); _update_danger()
-		SaveManager.autosave(CHAPTER, turn, _snapshot())  # autosave each turn
-		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛을 탭하세요 (드래그=화면 이동)" % turn
+		SaveManager.autosave(CHAPTER, turn, payload())  # autosave each turn
+		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛 탭=선택 · 길게=상태 · 빈 칸=메뉴" % turn
 		if _check_end(): return
 		await _banner("플레이어 페이즈", Color8(120, 176, 255))
 	else:

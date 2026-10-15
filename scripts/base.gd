@@ -15,13 +15,15 @@ func _ready() -> void:
 	var head = Panel.new(); head.custom_minimum_size.y = 110; head.add_theme_stylebox_override("panel", Ornate.frame()); v.add_child(head)
 	title = ItemMenus.label("거점", 34, Color8(248, 216, 112)); title.autowrap_mode = TextServer.AUTOWRAP_OFF; head.add_child(title); title.position = Vector2(20, 10)
 	gold_lbl = ItemMenus.label("", 28); gold_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF; head.add_child(gold_lbl); gold_lbl.position = Vector2(20, 62)
-	var tabs = GridContainer.new(); tabs.columns = 3; v.add_child(tabs)
+	var tabs = GridContainer.new(); tabs.columns = 4; v.add_child(tabs)
 	tabs.add_theme_constant_override("h_separation", 8); tabs.add_theme_constant_override("v_separation", 8)
-	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["출전", _deploy], ["출격 ▶", _sortie]]:
-		var b = ItemMenus.big(t[0], 90, 30); b.pressed.connect(t[1]); tabs.add_child(b)
+	for t in [["상점", _shop], ["수송", _convoy], ["장비", _equip], ["상태", _status], ["저장", _save], ["설정", func(): Menus.settings(self)],
+			["타이틀", func(): Menus.confirm(self, "타이틀로 돌아갈까요?\n(거점 상태는 자동 저장됩니다)", "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))], ["출격 ▶", _sortie]]:
+		var b = ItemMenus.big(t[0], 88, 28); b.name = "T_" + t[0].replace(" ▶", ""); b.pressed.connect(t[1]); tabs.add_child(b)
 	var sc = ScrollContainer.new(); sc.size_flags_vertical = Control.SIZE_EXPAND_FILL; v.add_child(sc)
 	body = VBoxContainer.new(); body.size_flags_horizontal = Control.SIZE_EXPAND_FILL; body.add_theme_constant_override("separation", 8); sc.add_child(body)
 	_refresh_head(); _shop()
+	SaveManager.autosave(Campaign.chapter, 0, {"campaign": Campaign.to_dict(), "battle": {}})
 	if not "--flowtest" in OS.get_cmdline_user_args(): Sfx.start_bgm()
 
 func _refresh_head() -> void:
@@ -137,6 +139,18 @@ func promote(n: String) -> bool:
 	if ok: u.promote(); Sfx.play("levelup")
 	_save_unit(u); return ok
 
+# ---------------- 상태 / 저장
+var temp_units: Array = []
+func _status() -> void:
+	for u in temp_units: if is_instance_valid(u): u.queue_free()
+	temp_units = []
+	for n in Roster.joined_by(Campaign.chapter):
+		var u = _unit(n); u.visible = false; add_child(u); temp_units.append(u)
+	Menus.unit_list(self, temp_units, "부대 상태")
+
+func _save() -> void:
+	Menus.slots(self, "save", func(): return [Campaign.chapter, 0, {"campaign": Campaign.to_dict(), "battle": {}}])
+
 # ---------------- 출전
 func _deploy() -> void:
 	_clear(); Sfx.play("select")
@@ -145,7 +159,7 @@ func _deploy() -> void:
 	body.add_child(ItemMenus.label("출전 유닛 %d/%d (아린 고정)" % [Campaign.deploy.size(), size], 28))
 	for n in Roster.joined_by(Campaign.chapter):
 		var on = n in Campaign.deploy
-		var b = ItemMenus.big(("✔ " if on else "　 ") + n, 80, 28)
+		var b = ItemMenus.big(("● " if on else "○ ") + n, 80, 28)
 		b.disabled = n == "아린"
 		b.pressed.connect(func():
 			if on: Campaign.deploy.erase(n)
@@ -156,5 +170,5 @@ func _deploy() -> void:
 func _sortie() -> void:
 	if not Maps.CH.has(Campaign.chapter):
 		_clear(); body.add_child(ItemMenus.label("%s은(는) 아직 준비 중입니다." % ChapterData.CHAPTERS.get(Campaign.chapter, {}).get("title", "다음 장"), 30)); return
-	Campaign.save_campaign(); Campaign.set_meta("from_base", true)
+	Campaign.save_campaign(); Campaign.set_meta("from_base", true); Campaign.resume = {}
 	get_tree().change_scene_to_file("res://scenes/battle.tscn")

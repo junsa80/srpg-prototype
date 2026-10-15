@@ -6,6 +6,8 @@ run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.3")
 
 [autoload]
+
+Settings="*res://scripts/settings.gd"
 SaveManager="*res://scripts/save_manager.gd"
 Campaign="*res://scripts/campaign.gd"
 Sfx="*res://scripts/audio.gd"

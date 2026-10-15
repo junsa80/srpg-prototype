@@ -10,10 +10,15 @@ var gold = 0
 var convoy = []             # Array of {"name", "uses"} — shared storage
 var chapter = "ch1"         # next/current chapter
 var cleared = []            # cleared chapters
+var playtime = 0.0         # seconds
+var resume = {}            # battle snapshot to restore on next battle scene load (from a save)
+var chapter_start = {}     # campaign dict at chapter start (for 챕터 재시작)
 const CONVOY_MAX = 100
 const CLEAR_GOLD = {"ch1": 1000, "ch2": 1500}
 
 func _ready() -> void: load_campaign()
+
+func _process(dt: float) -> void: playtime += dt
 
 func is_awakened(chapter: String, name: String) -> bool:
 	var prior: Array = attempts.get(chapter, [])
@@ -45,7 +50,7 @@ func record_clear(ch: String) -> void:
 	ensure_roster(); save_campaign()
 
 func to_dict() -> Dictionary:
-	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared}
+	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime}
 
 ## Make sure every joined unit has a roster entry (default stats/loadout).
 func ensure_roster() -> void:
@@ -65,21 +70,18 @@ func from_convoy(i: int) -> WeaponData:
 	return Weapons.make(it.name, int(it.uses))
 
 func save_campaign() -> void:
-	var tmp = PATH + ".tmp"
-	var f = FileAccess.open(tmp, FileAccess.WRITE)
-	if f == null: return
-	f.store_string(JSON.stringify({"version": SaveManager.SAVE_VERSION, "campaign": to_dict()})); f.close()
-	var dir = DirAccess.open("user://")
-	if dir.file_exists(PATH.get_file()): dir.remove(PATH.get_file())
-	dir.rename(tmp.get_file(), PATH.get_file())
+	SaveManager.write_atomic(PATH, JSON.stringify({"version": SaveManager.SAVE_VERSION, "campaign": to_dict()}))
 
 func load_campaign() -> void:
 	if not FileAccess.file_exists(PATH): return
 	var d = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 	if typeof(d) != TYPE_DICTIONARY: return
-	var c = d.get("campaign", {})
+	from_dict(d.get("campaign", {}))
+
+func from_dict(c: Dictionary) -> void:
+	c = c.duplicate(true)
 	roster = c.get("roster", {}); attempts = c.get("attempts", {}); deploy = c.get("deploy", [])
-	gold = int(c.get("gold", 0)); convoy = c.get("convoy", []); chapter = c.get("chapter", "ch1"); cleared = c.get("cleared", [])
+	gold = int(c.get("gold", 0)); convoy = c.get("convoy", []); chapter = c.get("chapter", "ch1"); cleared = c.get("cleared", []); playtime = float(c.get("playtime", 0))
 
 func reset() -> void:
-	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; save_campaign()
+	roster = {}; attempts = {}; deploy = []; gold = 0; convoy = []; chapter = "ch1"; cleared = []; playtime = 0.0; resume = {}; save_campaign()
