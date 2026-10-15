@@ -119,6 +119,8 @@ func growth(s: String) -> int:
 func level_up(rng: RandomNumberGenerator = null) -> Dictionary:
 	if rng == null: rng = RandomNumberGenerator.new(); rng.randomize()
 	var gains = {}
+	if level >= ClassCaps.MAX_LEVEL and not boss and team == 0: return gains
+	var cp = {} if boss else ClassCaps.caps(unit_class.name)
 	for s in STATS:
 		var g = growth(s); var inc = 0
 		if fixed_growth:
@@ -126,14 +128,16 @@ func level_up(rng: RandomNumberGenerator = null) -> Dictionary:
 			while growth_accum[s] >= 100: growth_accum[s] -= 100; inc += 1
 		else:
 			inc = g / 100 + (1 if rng.randi_range(0, 99) < g % 100 else 0)
+		if cp.has(s): inc = clampi(inc, 0, maxi(0, int(cp[s]) - int(stats[s])))   # capped stat doesn't grow
 		if inc > 0: stats[s] += inc; gains[s] = inc
 	level += 1
 	hp += gains.get("hp", 0)
 	return gains
 
 func gain_exp(amount: int) -> Array:
+	if level >= ClassCaps.MAX_LEVEL and team == 0: exp = 0; return []
 	exp += amount; var results = []
-	while exp >= 100:
+	while exp >= 100 and not (level >= ClassCaps.MAX_LEVEL and team == 0):
 		exp -= 100; results.append(level_up())
 	return results
 
@@ -157,9 +161,12 @@ func apply_progress(p: Dictionary) -> void:
 	for t in ClassProfs.START_RANK.get(unit_class.name, {}):   # migrate: weapon types added to a class later (e.g. 성기사 창)
 		if not wexp.has(int(t)): wexp[int(t)] = ClassProfs.WEXP[ClassProfs.START_RANK[unit_class.name][t]]
 	if p.has("items"): inventory = p.items.map(func(i): return Weapons.make(i.name, int(i.uses)))
+	if team == 0:   # migrate: old saves clamp to class caps / level 20
+		ClassCaps.clamp_unit(self); level = mini(level, ClassCaps.MAX_LEVEL)
+		if level >= ClassCaps.MAX_LEVEL: exp = 0
 
 func can_promote() -> bool:
-	return level >= unit_class.promotion_level and unit_class.promotes_to != null
+	return level >= ClassCaps.PROMOTE_MIN_LV and unit_class.promotes_to != null
 
 func promote(alt := "") -> void:
 	if not can_promote(): return
@@ -175,7 +182,13 @@ func promote(alt := "") -> void:
 		if s == "move": move_bonus += b[s]
 		else: stats[s] += b[s]
 	if b.has("hp"): hp += b["hp"]
-	unit_class = target; level = 1
+	var mn = ClassCaps.mins(target.name)   # raise to promoted-class minimums, then clamp to promoted caps
+	for s in mn:
+		if stats.get(s, 0) < mn[s]:
+			if s == "hp": hp += mn[s] - stats[s]
+			stats[s] = mn[s]
+	unit_class = target; level = 1; exp = 0
+	ClassCaps.clamp_unit(self)
 	for t in ClassProfs.START_RANK.get(target.name, {}):   # promotion broadens ranks
 		wexp[int(t)] = maxi(int(wexp.get(int(t), 0)), ClassProfs.WEXP[ClassProfs.START_RANK[target.name][t]])
 

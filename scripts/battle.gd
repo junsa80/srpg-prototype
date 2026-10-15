@@ -922,6 +922,7 @@ func _open_convoy() -> void:
 		b.name = "Use_" + it.name
 		if fx.has("key"): b.disabled = true; b.text += "  (문·상자 옆에서 [열기])"
 		elif fx.has("heal") and heal_targets(u).is_empty(): b.disabled = true
+		elif fx.has("stat") and int(u.stats[fx.stat]) >= ClassCaps.cap(u.unit_class.name, fx.stat): b.disabled = true; b.text += "  (최대치)"
 		b.pressed.connect(func():
 			cl.queue_free()
 			if fx.has("heal"): pick_heal_target(u, w)
@@ -1021,9 +1022,13 @@ func use_item(u: Unit, it: WeaponData, target: Unit = null) -> void:
 		info.text = "%s: %s 사용 — %sHP +%d" % [u.data.name, it.name, ("" if t == u else t.data.name + " "), h]
 		if t != u: Campaign.record_progress(t); t.queue_redraw()
 	elif fx.has("stat"):
-		u.stats[fx.stat] += int(fx.n)
-		if fx.stat == "hp": u.hp += int(fx.n)
-		info.text = "%s: %s 사용 — %s +%d!" % [u.data.name, it.name, Menus.STAT_NAMES.get(fx.stat, fx.stat), int(fx.n)]
+		var room = ClassCaps.cap(u.unit_class.name, fx.stat) - int(u.stats[fx.stat])
+		if room <= 0:   # at cap: warn, don't consume, turn not spent
+			info.text = "%s의 %s은(는) 이미 최대치입니다. (%s 미사용)" % [u.data.name, Menus.STAT_NAMES.get(fx.stat, fx.stat), it.name]; Sfx.play("cancel"); return
+		var n = mini(int(fx.n), room)
+		u.stats[fx.stat] += n
+		if fx.stat == "hp": u.hp += n
+		info.text = "%s: %s 사용 — %s +%d!%s" % [u.data.name, it.name, Menus.STAT_NAMES.get(fx.stat, fx.stat), n, "  (최대치)" if n == room else ""]
 	u.use_item(it); Campaign.record_progress(u); Sfx.play("levelup")
 	selected = u; moved = true; _finish_unit(u)
 

@@ -92,6 +92,8 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 
 - 병종 계열 (v4): 중갑 아머나이트→제네럴 / 기마 소셜나이트→팔라딘, 성기사(시스터 상급) / 비행 비룡기사→드래곤마스터. 개인 기본치 보정·성장률은 `Roster.PERSONAL_BASE/PERSONAL_GROWTH`, 개인 초기 장비 `UNIT_LOADOUT`. 리엘(비룡) 이름이 스토리 바이블 13장 숲 정찰병 리엘과 겹침 — 사용자 결정 대기.
 
+- 능력치 상한: `data/class_caps.gd` (ClassCaps.RAW, MAX_LEVEL 20, PROMOTE_MIN_LV 10). 상급 최소치 = 하급 Lv1 기본치 + 전직 보너스. 보스(boss=true)는 상한·레벨 제한 면제, 그림자 일반병은 대응 아군 클래스 상한(ENEMY_AS). 13장 정찰병은 레이(사용자 결정), 비룡기사 리엘 유지.
+
 ## 6. 현재 시뮬 승률 (16회, 조잡한 AI 기준. 통과선 15%)
 ch1 16/16 · ch2 11/16 · ch3 8/16 · ch4a 6/16 · ch4b 4/16 · ch5 11/16 · ch6 6/16 (2026-10-15 밤, v4 병종 개편). 이전(저녁): 16·9·6·7·7·9·10. 시스터 지팡이만(단검 없음) 시험: ch1 16/16, ch2 2/16 → 단검 유지. 치유사 없이: ch1 16/16, ch2 4/16. 자세한 값은 `tests/sim_results.txt`.
 

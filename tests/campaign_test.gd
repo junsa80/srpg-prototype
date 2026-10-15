@@ -329,5 +329,35 @@ func _ready() -> void:
 	print("NEWUNITS ", gr.inventory.map(func(w): return w.name), ri.inventory.map(func(w): return w.name), ri.rank_letter(1), ri.rank_letter(2), gr.stats, " ", Roster.make_unit("카스", 0, Vector2i.ZERO).stats, " ", ri.stats)
 	gr.free(); ri.free()
 	kael.free(); sk.free()
+	# caps + promotion timing
+	var fg0 = Unit.fixed_growth; Unit.fixed_growth = true
+	var a10 = Roster.make_unit("노아", 0, Vector2i.ZERO); var a20 = Roster.make_unit("노아", 0, Vector2i.ZERO)
+	for i in 9: a10.level_up()
+	for i in 19: a20.level_up()
+	check(a20.level == 20 and a20.level_up().is_empty() and a20.gain_exp(100).is_empty() and a20.exp == 0, "Lv20 max, no EXP")
+	var lv1 = Roster.make_unit("노아", 0, Vector2i.ZERO); check(not lv1.can_promote() and a10.can_promote(), "promote from Lv10")
+	a10.promote(); a20.promote()
+	check(a10.level == 1 and a10.unit_class.name == "영웅" and a20.stats.hp > a10.stats.hp, "promotion resets Lv1; Lv20 promote keeps extra growth")
+	var mn = ClassCaps.mins("영웅"); var ok_min = true
+	for s9 in mn: ok_min = ok_min and a10.stats[s9] >= mn[s9]
+	check(ok_min, "promoted stats >= class minimums")
+	var cap_ok = true
+	for s9 in Unit.STATS: cap_ok = cap_ok and a20.stats[s9] <= ClassCaps.cap("영웅", s9)
+	check(cap_ok, "within promoted caps")
+	var arm = Roster.make_unit("카엘", 0, Vector2i.ZERO); arm.stats.spd = 15
+	for i in 19: arm.level_up()
+	check(arm.stats.spd == 15, "armor SPD capped at 15")
+	var oldu = Roster.make_unit("카엘", 0, Vector2i.ZERO, {"class": "아머나이트", "level": 25, "exp": 50, "stats": {"hp": 50, "str": 25, "mag": 0, "skl": 5, "spd": 18, "lck": 3, "def": 30, "res": 1}})
+	check(oldu.stats.hp == 45 and oldu.stats.spd == 15 and oldu.stats.def == 22 and oldu.level == 20, "old save clamps to caps")
+	for un in Roster.UNITS:
+		var uu = Roster.make_unit(un, 0, Vector2i.ZERO); var hit = []
+		for i in 19:
+			var before = uu.stats.duplicate(); uu.level_up()
+		for s9 in Unit.STATS:
+			if uu.stats[s9] >= ClassCaps.cap(uu.unit_class.name, s9): hit.append(s9)
+		if not hit.is_empty(): print("CAPHIT ", un, " ", uu.unit_class.name, " Lv20 ", hit)
+		uu.free()
+	Unit.fixed_growth = fg0
+	for x in [a10, a20, lv1, arm, oldu]: x.free()
 	print("CAMPAIGNTEST ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	get_tree().quit(0 if fails == 0 else 1)

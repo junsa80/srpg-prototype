@@ -66,6 +66,13 @@ const GROWTHS = {
 }
 const THIEF_CLASSES = ["도적", "어쌔신"]
 
+## Promotion branches (first = CLASSES[..][2]).
+static func branches(base: String) -> Array:
+	if not CLASSES.has(base) or CLASSES[base][2] == "": return []
+	var out = [CLASSES[base][2]]
+	if ALT_PROMOTE.has(base): out.append(ALT_PROMOTE[base])
+	return out
+
 static var _cache = {}
 static func cls(n: String) -> ClassData:
 	if _cache.has(n): return _cache[n]

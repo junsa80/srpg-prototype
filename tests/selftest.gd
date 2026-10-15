@@ -17,7 +17,7 @@ func _init() -> void:
 	var pal = ClassData.new(); pal.name = "팔라딘"; c.promotes_to = pal
 	a.level = 10; var hp0 = a.stats.hp; var mv0 = a.move_range(); a.promote()
 	print("promote: hp +", a.stats.hp - hp0, " move +", a.move_range() - mv0)
-	ok = ok and a.stats.hp - hp0 == 4 and a.move_range() - mv0 == 1
+	ok = ok and a.stats.hp - hp0 >= 4 and a.move_range() - mv0 == 1   # >= : promoted minimums may raise more
 	# EXP: kill gives > 20, 100 EXP => level up
 	var lv0 = b.level; b.exp = 95; var ups = b.gain_exp(10); ok = ok and b.level == lv0 + 1 and b.exp == 5
 	ok = ok and BattleManager.exp_for(a, b, true, true) > 20

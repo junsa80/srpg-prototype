@@ -262,7 +262,7 @@ static func _fill_status(ctx: Dictionary) -> void:
 	var nm = ItemMenus.label(u.data.name, 42, GOLD if not enemy else Color8(255, 140, 140)); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; info.add_child(nm)
 	info.add_child(ItemMenus.label("%s   %s" % [u.unit_class.name, "적군" if enemy else "아군"], 26, DIM))
 	var lv = HBoxContainer.new(); info.add_child(lv)
-	var ll = ItemMenus.label("Lv %d   EXP %d" % [u.level, u.exp], 26); ll.autowrap_mode = TextServer.AUTOWRAP_OFF; ll.custom_minimum_size.x = 230; lv.add_child(ll)
+	var ll = ItemMenus.label(("Lv %d/%d   EXP %s" % [u.level, ClassCaps.MAX_LEVEL, "--" if u.level >= ClassCaps.MAX_LEVEL else str(u.exp)]) if not enemy else ("Lv %d   EXP %d" % [u.level, u.exp]), 26); ll.autowrap_mode = TextServer.AUTOWRAP_OFF; ll.custom_minimum_size.x = 230; lv.add_child(ll)
 	lv.add_child(bar(u.exp, 100, 150, 14, Color8(248, 216, 112)))
 	var hp = HBoxContainer.new(); info.add_child(hp)
 	var hl = ItemMenus.label("HP %d / %d" % [u.hp, u.stats.hp], 26); hl.autowrap_mode = TextServer.AUTOWRAP_OFF; hl.custom_minimum_size.x = 230; hp.add_child(hl)
@@ -278,7 +278,12 @@ static func _fill_status(ctx: Dictionary) -> void:
 		var lab = ItemMenus.label(STAT_NAMES[s], 26, Color8(160, 200, 255)); lab.custom_minimum_size.x = 66; lab.autowrap_mode = TextServer.AUTOWRAP_OFF; row.add_child(lab)
 		var num = ItemMenus.label(str(val), 28, TXT); num.custom_minimum_size.x = 46; num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; num.autowrap_mode = TextServer.AUTOWRAP_OFF; row.add_child(num)
 		var sep = Control.new(); sep.custom_minimum_size.x = 8; row.add_child(sep)
-		row.add_child(bar(val, STAT_CAP if s != "hp" else 60, 160, 16, Color8(120, 176, 255) if not u.awakened else Color8(255, 200, 32)))
+		var capv = ClassCaps.cap(u.unit_class.name, s) if not u.boss else 0
+		var at_cap = capv > 0 and capv < 999 and u.stats[s] >= capv
+		if capv > 0 and capv < 999:
+			num.text = "%d/%d" % [val, capv]; num.custom_minimum_size.x = 76
+			if at_cap: num.add_theme_color_override("font_color", Color8(120, 255, 140)); num.text += "★"
+		row.add_child(bar(val, capv if capv > 0 and capv < 999 else (STAT_CAP if s != "hp" else 60), 130, 16, Color8(120, 255, 140) if at_cap else (Color8(120, 176, 255) if not u.awakened else Color8(255, 200, 32))))
 	# weapon ranks
 	if not enemy:
 		var rr = HBoxContainer.new(); rr.add_theme_constant_override("separation", 14); body.add_child(rr)
