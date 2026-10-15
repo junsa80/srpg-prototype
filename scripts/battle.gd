@@ -115,7 +115,7 @@ func _ready() -> void:
 	if "combat" in demo: _demo_combat.call_deferred()
 	if "forecast" in demo: _demo_forecast.call_deferred()
 	var rd = RegEx.create_from_string("recruit=([^+&]+)").search(demo)   # dev: #recruit=아린|카스 talk dialogue screenshot
-	if rd: dialogue.play.call_deferred(ChapterData.TALK.get("아린|" + rd.get_string(1).uri_decode(), []))
+	if rd: dialogue.play.call_deferred(ChapterData.TALK.get("아린|" + rd.get_string(1).uri_decode(), ChapterData.CAMP.get(rd.get_string(1).uri_decode(), [])))
 	if "--gameover-demo" in OS.get_cmdline_user_args():
 		for u in units: if u.team == 0: u.hp = 0
 		_check_end(); game_over._open_picker()
