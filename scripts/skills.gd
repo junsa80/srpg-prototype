@@ -19,6 +19,16 @@ const LIST = {
 	"루미나": ["받는 마법 피해 -2", "impl"], "아서": ["먼저 공격 시 피해 +2", "impl"],
 	"셀레나": ["2칸 내 아군 명중 +5, 회피 +5", "impl"],
 	"그렉": ["받는 물리 피해 -1 (나무꾼 체력)", "impl"], "카스": ["도끼 치명 +15", "impl"],
+	# 7장 이후 영입 (data only until the chapters exist; mechanics already implemented)
+	"다린": ["검 장비 시 명중 +5, 회피 +5", "impl"], "소라": ["활 치명 +10", "impl"], "엘렌": ["마방 +2", "impl"],
+	"카린": ["회피 +10", "impl"], "브록": ["방어 +2", "impl"], "라임": ["이동 후 공격 시 피해 +2", "impl"],
+	"미르": ["턴 종료 시 인접 아군 HP 3 회복", "impl"], "제드": ["HP 절반 이하일 때 피해 +3", "impl"], "카이린": ["속도 +2", "impl"],
+	# 보스 패시브
+	"바르가스": ["철벽: 받는 물리 피해 -2", "impl"], "모르간": ["그림자 지휘: 인접 그림자 아군 명중 +10", "impl"],
+	"그림자 장군": ["학살: 적 격파 시 HP +5", "impl"], "어둠 마법사": ["마력 흡수: 마법 명중 시 HP +1", "impl"],
+	"비룡 군주": ["급강하: 첫 공격 위력 +3", "impl"], "그림자 왕": ["왕권: 전 능력치 +2, 인접 아군 공격 +1", "impl"],
+	"그림자 궁병 대장": ["정밀 사격: 명중 +15", "impl"], "그림자 기병 대장": ["돌격: 이동 후 첫 공격 위력 +2", "impl"],
+	"그림자 암살자": ["급소: 치명 +15", "impl"], "요새 문지기": ["수비: 인접 아군 방어 +2", "impl"],
 }
 static var units: Array = []   # set by chapter for aura checks
 static var grid = null          # set by chapter for terrain checks
@@ -36,7 +46,11 @@ static func _allies_with(u: Unit, skill: String, max_d: int) -> bool:
 static func stat_mod(u: Unit, s: String) -> int:
 	var m = 0
 	if has(u, "가렌"): m += {"def": 3, "spd": -1}.get(s, 0)
-	if has(u, "세라핀") and s == "spd": m += 2
+	if (has(u, "세라핀") or has(u, "카이린")) and s == "spd": m += 2
+	if has(u, "엘렌") and s == "res": m += 2
+	if has(u, "브록") and s == "def": m += 2
+	if has(u, "그림자 왕"): m += 2
+	if s == "def" and _allies_with(u, "요새 문지기", 1): m += 2
 	if has(u, "엘리아") and s == "mag": m += 2
 	if has(u, "카이젠") and s == "res" and u.flags.get("kaizen", false): m += 2
 	if s == "def" and _allies_with(u, "레온", 1): m += 2
@@ -52,17 +66,22 @@ static func hit_mod(a: Unit, d: Unit) -> int:
 	if has(a, "카엘") and a.flags.get("moved", false): m += 10
 	if has(a, "리안") and a.weapon() and a.weapon().type == WeaponData.Type.LANCE: m += 10
 	if _allies_with(a, "셀레나", 2): m += 5
+	if has(a, "다린") and a.weapon() and a.weapon().type == WeaponData.Type.SWORD: m += 5
+	if has(a, "그림자 궁병 대장"): m += 15
+	if a.has_tag("dark") and _allies_with(a, "모르간", 1): m += 10
 	return m
 
 static func avo_mod(d: Unit) -> int:
 	var m = 0
-	if has(d, "카이") or has(d, "섀도우") or has(d, "니아"): m += 5
+	if has(d, "카이") or has(d, "섀도우") or has(d, "니아") or has(d, "다린"): m += 5
+	if has(d, "카린"): m += 10
 	if has(d, "리엘") and grid and grid.is_forest(d.cell): m += 10
 	if _allies_with(d, "셀레나", 2): m += 5
 	return m
 
 static func crit_mod(a: Unit) -> int:
-	return (10 if has(a, "마크") else 0) + (15 if has(a, "루크") else 0) + (15 if has(a, "카스") and a.weapon() and a.weapon().type == WeaponData.Type.AXE else 0)
+	return (10 if has(a, "마크") else 0) + (15 if has(a, "루크") else 0) + (15 if has(a, "카스") and a.weapon() and a.weapon().type == WeaponData.Type.AXE else 0) \
+		+ (10 if has(a, "소라") and a.weapon() and a.weapon().type == WeaponData.Type.BOW else 0) + (15 if has(a, "그림자 암살자") else 0)
 
 ## Defense used against attacker a (after reductions).
 static func defense_vs(a: Unit, d: Unit, magic: bool) -> int:
@@ -83,6 +102,12 @@ static func dmg_mod(a: Unit, d: Unit, magic: bool, initiator: bool, strike_no: i
 	if not magic and has(d, "드레이크"): m -= 2
 	if magic and has(d, "루미나"): m -= 2
 	if not magic and has(d, "그렉"): m -= 1
+	if not magic and has(d, "바르가스"): m -= 2
+	if has(a, "라임") and a.flags.get("moved", false): m += 2
+	if has(a, "제드") and a.hp * 2 <= a.stats.hp: m += 3
+	if has(a, "비룡 군주") and strike_no == 1: m += 3
+	if has(a, "그림자 기병 대장") and strike_no == 1 and a.flags.get("moved", false): m += 2
+	if _allies_with(a, "그림자 왕", 1): m += 1
 	return m
 
 static func crit_dmg_bonus(a: Unit) -> int: return 3 if has(a, "노아") else 0
@@ -100,4 +125,6 @@ static func extra_double_chance(u: Unit) -> float:
 static func weight_relief(u: Unit) -> int: return 2 if has(u, "미라") else 0
 static func lifesteal_magic(u: Unit) -> float: return 0.2 if has(u, "아리아") else 0.0
 static func poison_chance(u: Unit) -> float: return 0.2 if has(u, "벤") else 0.0
-static func end_turn_heal(u: Unit) -> int: return 5 if has(u, "세라") else 0
+static func end_turn_heal(u: Unit) -> int: return 5 if has(u, "세라") else (3 if has(u, "미르") else 0)
+static func on_kill_heal(u: Unit) -> int: return 5 if has(u, "그림자 장군") else 0
+static func magic_hit_heal(u: Unit) -> int: return 1 if has(u, "어둠 마법사") else 0

@@ -306,7 +306,7 @@ func _deploy() -> void:
 func _sortie() -> void:
 	if not Maps.CH.has(Campaign.chapter):
 		_clear()
-		body.add_child(ItemMenus.label("제1부 완결! 축하합니다.\n\n[환생]으로 1장부터 다시 시작할 수 있습니다 (표준/강화 선택).", 28))
+		body.add_child(ItemMenus.label("제1부 완결! 축하합니다.\n7장 이후는 준비 중입니다 (To be continued).\n\n[환생]으로 1장부터 다시 시작할 수 있습니다 (표준/강화 선택).", 28))
 		var rb = ItemMenus.big("환생 — ★%d 시작" % (Campaign.cycle + 1), 96, 32); rb.name = "Rebirth"; body.add_child(rb)
 		rb.pressed.connect(func(): Menus.rebirth_select(self, func(): get_tree().change_scene_to_file("res://scenes/battle.tscn")))
 		return

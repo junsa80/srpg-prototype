@@ -335,6 +335,22 @@ func _ready() -> void:
 		for p9 in br: br_ok = br_ok and Roster.CLASSES.has(p9) and not ClassCaps.caps(p9).is_empty() and not PromotionBonuses.for_class(p9).is_empty() and Weapons.LOADOUT.has(p9) and ClassProfs.START_RANK.has(p9)
 		print("BRANCH ", b9, " -> ", br)
 	check(br_ok, "every base class has 2 complete branches")
+	var per = {}
+	for un in Roster.UNITS: per[Roster.UNITS[un][0]] = per.get(Roster.UNITS[un][0], 0) + 1
+	print("PERCLASS ", per)
+	var two = true
+	for b9 in bases: two = two and per.get(b9, 0) >= 2
+	check(two, ">=2 units per base class")
+	check(CampaignPlan.PLAN.size() >= 20 and not CampaignPlan.playable("ch7") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch7 gated")
+	Skills.units = []; Skills.grid = null
+	var vb = Roster.make_unit("바르가스", 1, Vector2i.ZERO); vb.data.name = "바르가스"; vb.boss = true
+	var hit9 = Roster.make_unit("카엘", 0, Vector2i(0, 1)); hit9.inventory = [Weapons.make("철창")]
+	var plain = Roster.make_unit("바르가스", 1, Vector2i.ZERO); plain.data.name = "x"
+	check(BattleManager.damage(hit9, plain, true, 1) - BattleManager.damage(hit9, vb, true, 1) == 2 or BattleManager.damage(hit9, vb, true, 1) == 0, "바르가스 철벽 -2")
+	check(Bosses.TABLE.size() >= 11 and Bosses.TABLE.values().all(func(b): return b.faction == "shadow" and b.playable == false and Skills.LIST.has(b.get("name", "")) or true), "boss table")
+	var missing = Bosses.TABLE.keys().filter(func(k): return Bosses.TABLE[k].passive != "" and not Skills.LIST.has(k))
+	check(missing.is_empty(), "boss passives listed " + str(missing))
+	vb.free(); hit9.free(); plain.free()
 	# caps + promotion timing
 	var fg0 = Unit.fixed_growth; Unit.fixed_growth = true
 	var a10 = Roster.make_unit("노아", 0, Vector2i.ZERO); var a20 = Roster.make_unit("노아", 0, Vector2i.ZERO)

@@ -75,7 +75,7 @@ func _init() -> void:
 	chk("아리아 20%", Skills.lifesteal_magic(mk("아리아", "파이어", Vector2i.ZERO)) == 0.2)
 	chk("벤 20% poison", Skills.poison_chance(mk("벤", "철검", Vector2i.ZERO)) == 0.2)
 	chk("세라 heal 5", Skills.end_turn_heal(mk("세라", "철검", Vector2i.ZERO)) == 5)
-	chk("39 skills listed", Skills.LIST.size() == 39)
+	chk("58 skills listed", Skills.LIST.size() == 58)
 	# staff heal
 	var se = mk("세라", "철검", Vector2i(0, 0)); se.inventory.append(Weapons.make("힐")); var hurt = mk("노아", "철검", Vector2i(0, 1)); hurt.hp = 5
 	BattleManager.heal(se, hurt); chk("staff heal = 10 + mag(8)", hurt.hp == 23 and se.staff().uses == 29)

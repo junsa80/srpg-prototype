@@ -94,8 +94,10 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 
 - 능력치 상한: `data/class_caps.gd` (ClassCaps.RAW, MAX_LEVEL 20, PROMOTE_MIN_LV 10). 상급 최소치 = 하급 Lv1 기본치 + 전직 보너스. 보스(boss=true)는 상한·레벨 제한 면제, 그림자 일반병은 대응 아군 클래스 상한(ENEMY_AS). 13장 정찰병은 레이(사용자 결정), 비룡기사 리엘 유지.
 
+- 장 계획 `data/campaign_plan.gd` (Maps.CH에 없는 장은 플레이 불가), 보스 `data/bosses.gd` (faction/playable 최소 필드만). 7장 이후 영입 9명은 join "ch7".. — CH_INDEX에 장 추가 시 합류. 모르간 패시브로 ch5 승률 11→6/16 (사용자: 승률 현행 유지).
+
 ## 6. 현재 시뮬 승률 (16회, 조잡한 AI 기준. 통과선 15%)
-ch1 16/16 · ch2 11/16 · ch3 8/16 · ch4a 6/16 · ch4b 4/16 · ch5 11/16 · ch6 6/16 (2026-10-15 밤, v4 병종 개편). 이전(저녁): 16·9·6·7·7·9·10. 시스터 지팡이만(단검 없음) 시험: ch1 16/16, ch2 2/16 → 단검 유지. 치유사 없이: ch1 16/16, ch2 4/16. 자세한 값은 `tests/sim_results.txt`.
+ch1 16/16 · ch2 11/16 · ch3 9/16 · ch4a 7/16 · ch4b 5/16 · ch5 6/16 · ch6 8/16 (2026-10-15 밤, 상한·2갈래 전직·보스 패시브). v4 직후: 16·11·8·6·4·11·6. 이전(저녁): 16·9·6·7·7·9·10. 시스터 지팡이만(단검 없음) 시험: ch1 16/16, ch2 2/16 → 단검 유지. 치유사 없이: ch1 16/16, ch2 4/16. 자세한 값은 `tests/sim_results.txt`.
 
 ## 7. 미완료 · 열린 작업
 1. 스토리 충돌 목록 (`story/STORY_BIBLE.md` "현재 구현과의 충돌"):

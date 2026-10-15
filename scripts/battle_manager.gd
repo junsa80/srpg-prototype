@@ -177,6 +177,8 @@ static func resolve(a: Unit, d: Unit) -> Array:
 			log.append("%s → %s %d 피해%s" % [x.data.name, y.data.name, dm, " (치명!)" if crit else ""])
 			var ls = Skills.lifesteal_magic(x)
 			if ls > 0 and w.magic: var h = int(dm * ls); x.hp = mini(x.stats.hp, x.hp + h); log.append("%s HP +%d 흡수" % [x.data.name, h])
+			if w.magic and Skills.magic_hit_heal(x) > 0 and x.hp < x.stats.hp: x.hp = mini(x.stats.hp, x.hp + Skills.magic_hit_heal(x)); log.append("%s 마력 흡수 HP +1" % x.data.name)
+			if y.hp <= 0 and Skills.on_kill_heal(x) > 0: x.hp = mini(x.stats.hp, x.hp + Skills.on_kill_heal(x)); log.append("%s 학살! HP +%d" % [x.data.name, Skills.on_kill_heal(x)])
 			if y.hp > 0 and rng.randf() < Skills.poison_chance(x): y.poison = 3; log.append("%s 중독!" % y.data.name)
 			if x.aoe:   # 바르가스: splash half damage to the target's allies next to it (never lethal)
 				for o in Skills.units:

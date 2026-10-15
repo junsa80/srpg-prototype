@@ -16,3 +16,5 @@ ch1 16/16 · ch2 9/16 · ch3 6/16 · ch4a 7/16 · ch4b 7/16 · ch5 9/16 · ch6 1
 # 시스터 staff-only (힐만): ch1 16/16 · ch2 2/16
 # 2026-10-15 night (v4 병종 개편 + 그렉·카스·리엘, 대화 영입 유닛은 제자리 대기)
 ch1 16/16 · ch2 11/16 · ch3 8/16 · ch4a 6/16 · ch4b 4/16 · ch5 11/16 · ch6 6/16
+# 2026-10-15 late night (caps, branches, boss passives)
+ch1 16/16 · ch2 11/16 · ch3 9/16 · ch4a 7/16 · ch4b 5/16 · ch5 6/16 · ch6 8/16

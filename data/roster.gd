@@ -50,6 +50,12 @@ const UNITS = {
 	"그렉": ["전사", "recruit", "숲에서 나무만 패다 보니 도끼는 자신 있수다. 앞은 내가 막지."],
 	"카스": ["전사", "recruit", "도끼 한 방에 끝낸다. 느리게 싸우는 건 내 스타일 아니야."],
 	"리엘": ["비룡기사", "recruit", "그림자 놈들한테서 도망쳤다. 이 날개로 갚지."],
+	# 7장 이후 합류 (해당 장이 생기기 전까지는 데이터만; CH_INDEX에 없음 → 등장 안 함)
+	"다린": ["용병", "ch7", "검 하나로 떠돌았지만, 이번엔 지킬 게 생겼군."], "소라": ["궁수", "ch8", "내 화살은 빗나가지 않아. 표적만 정해 줘."],
+	"엘렌": ["마법사", "ch9", "책으로만 배운 마법이지만… 실전에서 증명할게요."], "카린": ["도적", "ch10", "자물쇠든 경비든, 나한텐 다 열려 있어."],
+	"브록": ["아머나이트", "ch12", "성문 하나쯤은 이 몸으로 막아 주지."], "라임": ["소셜나이트", "ch13", "말 위에서라면 누구보다 빨라. 앞장서지."],
+	"미르": ["시스터", "ch14", "다치신 분은 제게 오세요. 끝까지 함께할게요."], "제드": ["전사", "ch15", "궁지에 몰릴수록 도끼가 무거워지지. 좋아."],
+	"카이린": ["비룡기사", "ch16", "하늘은 넓다. 리엘 혼자 날게 둘 순 없지."],
 	"아서": ["성기사", "ch6", "왕성이 함락됐다. 길은 내가 안다, 따라와!"],
 }
 const IRON = {W.SWORD: "철검", W.LANCE: "철창", W.AXE: "철도끼", W.BOW: "철활", W.TOME: "파이어", W.STAFF: "힐"}
@@ -106,15 +112,26 @@ static func joined_by(chapter: String) -> Array:
 	if C: rec = C.recruited + (C.roster.keys() if C.keep_all else [])   # 강화 환생: everyone you had stays
 	return UNITS.keys().filter(func(n): return (UNITS[n][1] != "recruit" and CH_INDEX.get(UNITS[n][1], 99) <= idx) or n in rec)
 ## Recruits join at this level (deterministic fixed-growth level-ups; class base stats untouched).
-const JOIN_LV = {"그렉": 4, "카스": 6, "리엘": 8, "레온": 3, "가렌": 5, "카이": 6, "리안": 6, "실라": 7, "아서": 8}
+const JOIN_LV = {"다린": 5, "소라": 6, "엘렌": 6, "카린": 7, "브록": 8, "라임": 8, "미르": 7, "제드": 9, "카이린": 10, "그렉": 4, "카스": 6, "리엘": 8, "레온": 3, "가렌": 5, "카이": 6, "리안": 6, "실라": 7, "아서": 8}
 
 ## Personal base-stat offsets (new units only; existing units have none) and personal growths (default UnitData otherwise).
 const UNIT_LOADOUT = {"그렉": ["철도끼", "상처약"], "카스": ["손도끼", "철도끼"], "리엘": ["철창", "철도끼"]}
-const PERSONAL_BASE = {"그렉": {"hp": 3, "def": 2, "spd": -2}, "카스": {"skl": 3, "spd": 1, "def": -2}}
+const PERSONAL_BASE = {"그렉": {"hp": 3, "def": 2, "spd": -2}, "카스": {"skl": 3, "spd": 1, "def": -2},
+	"다린": {"skl": 1, "spd": 1}, "소라": {"skl": 2, "lck": 2}, "엘렌": {"res": 2}, "카린": {"spd": 1, "lck": 2}, "브록": {"hp": 2, "def": 1, "spd": -1},
+	"라임": {"spd": 1}, "미르": {"res": 2, "mag": 1}, "제드": {"hp": 3, "str": 1, "skl": -1}, "카이린": {"str": 1, "def": 1, "spd": -1}}
 const PERSONAL_GROWTH = {
 	"그렉": {"hp": 20, "str": 10, "mag": 0, "skl": 5, "spd": 0, "lck": 10, "def": 15, "res": 0},
 	"카스": {"hp": 5, "str": 10, "mag": 0, "skl": 20, "spd": 15, "lck": 15, "def": 0, "res": 0},
 	"리엘": {"hp": 10, "str": 10, "mag": 0, "skl": 10, "spd": 15, "lck": 10, "def": 5, "res": 5},
+	"다린": {"hp": 10, "str": 10, "mag": 0, "skl": 15, "spd": 15, "lck": 10, "def": 5, "res": 5},
+	"소라": {"hp": 5, "str": 10, "mag": 0, "skl": 20, "spd": 10, "lck": 15, "def": 5, "res": 5},
+	"엘렌": {"hp": 5, "str": 0, "mag": 15, "skl": 10, "spd": 10, "lck": 10, "def": 0, "res": 15},
+	"카린": {"hp": 5, "str": 5, "mag": 0, "skl": 15, "spd": 20, "lck": 20, "def": 0, "res": 5},
+	"브록": {"hp": 15, "str": 10, "mag": 0, "skl": 5, "spd": 5, "lck": 5, "def": 15, "res": 0},
+	"라임": {"hp": 10, "str": 10, "mag": 0, "skl": 10, "spd": 15, "lck": 10, "def": 5, "res": 5},
+	"미르": {"hp": 5, "str": 0, "mag": 15, "skl": 5, "spd": 10, "lck": 15, "def": 0, "res": 20},
+	"제드": {"hp": 20, "str": 15, "mag": 0, "skl": 5, "spd": 5, "lck": 5, "def": 5, "res": 0},
+	"카이린": {"hp": 10, "str": 10, "mag": 0, "skl": 5, "spd": 10, "lck": 5, "def": 10, "res": 5},
 }
 static func apply_personal(u: Unit) -> void:
 	var n = u.data.name

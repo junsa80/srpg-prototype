@@ -501,6 +501,8 @@ func _show_forecast() -> void:
 		f.def_name, u.weapon().name if u.weapon() else "-", f.def_hp_before, f.def_hp_after, "-" if f.def_dmg < 0 else str(f.def_dmg) + (("×%d" % f.def_count) if f.def_count > 1 else ""),
 		"-" if f.def_hit < 0 else str(f.def_hit) + "%", "-" if f.def_crit < 0 else str(f.def_crit) + "%", " 선공!" if f.vantage else "",
 		"  [무기]=변경" if not btn_weapon.disabled else ""]
+	for x in [selected, u]:
+		if Bosses.passive(x.data.name) != "" and Skills.LIST.has(x.data.name): info.text += "\n◆ %s %s" % [x.data.name, Skills.LIST[x.data.name][0]]
 	_fill_forecast(f, selected, u)
 	btn_confirm.disabled = false
 
