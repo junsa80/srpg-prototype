@@ -81,7 +81,8 @@ func _ready() -> void:
 		lineup.erase("아린"); lineup.push_front("아린")
 	deploy_party(lineup)
 	for e in MAP.enemies:
-		if e[3].has("talk") and Campaign.roster.has(e[3].get("name", "")) and Campaign.keep_all: continue   # 환생: already recruited
+		if e[3].has("talk") and Campaign.roster.has(e[3].get("name", "")) and (Campaign.keep_all or e[3].has("route")): continue   # already recruited
+		if e[3].has("route") and Campaign.route != e[3].route: continue   # route-specific (e.g. 스칼드 in ch5 only for 남로)
 		_spawn_enemy(e)
 	for n in MAP.get("npc", []):
 		if not Campaign.roster.has(n[0]): _spawn_npc(n)

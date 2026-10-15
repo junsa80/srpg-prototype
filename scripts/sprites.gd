@@ -158,7 +158,7 @@ static func kind_for(u: Unit) -> Array:  # [body template, weapon kind]
 	elif u.staff(): kind = "staff"
 	if c in ["도적", "어쌔신"]: kind = "dagger" if kind == "sword" else kind
 	var body = "body"
-	if c in ["기사", "그레이트나이트", "그림자 창병", "그림자 지휘관"]: body = "armor"
+	if c in ["아머나이트", "제네럴", "그림자 창병", "그림자 지휘관"]: body = "armor"
 	elif c in ["마법사", "세이지", "그림자 술사", "발키리"] or kind == "tome": body = "robe"
 	return [body, kind]
 

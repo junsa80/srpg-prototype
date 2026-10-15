@@ -184,7 +184,7 @@ static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pi
 		var ic = TextureRect.new(); ic.texture = Sprites.unit_tex(u); ic.custom_minimum_size = Vector2(72, 72); ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER; h.add_child(ic)
 		var w = u.weapon() if u.weapon() else u.staff()
-		var nm = ItemMenus.label("%s\n%s Lv%d" % [u.data.name, u.unit_class.name, u.level], 22); nm.custom_minimum_size.x = 170; nm.autowrap_mode = TextServer.AUTOWRAP_OFF
+		var nm = ItemMenus.label("%s %s\n%s Lv%d" % [u.data.name, tag_text(u), u.unit_class.name, u.level], 22); nm.custom_minimum_size.x = 170; nm.autowrap_mode = TextServer.AUTOWRAP_OFF
 		nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; h.add_child(nm)
 		var wv = VBoxContainer.new(); wv.alignment = BoxContainer.ALIGNMENT_CENTER; wv.custom_minimum_size.x = 110; h.add_child(wv)
 		if w: wv.add_child(Icons.rect(w, 32))
@@ -207,6 +207,10 @@ static func _hp_col(u: Unit) -> Color:
 
 ## 환생 select (title / base / battle) -> RebirthUI.
 static func rebirth_select(parent: Node, on_done: Callable) -> CanvasLayer: return RebirthUI.open(parent, on_done)
+
+## [중갑] [기마] [비행] labels + what is effective against each.
+const WEAK = {"armor": "아머킬러·해머·볼트", "cavalry": "호스슬레이어·레이피어", "flying": "활"}
+static func tag_text(u: Unit) -> String: return " ".join(u.tags().map(func(t): return "[%s]" % Weapons.TAG_NAMES.get(t, t)))
 
 static func status_text(u: Unit, short = false) -> String:
 	var s = []
@@ -264,7 +268,7 @@ static func _fill_status(ctx: Dictionary) -> void:
 	var hl = ItemMenus.label("HP %d / %d" % [u.hp, u.stats.hp], 26); hl.autowrap_mode = TextServer.AUTOWRAP_OFF; hl.custom_minimum_size.x = 230; hp.add_child(hl)
 	hp.add_child(bar(u.hp, u.stats.hp, 150, 14, _hp_col(u)))
 	info.add_child(ItemMenus.label("이동 %d    무기: %s" % [u.move_range(), _wtypes(u)], 24))
-	if not u.tags().is_empty(): info.add_child(ItemMenus.label("속성: " + "/".join(u.tags().map(func(t): return Weapons.TAG_NAMES.get(t, t))), 22, Color8(255, 150, 150)))
+	if not u.tags().is_empty(): info.add_child(ItemMenus.label(tag_text(u) + "  약점: " + "·".join(u.tags().map(func(t): return WEAK.get(t, ""))), 22, Color8(255, 150, 150)))
 	# stats
 	var sp = PanelContainer.new(); sp.add_theme_stylebox_override("panel", Ornate.frame(Color8(26, 22, 44))); body.add_child(sp)
 	var g = GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); g.add_theme_constant_override("v_separation", 8); sp.add_child(g)
@@ -325,7 +329,7 @@ static func triangle_chart(parent: Node) -> CanvasLayer:
 		var l2 = ItemMenus.label(Weapons.TYPE_NAMES[r[1]], 28); l2.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(l2)
 	list.add_child(ItemMenus.label("반대 방향은 ▼ 불리 (명중 -15, 위력 -1).\n활·마법·지팡이는 상성 없음.\n예측 창의 무기 이름 옆 ▲/▼ 로 표시됩니다.", 24))
 	list.add_child(ItemMenus.label("\n특효 (위력 ×3)", 28, Color8(248, 216, 112)))
-	list.add_child(ItemMenus.label("활 → 비행 (비룡)\n아머킬러·해머·볼트 → 중갑\n호스슬레이어 → 기병\n킬러보우 → 비행\n파멸의 도끼 → 중갑·기병\n그림자 창 우르 → 기병", 24))
+	list.add_child(ItemMenus.label("활 → 비행 (비룡)\n아머킬러·해머·볼트 → 중갑\n호스슬레이어 → 기마\n킬러보우 → 비행\n파멸의 도끼 → 중갑·기마\n그림자 창 우르 → 기마", 24))
 	list.add_child(ItemMenus.label("\n마법 vs 물리", 28, Color8(248, 216, 112)))
 	list.add_child(ItemMenus.label("마법·마법검은 상대의 마방으로, 물리는 수비로 계산.\n경량 무기는 무게로 공속이 떨어지지 않음, 중량 무기는 위력↑ 공속↓.", 24))
 	close_btn(v, cl)

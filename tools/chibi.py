@@ -35,7 +35,10 @@ CLASS = {
     "용병": ("tunic", C(56, 96, 200), "sword", {}), "영웅": ("tunic", C(40, 72, 176), "axe_sword", {"cape": C(200, 40, 40)}),
     "검성": ("tunic", C(176, 48, 64), "sword", {"cape": C(240, 240, 240)}),
     "궁수": ("tunic", C(56, 144, 72), "bow", {}), "스나이퍼": ("tunic", C(40, 112, 56), "bow", {"cape": C(200, 176, 96)}),
-    "기사": ("armor", C(64, 96, 184), "lance", {"helm": True}), "그레이트나이트": ("armor", C(48, 72, 160), "lance", {"helm": True, "cape": C(48, 72, 160)}),
+    "아머나이트": ("plate", C(64, 96, 184), "lance", {"helm": True}), "제네럴": ("plate", C(48, 64, 144), "lance", {"helm": True, "cape": C(176, 40, 48), "plume": GOLD}),
+    "소셜나이트": ("tunic", C(200, 120, 48), "lance", {"mount": "horse"}),
+    "비룡기사": ("armor", C(96, 120, 72), "lance", {"mount": "wyvern", "helm": True}),
+    "드래곤마스터": ("armor", C(80, 104, 64), "lance", {"mount": "wyvern", "helm": True, "cape": C(144, 40, 40)}),
     "성기사": ("tunic", C(240, 236, 228), "lance", {"mount": "horse", "trim": GOLD}), "팔라딘": ("armor", C(64, 96, 184), "lance", {"mount": "horse"}),
     "발키리": ("robe", C(240, 236, 228), "tome", {"mount": "horse", "trim": GOLD}),
     "도적": ("tunic", C(40, 136, 136), "dagger", {"hood": C(40, 104, 104)}), "어쌔신": ("tunic", C(40, 40, 64), "dagger", {"hood": C(32, 32, 48), "scarf": C(176, 32, 48)}),
@@ -43,23 +46,24 @@ CLASS = {
     "시스터": ("robe", C(240, 240, 248), "staff", {"veil": C(64, 96, 192), "trim": C(64, 96, 192)}),
     "비숍": ("robe", C(240, 240, 248), "staff", {"mitre": True, "trim": GOLD}),
     "전사": ("bare", C(168, 72, 40), "axe", {}), "워리어": ("bare", C(144, 56, 32), "axe", {"cape": C(96, 64, 40)}), "버서커": ("bare", C(176, 40, 40), "axe", {}),
-    "비룡": ("armor", C(96, 120, 72), "lance", {"mount": "wyvern", "helm": True}),
 }
 ENEMY = {  # shadow enemies without user sheets
-    "그림자 중갑병": ("armor", "lance", {"helm": True}), "그림자 기병": ("armor", "lance", {"mount": "horse", "helm": True}),
-    "그림자 비룡": ("armor", "lance", {"mount": "wyvern", "helm": True}), "그림자 기사": ("armor", "lance", {"mount": "horse", "helm": True}),
+    "그림자 중갑병": ("plate", "lance", {"helm": True}), "그림자 기병": ("tunic", "lance", {"mount": "horse"}),
+    "그림자 비룡": ("armor", "lance", {"mount": "wyvern", "helm": True}), "그림자 기사": ("plate", "lance", {"mount": "horse", "helm": True}),
     "그림자 비룡기사": ("armor", "lance", {"mount": "wyvern", "helm": True}),
 }
 # unit -> hair colour, style, accent(optional cloth override), base class, promotions
 UNITS = {
     "아린": (C(150, 90, 45), "spiky", None, "용병", ["영웅", "검성"]), "노아": (C(34, 34, 52), "short", C(40, 56, 120), "용병", ["영웅", "검성"]),
     "리나": (C(120, 78, 46), "pony", None, "궁수", ["스나이퍼"]), "세라": (C(240, 214, 140), "long", None, "시스터", ["성기사", "비숍", "발키리"]),
-    "엘리아": (C(44, 44, 120), "long", None, "마법사", ["세이지"]), "카엘": (C(96, 64, 34), "short", None, "기사", ["그레이트나이트"]),
+    "엘리아": (C(44, 44, 120), "long", None, "마법사", ["세이지"]), "카엘": (C(96, 64, 34), "short", None, "아머나이트", ["제네럴"]),
     "루크": (C(30, 30, 40), "short", None, "도적", ["어쌔신"]), "미라": (C(150, 80, 200), "long", C(176, 64, 144), "마법사", ["세이지"]),
     "보리스": (C(100, 60, 30), "beard", None, "전사", ["워리어", "버서커"]), "에일린": (C(236, 206, 120), "pony", C(200, 72, 104), "용병", ["영웅", "검성"]),
-    "레온": (C(200, 168, 110), "short", C(56, 128, 120), "기사", ["그레이트나이트"]), "가렌": (C(150, 150, 164), "short", C(96, 80, 64), "용병", ["영웅", "검성"]),
-    "카이": (C(64, 96, 54), "spiky", C(96, 120, 48), "궁수", ["스나이퍼"]), "리안": (C(160, 72, 40), "short", C(144, 48, 48), "기사", ["그레이트나이트"]),
+    "레온": (C(200, 168, 110), "short", C(56, 128, 120), "아머나이트", ["제네럴"]), "가렌": (C(150, 150, 164), "short", C(96, 80, 64), "용병", ["영웅", "검성"]),
+    "카이": (C(64, 96, 54), "spiky", C(96, 120, 48), "궁수", ["스나이퍼"]), "리안": (C(160, 72, 40), "short", C(144, 48, 48), "소셜나이트", ["팔라딘"]),
     "실라": (C(200, 56, 64), "pony", C(136, 40, 72), "도적", ["어쌔신"]), "아서": (C(224, 192, 110), "short", None, "성기사", []),
+    "그렉": (C(72, 56, 40), "beard", C(96, 112, 56), "전사", ["워리어", "버서커"]), "카스": (C(30, 26, 30), "spiky", C(216, 136, 48), "전사", ["버서커", "워리어"]),
+    "리엘": (C(120, 200, 176), "pony", None, "비룡기사", ["드래곤마스터"]),
 }
 
 def head(s, cx, cy, hair, style, eyes, skin, f, extras):
@@ -102,14 +106,19 @@ def body(s, cx, top, btype, cloth, skin, extras, legs=True):
         s.rect(cx - 1, top, cx + 1, top + 12, trim or cd)
     else:
         s.rect(cx - 5, top, cx + 5, top + 7, cloth)
+        if btype == "plate":
+            s.rect(cx - 6, top, cx + 6, top + 13, STEEL); s.rect(cx - 8, top - 1, cx + 8, top + 2, STEEL_D); s.rect(cx - 3, top + 3, cx + 3, top + 6, cloth)
+            s.rect(cx - 1, top + 8, cx + 1, top + 13, (0, 0, 0, 0)); s.rect(cx - 6, top + 12, cx + 6, top + 13, STEEL_D)
+            if trim: s.rect(cx - 6, top + 7, cx + 6, top + 7, trim)
+            legs = False
         if btype == "armor": s.rect(cx - 7, top, cx + 7, top + 2, STEEL); s.rect(cx - 4, top + 3, cx + 4, top + 6, STEEL); s.rect(cx - 3, top + 4, cx + 3, top + 5, cloth)
         if btype == "bare": s.rect(cx - 2, top, cx + 2, top + 3, skin)
         if trim: s.rect(cx - 5, top + 6, cx + 5, top + 6, trim)
-        s.rect(cx - 5, top + 7, cx + 5, top + 7, WOOD)            # belt
+        if btype != "plate": s.rect(cx - 5, top + 7, cx + 5, top + 7, WOOD)            # belt
         if legs:
             s.rect(cx - 4, top + 8, cx - 1, top + 11, cd); s.rect(cx + 1, top + 8, cx + 4, top + 11, cd)
             s.rect(cx - 5, top + 12, cx - 1, top + 13, C(72, 48, 32)); s.rect(cx + 1, top + 12, cx + 5, top + 13, C(72, 48, 32))
-    arm = skin if btype == "bare" else (STEEL if btype == "armor" else cloth)
+    arm = skin if btype == "bare" else (STEEL if btype in ("armor", "plate") else cloth)
     s.rect(cx - 8, top + 1, cx - 6, top + 6, arm); s.rect(cx + 6, top + 1, cx + 8, top + 6, arm)
     s.rect(cx - 8, top + 7, cx - 6, top + 8, skin); s.rect(cx + 6, top + 7, cx + 8, top + 8, skin)  # hands
     if extras.get("scarf"): s.rect(cx - 5, top, cx + 5, top + 1, extras["scarf"]); s.rect(cx + 4, top + 1, cx + 6, top + 4, extras["scarf"])

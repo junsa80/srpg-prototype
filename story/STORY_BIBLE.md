@@ -71,3 +71,10 @@
 ## 파일
 - `story/STORY_BIBLE.md` (이 문서), `story/ch1.md … ch16.md, ch4a.md, ch4b.md, final.md`, `story/supports.md` (16쌍 C/B/A)
 - `story/chapters_script.json` — chapter_data.gd 형식(pre/events{턴}/boss/post/camp, TALK "a|b", SUPPORTS)에 맞춘 데이터. `gen.py`가 생성원.
+
+## 추가 영입 (2026-10-15, 사용자 확정)
+- 그렉 (전사, 2장 마을 방문, Lv4): 숲 나무꾼. "숲에서 나무만 패다 보니 도끼는 자신 있수다. 앞은 내가 막지."
+- 카스 (전사, 3장 전투 중 아린 대화, Lv6): 신전에 고용된 떠돌이 도끼꾼, 보수 미지급으로 전향.
+- 리엘 (비룡기사, 4B 아린 대화 / 4A 루트는 5장 아린 대화, Lv8): 그림자 비룡대에서 탈출한 기수.
+- ⚠ 충돌: 13장 영입 '리엘(숲 정찰병)'과 이름이 겹침 → 13장 쪽 개명 필요 (사용자 결정).
+- 리안: 기사 → 소셜나이트(기마). 레온: 아머나이트 Lv3 합류.

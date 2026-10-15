@@ -66,8 +66,8 @@ func _ready() -> void:
 	var mig = Roster.make_unit("아린", 0, Vector2i.ZERO, old)
 	chk("old save migrates to class start rank D", mig.rank_letter(0) == "D")
 	# promotion broadens
-	var kael = Roster.make_unit("카엘", 0, Vector2i.ZERO); kael.level = 10; kael.promote()
-	chk("기사->그레이트나이트: sword rank D, lance C", kael.rank_letter(0) == "D" and kael.rank_letter(1) == "C")
+	var kael = Roster.make_unit("카엘", 0, Vector2i.ZERO); kael.level = 10; kael.promote("제네럴")
+	chk("아머나이트->제네럴: sword rank D, lance C", kael.rank_letter(0) == "D" and kael.rank_letter(1) == "C")
 	# icons
 	chk("icons per type/tint", Icons.of(Weapons.make("철검")) != Icons.of(Weapons.make("킬러소드")) and Icons.of(Weapons.make("철활")).get_width() == 16)
 	print("WEAPONTEST ", "PASS" if ok else "FAIL")

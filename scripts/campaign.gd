@@ -34,7 +34,7 @@ var camp_seen = []          # chapters whose camp conversation was shown
 var supports_seen = []      # support conversation ids read
 ## Content version of the game build. Bump when an update changes classes/maps so old saves get migrated
 ## and are offered ONE free 업데이트 재시작 (Ch1, keep everything, no ★, normal enemies).
-const GAME_VERSION = 3      # 3 = 2026-10-15: 세라 시스터 / 성기사 상급
+const GAME_VERSION = 4      # 3 = 세라 시스터 / 성기사 상급, 4 = 기사→아머나이트, 그레이트나이트→제네럴, 리안 소셜나이트, 새 영입(그렉·카스·리엘)
 var game_ver = GAME_VERSION # version the campaign was last saved by
 var update_offer = 0        # >0: version whose 업데이트 재시작 offer is pending (shown once)
 var update_restarts = []    # versions for which the free restart was taken (save marker)
@@ -257,6 +257,11 @@ func from_dict(c: Dictionary) -> void:
 	update_restarts = c.get("update_restarts", []).map(func(v): return int(v)); update_declined = c.get("update_declined", []).map(func(v): return int(v))
 	if game_ver < GAME_VERSION:
 		for n in roster: migrate_entry(n, roster[n], game_ver)
+		if game_ver < 4 and roster.size() > 0:   # recruits added in v4 whose chapter is already behind this save: join at the base
+			var late = {"그렉": "ch2" in cleared, "카스": "ch3" in cleared, "리엘": "ch4b" in cleared or "ch5" in cleared}
+			for n in late:
+				if late[n] and not n in recruited: recruited.append(n)
+			ensure_roster()
 		if roster.size() > 0 and not GAME_VERSION in update_restarts and not GAME_VERSION in update_declined: update_offer = GAME_VERSION
 		game_ver = GAME_VERSION
 
@@ -269,6 +274,10 @@ static func migrate_entry(n: String, e: Dictionary, from_ver: int) -> void:
 			for t in [WeaponData.Type.STAFF, WeaponData.Type.SWORD]:
 				if not (wx.has(t) or wx.has(str(t))): wx[str(t)] = ClassProfs.WEXP[ClassProfs.START_RANK["시스터"][t]]
 		# items are kept as-is (철창 etc. stay; unusable ones show 병종 불가 and can go to the convoy)
+	if from_ver < 4:
+		var ren = {"기사": "아머나이트", "그레이트나이트": "제네럴"}   # renamed (same numbers)
+		if n == "리안" and e.get("class", "") == "기사": e["class"] = "소셜나이트"   # user decision: 리안 = 기마 (level/stats kept)
+		elif ren.has(e.get("class", "")): e["class"] = ren[e["class"]]
 
 func has_update_offer() -> bool: return update_offer > 0 and roster.size() > 0
 func decline_update() -> void:

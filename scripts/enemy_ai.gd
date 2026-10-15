@@ -27,7 +27,7 @@ static func plan(e: Unit, units: Array, grid: Grid) -> Dictionary:
 		if u != e and u.hp > 0:
 			occ[u.cell] = true
 			if foe(e, u): block[u.cell] = true
-	var reach = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), block, occ, "flying" in e.tags())
+	var reach = [e.cell] if e.boss or e.talk_from != "" else grid.movement_range(e.cell, e.move_range(), block, occ, "flying" in e.tags())
 	var best = {}; var best_score = -INF
 	var old: Vector2i = e.cell
 	for c in reach:

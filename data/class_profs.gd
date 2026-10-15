@@ -9,14 +9,16 @@ const PROF = {
 	"시스터": {W.STAFF: {"heal": 2}, W.SWORD: {}},                  # 지팡이 주무기, 호신용 단검(E)만
 	"비숍": {W.STAFF: {"heal": 3}, W.TOME: {"hit": 5}},
 	"마법사": {W.TOME: {"hit": 5}},
-	"기사": {W.LANCE: {"might": 1, "hit": 5}},                        # 창 전문
+	"아머나이트": {W.LANCE: {"might": 1, "hit": 5}},                  # 창 전문 (중갑)
+	"소셜나이트": {W.SWORD: {"hit": 5}, W.LANCE: {"hit": 5}},
+	"비룡기사": {W.LANCE: {"hit": 5}}, "드래곤마스터": {W.LANCE: {"hit": 5, "might": 1}, W.AXE: {"hit": 5}, W.SWORD: {}},
 	"도적": {W.SWORD: {"crit": 10}},                                 # 경량 검만, 치명 +10
 	"영웅": {W.SWORD: {"hit": 10, "crit": 5}, W.AXE: {}},
 	"전사": {W.AXE: {"hit": 5}}, "워리어": {W.AXE: {"hit": 5, "might": 1}, W.BOW: {}}, "버서커": {W.AXE: {"crit": 15}},
 	"스나이퍼": {W.BOW: {"hit": 10, "crit": 10}},
 	"발키리": {W.LANCE: {"hit": 5}, W.SWORD: {"hit": 5}, W.TOME: {"hit": 5}, W.STAFF: {"heal": 3}},
 	"세이지": {W.TOME: {"hit": 10, "might": 1}, W.STAFF: {"heal": 3}},
-	"그레이트나이트": {W.LANCE: {"might": 2, "hit": 5}, W.SWORD: {}},
+	"제네럴": {W.LANCE: {"might": 2, "hit": 5}, W.SWORD: {}},
 	"팔라딘": {W.SWORD: {"hit": 5}, W.LANCE: {"hit": 5}},
 	"어쌔신": {W.SWORD: {"crit": 20}},
 	"검성": {W.SWORD: {"hit": 15, "crit": 10}},
@@ -31,13 +33,13 @@ const LIGHT_WT = 6
 ## Starting weapon ranks (0=E..5=S). Promoted classes broaden: new types start at these ranks.
 const START_RANK = {
 	"용병": {W.SWORD: 1}, "궁수": {W.BOW: 1}, "시스터": {W.STAFF: 1, W.SWORD: 0}, "비숍": {W.STAFF: 2, W.TOME: 1}, "성기사": {W.LANCE: 1, W.SWORD: 0, W.STAFF: 1}, "마법사": {W.TOME: 1},
-	"기사": {W.LANCE: 1}, "도적": {W.SWORD: 0}, "전사": {W.AXE: 2}, "워리어": {W.AXE: 3, W.BOW: 1}, "버서커": {W.AXE: 3},
+	"아머나이트": {W.LANCE: 1}, "소셜나이트": {W.SWORD: 1, W.LANCE: 1}, "비룡기사": {W.LANCE: 1, W.AXE: 0}, "드래곤마스터": {W.LANCE: 2, W.AXE: 1, W.SWORD: 0}, "도적": {W.SWORD: 0}, "전사": {W.AXE: 2}, "워리어": {W.AXE: 3, W.BOW: 1}, "버서커": {W.AXE: 3},
 	"영웅": {W.SWORD: 2, W.AXE: 1}, "스나이퍼": {W.BOW: 2}, "발키리": {W.LANCE: 2, W.SWORD: 1, W.TOME: 1, W.STAFF: 2},
-	"세이지": {W.TOME: 2, W.STAFF: 1}, "그레이트나이트": {W.LANCE: 2, W.SWORD: 1}, "팔라딘": {W.SWORD: 1, W.LANCE: 1},
+	"세이지": {W.TOME: 2, W.STAFF: 1}, "제네럴": {W.LANCE: 2, W.SWORD: 1}, "팔라딘": {W.SWORD: 1, W.LANCE: 1},
 	"어쌔신": {W.SWORD: 2}, "검성": {W.SWORD: 3},
 }
 ## Unit tags for weapon effectiveness.
-const TAGS = {"기사": ["armor"], "그레이트나이트": ["armor"], "팔라딘": ["cavalry"], "발키리": ["cavalry"], "성기사": ["cavalry"],
+const TAGS = {"아머나이트": ["armor"], "제네럴": ["armor"], "소셜나이트": ["cavalry"], "비룡기사": ["flying"], "드래곤마스터": ["flying"], "팔라딘": ["cavalry"], "발키리": ["cavalry"], "성기사": ["cavalry"],
 	"그림자 중갑병": ["armor"], "그림자 기병": ["cavalry"], "그림자 비룡": ["flying"], "그림자 지휘관": ["armor"], "바르가스": ["armor"],
 	"그림자 기사": ["armor", "cavalry"], "그림자 비룡기사": ["flying"]}
 ## Weapon EXP thresholds for E D C B A S.

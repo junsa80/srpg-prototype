@@ -18,6 +18,7 @@ const LIST = {
 	"아이린": ["'dark' 적에게 마법 피해 +3", "impl"], "가브리엘": ["인접 아군 방어 +1, 마방 +1", "impl"],
 	"루미나": ["받는 마법 피해 -2", "impl"], "아서": ["먼저 공격 시 피해 +2", "impl"],
 	"셀레나": ["2칸 내 아군 명중 +5, 회피 +5", "impl"],
+	"그렉": ["받는 물리 피해 -1 (나무꾼 체력)", "impl"], "카스": ["도끼 치명 +15", "impl"],
 }
 static var units: Array = []   # set by chapter for aura checks
 static var grid = null          # set by chapter for terrain checks
@@ -61,7 +62,7 @@ static func avo_mod(d: Unit) -> int:
 	return m
 
 static func crit_mod(a: Unit) -> int:
-	return (10 if has(a, "마크") else 0) + (15 if has(a, "루크") else 0)
+	return (10 if has(a, "마크") else 0) + (15 if has(a, "루크") else 0) + (15 if has(a, "카스") and a.weapon() and a.weapon().type == WeaponData.Type.AXE else 0)
 
 ## Defense used against attacker a (after reductions).
 static func defense_vs(a: Unit, d: Unit, magic: bool) -> int:
@@ -81,6 +82,7 @@ static func dmg_mod(a: Unit, d: Unit, magic: bool, initiator: bool, strike_no: i
 	if has(a, "아이린") and magic and d.has_tag("dark"): m += 3
 	if not magic and has(d, "드레이크"): m -= 2
 	if magic and has(d, "루미나"): m -= 2
+	if not magic and has(d, "그렉"): m -= 1
 	return m
 
 static func crit_dmg_bonus(a: Unit) -> int: return 3 if has(a, "노아") else 0

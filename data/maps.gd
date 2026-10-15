@@ -46,12 +46,13 @@ const CH = {
 			"....F.....F.",
 			".F....F.....",
 			"...FF....F..",
-			"F.........F.",
+			"F....V....F.",
 			"..F..F..F...",
 			"............",
 			"....F...F...",
 			"............",
 		],
+		"villages": {Vector2i(5, 15): {"recruit": "그렉", "lines": [["그렉", "어이, 거기! 그림자 놈들 잡으러 가는 거유?"], ["아린", "네. 이 숲 너머 요새로요."], ["그렉", "숲에서 나무만 패다 보니 도끼는 자신 있수다. 앞은 내가 막지."]]}},
 		"deploy_size": 6, "default_deploy": ["아린", "노아", "리나", "세라", "엘리아", "루크"],
 		"spots": [Vector2i(4, 18), Vector2i(6, 18), Vector2i(5, 19), Vector2i(3, 19), Vector2i(7, 19), Vector2i(5, 17)],
 		"goal": "boss", "boss": "그림자 지휘관", "par": 12, "clear_gold": 1500,
@@ -108,6 +109,7 @@ const CH = {
 			["그림자 궁병", "철활", Vector2i(11, 8), {"lv": 2, "drop": "상자 열쇠"}],
 			["그림자 병사", "손도끼", Vector2i(10, 10), {"lv": 2, "gold": 400}],
 			["용병", "강철검", Vector2i(2, 11), {"name": "가렌", "talk": "아린", "lv": 4}],
+			["전사", "손도끼", Vector2i(11, 12), {"name": "카스", "talk": "아린", "lv": 6, "item": "철도끼"}],
 		],
 		"reinforcements": [
 			{"turn": 5, "units": [["그림자 기병", "철창", Vector2i(0, 9), {"lv": 2}], ["그림자 기병", "철검", Vector2i(13, 9), {"lv": 2}]]},
@@ -188,7 +190,7 @@ const CH = {
 		"chests": {Vector2i(15, 9): {"item": "엘릭서", "gold": 800}},
 		"spots": [Vector2i(1, 4), Vector2i(1, 5), Vector2i(1, 6), Vector2i(2, 5), Vector2i(2, 6), Vector2i(1, 7), Vector2i(2, 4)],
 		"goal": "rout", "par": 11, "clear_gold": 2000,
-		"npc": [["리안", "기사", Vector2i(7, 5), "강철창", 9]],
+		"npc": [["리안", "소셜나이트", Vector2i(7, 5), "강철창", 9]],
 		"villages": {Vector2i(2, 3): {"item": "레이피어", "lines": [["상인", "사막 도적한테 뺏길 바엔 당신들이 쓰시오."]]},
 			Vector2i(12, 8): {"item": "멘드", "lines": [["노파", "오아시스의 축복이 함께하길."]]}},
 		"enemies": [
@@ -201,6 +203,7 @@ const CH = {
 			["그림자 병사", "철도끼", Vector2i(12, 2), {"lv": 4, "item": "상처약"}],
 			["그림자 병사", "손도끼", Vector2i(12, 9), {"lv": 4, "gold": 600}],
 			["그림자 기병", "철창", Vector2i(15, 2), {"lv": 4, "raider": true}],
+			["비룡기사", "철창", Vector2i(13, 3), {"name": "리엘", "talk": "아린", "lv": 8, "item": "철도끼"}],
 		],
 		"reinforcements": [
 			{"turn": 4, "units": [["그림자 비룡", "철창", Vector2i(15, 0), {"lv": 5}], ["그림자 비룡", "철창", Vector2i(15, 11), {"lv": 5}]]},
@@ -256,6 +259,7 @@ const CH = {
 			["그림자 병사", "손도끼", Vector2i(6, 12), {"lv": 6, "item": "상처약"}],
 			["그림자 병사", "철도끼", Vector2i(10, 15), {"lv": 6, "raider": true}],
 			["도적", "레이피어", Vector2i(2, 14), {"name": "실라", "talk": "루크", "lv": 6}],
+			["비룡기사", "철창", Vector2i(10, 13), {"name": "리엘", "talk": "아린", "lv": 8, "item": "철도끼", "guard": true, "route": "ch4a"}],   # 북로 플레이어용 (남로는 4B에서 영입)
 		],
 		"reinforcements": [
 			{"turn": 3, "units": [["그림자 기병", "철창", Vector2i(0, 6), {"lv": 7}], ["그림자 기병", "철창", Vector2i(11, 6), {"lv": 8}]]},
