@@ -54,17 +54,17 @@ func _ready() -> void:
 	SaveManager.delete_slot(3); chk(SaveManager.import_text(3, code) == "" and SaveManager.load_slot(3).turn == 2, "import")
 	# corrupt main file with good .bak -> recovered
 	var good = FileAccess.get_file_as_string(p3)
-	var f = FileAccess.open(p3 + ".bak", FileAccess.WRITE); f.store_string(good); f.close()
-	f = FileAccess.open(p3, FileAccess.WRITE); f.store_string("{broken"); f.close()
+	var fh = FileAccess.open(p3 + ".bak", FileAccess.WRITE); fh.store_string(good); fh.close()
+	fh = FileAccess.open(p3, FileAccess.WRITE); fh.store_string("{broken"); fh.close()
 	var r = SaveManager.load_slot(3); chk(r.get("recovered", false) and r.turn == 2, "recover-bak")
 	chk(SaveManager.slot_metadata()[3].get("recovered", false), "meta-recovered")
 	# everything broken -> reported corrupt, not empty; apply refuses
-	f = FileAccess.open(p3 + ".bak", FileAccess.WRITE); f.store_string("xx"); f.close()
+	fh = FileAccess.open(p3 + ".bak", FileAccess.WRITE); fh.store_string("xx"); fh.close()
 	chk(SaveManager.load_slot(3).get("corrupt", false) and SaveManager.slot_metadata()[3].get("corrupt", false), "corrupt")
 	chk(SaveManager.apply(3) == "" and SaveManager.latest_slot() != 3, "corrupt-apply")
 	# truncated autosave (crash mid-write: only .tmp complete) still loads
 	SaveManager.delete_slot(3)
-	f = FileAccess.open(p3 + ".tmp", FileAccess.WRITE); f.store_string(good); f.close()
+	fh = FileAccess.open(p3 + ".tmp", FileAccess.WRITE); fh.store_string(good); fh.close()
 	chk(SaveManager.load_slot(3).get("turn", -1) == 2, "recover-tmp")
 	SaveManager.delete_slot(3)
 	if keep3 != "": SaveManager.write_atomic(p3, keep3)
