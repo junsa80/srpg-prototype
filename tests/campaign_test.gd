@@ -103,6 +103,9 @@ func _ready() -> void:
 	b = await _battle("ch9", ["가렌", "카이"])
 	check(_named(b, "그림자 기사") != null and b.MAP.goal == "boss" and b.MAP.villages.values()[0].recruit == "엘렌" and b.units.filter(func(u): return u.team == 1 and u.unit_class.name in ["제네럴","그레이트나이트","팔라딘","워리어","버서커","영웅","검성","스나이퍼","레인저","세이지","메이지나이트","어쌔신","로그","드래곤마스터","드래곤나이트","비숍","성기사"]).is_empty(), "ch9: 그림자 기사 boss, 엘렌, base-class foes")
 	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch10", ["가렌", "카이"])
+	check(_named(b, "요새 문지기") != null and Skills.has(_named(b, "요새 문지기"), "요새 문지기") and b.MAP.goal == "seize" and _named(b, "카린").talk_from == "루크", "ch10: 요새 문지기(수비), seize, 카린 talk")
+	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
 	Campaign.reset(); Campaign.route = "ch4b"; Campaign.record_clear("ch3")
 	check(Campaign.chapter == "ch4b", "branch: route ch4b after ch3")
@@ -351,7 +354,7 @@ func _ready() -> void:
 	var two = true
 	for b9 in bases: two = two and per.get(b9, 0) >= 2
 	check(two, ">=2 units per base class")
-	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch9") and not CampaignPlan.playable("ch10") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
+	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch10") and not CampaignPlan.playable("ch11") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
 	Skills.units = []; Skills.grid = null
 	var vb = Roster.make_unit("바르가스", 1, Vector2i.ZERO); vb.data.name = "바르가스"; vb.boss = true
 	var hit9 = Roster.make_unit("카엘", 0, Vector2i(0, 1)); hit9.inventory = [Weapons.make("철창")]
