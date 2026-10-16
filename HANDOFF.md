@@ -102,7 +102,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 
 - 8장 구현: defend + "rout_early"(적·증원 모두 처치 시 조기 승리). 셀레나(시작 합류)·가브리엘(회의장 방문) 유닛 데이터 없음 → 대사만. 베일은 도적 클래스 보스(15장 전 상급 금지). 4B: (12,7) 중갑병 guard.
 
-- 9~16장은 사용자 재구성안(STORY_BIBLE 하단). 9~20장 완료 (다음: 21 설원 — story/ch20.md). 이야기 이름 보스는 `Bosses.ALIAS`로 일반 보스 패시브 사용 (Skills.has). 노아: ch13 클리어 시 Campaign.absent에 추가, ch14 대화 설득→선택(_noah_choice). 카이린 = 12장 영입(roster "recruit"). 9~12 보스는 기본 클래스(아머나이트) — 승급 적은 15장부터.
+- 9~16장은 사용자 재구성안(STORY_BIBLE 하단). 9~22장 완료 (다음: 23 봉인 신전 — story/ch22.md). 이야기 이름 보스는 `Bosses.ALIAS`로 일반 보스 패시브 사용 (Skills.has). 노아: ch13 클리어 시 Campaign.absent에 추가, ch14 대화 설득→선택(_noah_choice). 카이린 = 12장 영입(roster "recruit"). 9~12 보스는 기본 클래스(아머나이트) — 승급 적은 15장부터.
 
 ## 6. 현재 시뮬 승률 (16회, 조잡한 AI 기준. 통과선 15%)
 ch1 16/16 · ch2 11/16 · ch3 9/16 · ch4a 7/16 · ch4b 5/16 · ch5 6/16 · ch6 8/16 (2026-10-15 밤, 상한·2갈래 전직·보스 패시브). v4 직후: 16·11·8·6·4·11·6. 이전(저녁): 16·9·6·7·7·9·10. 시스터 지팡이만(단검 없음) 시험: ch1 16/16, ch2 2/16 → 단검 유지. 치유사 없이: ch1 16/16, ch2 4/16. 자세한 값은 `tests/sim_results.txt`.
