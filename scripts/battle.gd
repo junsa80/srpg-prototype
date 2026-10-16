@@ -1291,7 +1291,12 @@ func _check_end() -> bool:
 func _after_clear() -> void:
 	if "--flowtest" in OS.get_cmdline_user_args(): return
 	await _clear_screen()
-	await dialogue.play(ChapterData.CHAPTERS[CHAPTER].post)
+	var post_lines = ChapterData.CHAPTERS[CHAPTER].post
+	if CHAPTER == "final":
+		var eid = ChapterData.ending_id("노아" in Campaign.absent or not Campaign.roster.has("노아"), Campaign.supports_seen)
+		post_lines = post_lines + ChapterData.ENDINGS[eid]
+		if not ("ending_" + eid) in Campaign.camp_seen: Campaign.camp_seen.append("ending_" + eid)
+	await dialogue.play(post_lines)
 	if MAP.has("branch"): await _branch_choice()
 	get_tree().change_scene_to_file("res://scenes/base.tscn")
 

@@ -16,5 +16,5 @@ const TABLE = {
 	"그림자 왕": {"class": "그림자 지휘관", "weapon": "그림자 창 우르", "lv": 18, "chapter": "ch27", "passive": "왕권", "faction": "shadow", "playable": false},
 }
 ## story-named bosses that use a generic boss passive
-const ALIAS = {"마그누스": "어둠 마법사", "라울": "그림자 기병 대장", "오드윈": "그림자 암살자", "그라데스": "그림자 장군"}
+const ALIAS = {"마그누스": "어둠 마법사", "라울": "그림자 기병 대장", "오드윈": "그림자 암살자", "그라데스": "그림자 장군", "에레보스": "그림자 왕"}
 static func passive(n: String) -> String: return TABLE.get(n, {}).get("passive", "")
