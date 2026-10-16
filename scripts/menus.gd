@@ -143,10 +143,16 @@ static func _fill_slots(ctx: Dictionary) -> void:
 		b.name = "Slot%d" % i; b.alignment = HORIZONTAL_ALIGNMENT_LEFT; b.add_theme_font_size_override("font_size", 24)
 		b.add_theme_color_override("font_color", TXT); b.add_theme_color_override("font_disabled_color", Color8(120, 112, 104))
 		var head = ("자동 저장" if i == 0 else "슬롯 %d" % i)
+		if m.get("corrupt", false):
+			b.text = "%s\n  ⚠ 손상된 저장 (읽을 수 없음)\n  삭제 후 다시 저장하세요" % head; b.disabled = true; h.add_child(b)
+			var dc = _small("삭제", 110); dc.name = "Del%d" % i; dc.custom_minimum_size.y = 140
+			dc.pressed.connect(func(): confirm(ctx.cl, "손상된 %s을(를) 삭제할까요?" % head, "삭제", func(): SaveManager.delete_slot(slot); _fill_slots(ctx)))
+			h.add_child(dc); continue
 		if m.is_empty(): b.text = "%s\n  — 비어 있음 —" % head
 		else:
 			b.text = "%s   %s · %s\n  %s   플레이 %s\n  %s" % [head, m.chapter_title, ("턴 %d" % m.turn) if m.in_battle else "거점",
 				m.lead, SaveManager.fmt_time(int(m.playtime)), m.timestamp]
+			if m.get("recovered", false): b.text += "\n  (원본 손상 → 백업에서 복구됨)"
 		h.add_child(b)
 		if ctx.mode == "save":
 			b.disabled = i == 0
@@ -164,6 +170,37 @@ static func _fill_slots(ctx: Dictionary) -> void:
 			var d = _small("삭제", 110); d.name = "Del%d" % i; d.custom_minimum_size.y = 140; d.add_theme_font_size_override("font_size", 26)
 			d.pressed.connect(func(): confirm(ctx.cl, "%s을(를) 삭제할까요?\n되돌릴 수 없습니다." % head, "삭제", func(): SaveManager.delete_slot(slot); _fill_slots(ctx)))
 			h.add_child(d)
+		if not m.is_empty():
+			var ex = _small("내보\n내기", 110); ex.name = "Exp%d" % i; ex.custom_minimum_size.y = 140; ex.add_theme_font_size_override("font_size", 24)
+			ex.pressed.connect(func(): _export_slot(ctx.cl, slot)); h.add_child(ex)
+	var imp = ItemMenus.big("저장 코드 가져오기", 92, 30); imp.name = "Import"; list.add_child(imp)
+	imp.pressed.connect(func(): _import_dialog(ctx))
+	list.add_child(ItemMenus.label("내보내기/가져오기는 이 기기 안에서만 동작합니다 (클라우드 저장 미지원). 코드를 메모장 등에 보관하세요.", 20, DIM))
+
+## Copy a slot's code to the clipboard and, on web, also download it as a .txt file.
+static func _export_slot(parent: Node, slot: int) -> void:
+	var code = SaveManager.export_text(slot)
+	if code == "": toast(parent, "내보낼 수 없습니다"); return
+	DisplayServer.clipboard_set(code)
+	if OS.has_feature("web"): JavaScriptBridge.download_buffer(code.to_utf8_buffer(), "srpg_save_slot%d.txt" % slot, "text/plain")
+	toast(parent, "저장 코드를 복사/다운로드했습니다"); Sfx.play("select")
+
+static func _import_dialog(ctx: Dictionary) -> void:
+	var o = overlay(ctx.cl, "저장 코드 가져오기"); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "ImportSave"
+	v.add_child(ItemMenus.label("내보낸 저장 코드를 붙여넣고 넣을 슬롯을 고르세요.", 22, DIM))
+	var te = TextEdit.new(); te.name = "Code"; te.custom_minimum_size = Vector2(0, 260); te.add_theme_font_size_override("font_size", 20)
+	te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY; v.add_child(te)
+	var paste = ItemMenus.big("클립보드에서 붙여넣기", 80, 26); v.add_child(paste)
+	paste.pressed.connect(func(): te.text = DisplayServer.clipboard_get())
+	var h = HBoxContainer.new(); v.add_child(h)
+	for sl in range(1, SaveManager.SLOTS):
+		var b = _small("슬롯 %d" % sl, 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; b.name = "ImpSlot%d" % sl; h.add_child(b); var k = sl
+		b.pressed.connect(func():
+			confirm(cl, "슬롯 %d에 덮어쓸까요?" % k, "가져오기", func():
+				var err = SaveManager.import_text(k, te.text)
+				toast(ctx.cl, "슬롯 %d로 가져왔습니다" % k if err == "" else err); Sfx.play("levelup" if err == "" else "cancel")
+				if err == "": cl.queue_free(); _fill_slots(ctx)))
+	close_btn(v, cl)
 
 static func _do_save(ctx: Dictionary, slot: int) -> void:
 	var p: Array = ctx.payload_fn.call()
@@ -172,11 +209,34 @@ static func _do_save(ctx: Dictionary, slot: int) -> void:
 	Sfx.play("levelup" if ok else "cancel"); _fill_slots(ctx)
 
 # ------------------------------------------------------------------ unit list
+const SORT_MODES = ["기본", "미행동", "HP 위험", "내구도"]
+static var list_sort = 0
+## Allies first, then enemies; within a team: 0 as given, 1 unacted only (allies), 2 lowest HP% first, 3 lowest weapon uses first.
+static func sort_units(arr: Array, mode: int) -> Array:
+	var out = arr.duplicate()
+	if mode == 1: out = out.filter(func(u): return u.team != 0 or not u.has_acted)
+	var key = func(u):
+		var w = u.weapon() if u.weapon() else u.staff()
+		if mode == 2: return float(u.hp) / maxf(1.0, u.stats.hp)
+		if mode == 3: return float(w.uses) if w and w.uses > 0 else 999.0
+		return 0.0
+	var idx = {}
+	for i in out.size(): idx[out[i]] = i
+	out.sort_custom(func(a, b):
+		if a.team != b.team: return a.team < b.team
+		var ka = key.call(a); var kb = key.call(b)
+		return ka < kb if ka != kb else idx[a] < idx[b])
+	return out
 static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pick = null, on_jump = null) -> CanvasLayer:
 	Sfx.play("select")
 	var o = overlay(parent, title); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "UnitList"
+	var srt = HBoxContainer.new(); srt.name = "Sort"; v.add_child(srt); v.move_child(srt, 1)
+	for m in SORT_MODES.size():
+		var sb = _small(("▶" if m == list_sort else "") + SORT_MODES[m], 0); sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL; sb.name = "Sort%d" % m
+		sb.add_theme_font_size_override("font_size", 22); var mm = m
+		sb.pressed.connect(func(): list_sort = mm; cl.queue_free(); unit_list(parent, units, title, on_pick, on_jump)); srt.add_child(sb)
 	var list = scroll(v)
-	var alive = units.filter(func(u): return u.hp > 0)
+	var alive = sort_units(units.filter(func(u): return u.hp > 0), list_sort)
 	var last_team = -1
 	for i in alive.size():
 		var u: Unit = alive[i]

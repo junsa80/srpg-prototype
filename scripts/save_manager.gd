@@ -37,13 +37,45 @@ func save(slot: int, chapter: String, turn: int, payload: Dictionary) -> bool:
 func autosave(chapter: String, turn: int, payload: Dictionary) -> void:
 	save(AUTOSAVE_SLOT, chapter, turn, payload)
 
+## Loads a slot; if the main file is damaged, falls back to .bak/.tmp (marked "recovered").
+## A file that can't be read at all is reported as {"corrupt": true} instead of silently "empty".
 func load_slot(slot: int) -> Dictionary:
 	var p = slot_path(slot)
+	var seen = false
 	for cand in [p, p + ".bak", p + ".tmp"]:
 		if not FileAccess.file_exists(cand): continue
-		var doc = JSON.parse_string(FileAccess.get_file_as_string(cand))
-		if typeof(doc) == TYPE_DICTIONARY and doc.has("data"): return _migrate(doc)
-	return {}
+		var doc = parse_doc(FileAccess.get_file_as_string(cand))
+		if not doc.is_empty():
+			if seen: doc["recovered"] = true
+			return doc
+		seen = true
+	return {"corrupt": true} if seen else {}
+
+## Validate + migrate a save document from text. {} when invalid.
+func parse_doc(text: String) -> Dictionary:
+	var doc = JSON.parse_string(text)
+	if typeof(doc) != TYPE_DICTIONARY or not doc.has("data") or typeof(doc.data) != TYPE_DICTIONARY: return {}
+	if not doc.has("chapter") or not doc.has("turn"): return {}
+	return _migrate(doc)
+
+# ---- local export / import (no cloud: cloud sync is NOT implemented)
+const EXPORT_PREFIX = "SRPGSAVE1:"
+## Portable code for a slot ("" if empty/corrupt).
+func export_text(slot: int) -> String:
+	var d = load_slot(slot)
+	if d.is_empty() or d.get("corrupt", false): return ""
+	d.erase("recovered")
+	return EXPORT_PREFIX + Marshalls.utf8_to_base64(JSON.stringify(d))
+
+## Import a code (or raw JSON) into manual slot 1..3. Returns "" on success, else an error message.
+func import_text(slot: int, text: String) -> String:
+	if slot < 1 or slot >= SLOTS: return "슬롯 1~3에만 가져올 수 있습니다"
+	var t = text.strip_edges().replace("\n", "").replace(" ", "")
+	if t.begins_with(EXPORT_PREFIX): t = Marshalls.base64_to_utf8(t.substr(EXPORT_PREFIX.length()))
+	else: t = text.strip_edges()
+	var doc = parse_doc(t)
+	if doc.is_empty(): return "올바른 저장 코드가 아닙니다"
+	return "" if write_atomic(slot_path(slot), JSON.stringify(doc)) else "저장 실패"
 
 func delete_slot(slot: int) -> void:
 	var dir = DirAccess.open("user://")
@@ -62,22 +94,23 @@ func slot_metadata() -> Array:
 	var out = []
 	for i in SLOTS:
 		var d = load_slot(i)
+		if d.get("corrupt", false): out.append({"slot": i, "corrupt": true}); continue
 		out.append({} if d.is_empty() else {"slot": i, "chapter": d.chapter, "chapter_title": d.get("chapter_title", d.chapter), "turn": d.turn,
 			"timestamp": d.get("timestamp_local", ""), "unix": d.get("timestamp", 0), "playtime": d.get("playtime", 0), "lead": d.get("lead", ""),
-			"in_battle": d.get("in_battle", false)})
+			"in_battle": d.get("in_battle", false), "recovered": d.get("recovered", false)})
 	return out
 
 ## Most recent slot (any) or -1.
 func latest_slot() -> int:
 	var best = -1; var t = -1.0
 	for m in slot_metadata():
-		if not m.is_empty() and float(m.unix) > t: t = float(m.unix); best = m.slot
+		if not m.is_empty() and not m.get("corrupt", false) and float(m.unix) > t: t = float(m.unix); best = m.slot
 	return best
 
 ## Apply a slot: restore campaign, return scene path to change to.
 func apply(slot: int) -> String:
 	var d = load_slot(slot)
-	if d.is_empty(): return ""
+	if d.is_empty() or d.get("corrupt", false): return ""
 	var cd: Dictionary = d.data.get("campaign", {}); var from_ver = int(cd.get("game_ver", 1))
 	Campaign.from_dict(cd); Campaign.playtime = float(d.get("playtime", 0))
 	Campaign.resume = d.data.get("battle", {})

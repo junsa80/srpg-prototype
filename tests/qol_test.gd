@@ -38,5 +38,39 @@ func _ready() -> void:
 	for u in allies: u.has_acted = true
 	var t0 = b.tm.turn; b._maybe_auto_end(); chk(b.tm.phase == TurnManager.Phase.PLAYER and b.tm.turn == t0, "auto-off")
 	Settings.auto_end = keep_auto
+	# P1: unit list sort
+	allies[0].has_acted = true; allies[0].hp = allies[0].stats.hp
+	if allies.size() > 1: allies[1].has_acted = false; allies[1].hp = 1
+	var s1 = Menus.sort_units(b.units, 1); chk(not s1.has(allies[0]) and s1[0].team == 0, "sort-unacted")
+	var s2 = Menus.sort_units(b.units, 2); if allies.size() > 1: chk(s2[0] == allies[1], "sort-hp")
+	var s3 = Menus.sort_units(b.units, 3); chk(s3.size() == b.units.size() and s3[-1].team == 1, "sort-uses")
+	Menus.list_sort = 0
+	# P1: save export/import + corruption recovery (slot 3, restored afterwards)
+	var p3 = SaveManager.slot_path(3); var keep3 = FileAccess.get_file_as_string(p3) if FileAccess.file_exists(p3) else ""
+	chk(SaveManager.save(3, "ch1", 2, {"campaign": Campaign.to_dict(), "battle": {}}), "save")
+	var code = SaveManager.export_text(3); chk(code.begins_with(SaveManager.EXPORT_PREFIX), "export")
+	chk(SaveManager.import_text(3, "garbage") != "", "import-reject")
+	chk(SaveManager.import_text(0, code) != "", "import-no-auto")
+	SaveManager.delete_slot(3); chk(SaveManager.import_text(3, code) == "" and SaveManager.load_slot(3).turn == 2, "import")
+	# corrupt main file with good .bak -> recovered
+	var good = FileAccess.get_file_as_string(p3)
+	var f = FileAccess.open(p3 + ".bak", FileAccess.WRITE); f.store_string(good); f.close()
+	f = FileAccess.open(p3, FileAccess.WRITE); f.store_string("{broken"); f.close()
+	var r = SaveManager.load_slot(3); chk(r.get("recovered", false) and r.turn == 2, "recover-bak")
+	chk(SaveManager.slot_metadata()[3].get("recovered", false), "meta-recovered")
+	# everything broken -> reported corrupt, not empty; apply refuses
+	f = FileAccess.open(p3 + ".bak", FileAccess.WRITE); f.store_string("xx"); f.close()
+	chk(SaveManager.load_slot(3).get("corrupt", false) and SaveManager.slot_metadata()[3].get("corrupt", false), "corrupt")
+	chk(SaveManager.apply(3) == "" and SaveManager.latest_slot() != 3, "corrupt-apply")
+	# truncated autosave (crash mid-write: only .tmp complete) still loads
+	SaveManager.delete_slot(3)
+	f = FileAccess.open(p3 + ".tmp", FileAccess.WRITE); f.store_string(good); f.close()
+	chk(SaveManager.load_slot(3).get("turn", -1) == 2, "recover-tmp")
+	SaveManager.delete_slot(3)
+	if keep3 != "": SaveManager.write_atomic(p3, keep3)
+	# no UI claims cloud save
+	for fn in ["res://scripts/menus.gd", "res://scripts/title.gd", "res://scripts/base.gd"]:
+		var src = FileAccess.get_file_as_string(fn)
+		chk(not src.contains("클라우드 저장됨") and not src.contains("클라우드에 저장"), "cloud-claim " + fn)
 	print("QOLTEST ", "PASS" if ok else "FAIL")
 	get_tree().quit(0 if ok else 1)

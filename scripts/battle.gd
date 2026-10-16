@@ -869,6 +869,7 @@ func _clear(reset_text = true) -> void:
 
 func _toggle_danger() -> void:
 	danger_on = not danger_on; _update_danger(); _refresh_toggle_labels(); Sfx.play("select")
+	if danger_on and is_inside_tree(): Menus.toast(ui, "보라 테두리 = 모든 적의 공격 가능 범위 (적 탭 시 붉은 칸 = 그 적의 범위)")
 
 func _update_danger() -> void:
 	var cells = {}

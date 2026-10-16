@@ -190,7 +190,15 @@ func _draw() -> void:
 					draw_rect(r.grow(-4), Color(0.2, 0.9, 0.4, 0.35)); draw_string(f, r.position + Vector2(8, 50), "탈출", HORIZONTAL_ALIGNMENT_CENTER, 64, 22, Color8(230, 255, 230))
 				"pillar":
 					draw_rect(Rect2(r.position + Vector2(24, 8), Vector2(32, 64)), Color8(180, 172, 160)); draw_rect(Rect2(r.position + Vector2(18, 4), Vector2(44, 10)), Color8(200, 192, 180))
-	for c in danger: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(0.75, 0.1, 0.75, 0.3))
+	var dset = {}
+	for c in danger: dset[c] = true
+	for c in danger:   # all-enemy threat: purple fill + outer border (distinct from one enemy's red range)
+		var r0 = Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)); draw_rect(r0, Color(0.75, 0.1, 0.75, 0.3))
+		var bc = Color(0.95, 0.35, 0.95, 0.9)
+		if not dset.has(c + Vector2i(0, -1)): draw_line(r0.position, r0.position + Vector2(CELL, 0), bc, 3)
+		if not dset.has(c + Vector2i(0, 1)): draw_line(r0.position + Vector2(0, CELL), r0.end, bc, 3)
+		if not dset.has(c + Vector2i(-1, 0)): draw_line(r0.position, r0.position + Vector2(0, CELL), bc, 3)
+		if not dset.has(c + Vector2i(1, 0)): draw_line(r0.position + Vector2(CELL, 0), r0.end, bc, 3)
 	for c in highlight_attack: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(1, 0.15, 0.1, 0.4))
 	for c in highlight_move: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(0.2, 0.5, 1, 0.5))
 	for c in highlight_heal: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(0.2, 1, 0.3, 0.4))
