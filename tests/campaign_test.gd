@@ -135,7 +135,7 @@ func _ready() -> void:
 	check(Skills.has(_named(b, "그림자 궁병 대장"), "그림자 궁병 대장"), "ch16: 궁병 대장 정밀 사격")
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("ch17", ["가렌", "카이"])
-	check(b.MAP.goal == "escape" and _named(b, "오스만") != null and b.grid.terrain.values().count("door") == 3, "ch17: 사르한 수로, 수문 3, 오스만")
+	check(b.MAP.goal == "escape" and _named(b, "오스만") != null and b.grid.terrain.values().count("door") == 4, "ch17: 사르한 수로, 수문 3 + 보스실 문, 오스만")
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("ch18", ["가렌", "카이"])
 	check(_named(b, "벨크") != null and _named(b, "벨크").boss, "ch18: 벨크 boss")
