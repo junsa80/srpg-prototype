@@ -76,6 +76,9 @@ const GROWTHS = {
 }
 const THIEF_CLASSES = ["도적", "어쌔신", "로그"]
 
+static func is_promoted_class(n: String) -> bool:
+	return n in ALT_PROMOTE.values() or CLASSES.values().any(func(d): return d[2] == n)
+
 ## Promotion branches (first = CLASSES[..][2]).
 static func branches(base: String) -> Array:
 	if not CLASSES.has(base) or CLASSES[base][2] == "": return []
@@ -103,7 +106,7 @@ static func _base_of(promoted: String) -> String:
 		if promoted in branches(k): return k
 	return ""
 
-const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "ch13": 12, "ch14": 13, "end": 14}
+const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "ch13": 12, "ch14": 13, "ch15": 14, "ch16": 15, "end": 16}
 static func joined_by(chapter: String) -> Array:
 	var idx = CH_INDEX.get(chapter, 0)
 	var rec = []

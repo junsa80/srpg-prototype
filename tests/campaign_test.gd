@@ -127,6 +127,12 @@ func _ready() -> void:
 	var nh = _named(b, "노아"); var ns = nh.stats.str
 	b._talk(_named(b, "아린") if _named(b, "아린") else b.units[0], nh)
 	check(nh.team == 0 and nh.stats.str == maxi(1, ns - 3) and not "노아" in Campaign.absent, "ch14: 노아 persuaded → joins weakened")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch15", ["가렌", "카이"])
+	check(_named(b, "그림자 근위대장") != null and b.units.filter(func(u): return u.team == 1 and u.unit_class.name in ["워리어", "스나이퍼", "제네럴"]).size() >= 3, "ch15: promoted foes begin, 근위대장")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch16", ["가렌", "카이"])
+	check(Skills.has(_named(b, "그림자 궁병 대장"), "그림자 궁병 대장"), "ch16: 궁병 대장 정밀 사격")
 	Campaign.absent = []
 	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
@@ -377,7 +383,7 @@ func _ready() -> void:
 	var two = true
 	for b9 in bases: two = two and per.get(b9, 0) >= 2
 	check(two, ">=2 units per base class")
-	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch14") and not CampaignPlan.playable("ch15") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
+	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch16") and not CampaignPlan.playable("ch17") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
 	Skills.units = []; Skills.grid = null
 	var vb = Roster.make_unit("바르가스", 1, Vector2i.ZERO); vb.data.name = "바르가스"; vb.boss = true
 	var hit9 = Roster.make_unit("카엘", 0, Vector2i(0, 1)); hit9.inventory = [Weapons.make("철창")]

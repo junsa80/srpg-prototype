@@ -159,6 +159,9 @@ func _spawn_enemy(e: Array) -> Unit:
 ## Deterministic enemy/NPC levels (fixed growth) — chapter difficulty curve lives in maps.gd "lv".
 func _level_to(u: Unit, lv: int) -> void:
 	var fg = Unit.fixed_growth; Unit.fixed_growth = true
+	if u.team == 1 and Roster.is_promoted_class(u.unit_class.name):   # promoted foes: FE-style hidden base-class levels (~base Lv16) before their own
+		for i in 15: u.level_up()
+		u.level = 1
 	for i in lv - 1: u.level_up()
 	Unit.fixed_growth = fg; u.hp = u.stats.hp
 
