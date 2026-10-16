@@ -100,6 +100,10 @@ func _ready() -> void:
 	b = await _battle("ch8", ["가렌", "카이"])
 	check(_named(b, "노르드 왕") != null and _named(b, "베일") != null and _named(b, "베일").boss and b.MAP.villages.values()[0].recruit == "소라" and b.MAP.rout_early, "ch8: 왕 NPC, 베일, 소라 village recruit, early rout win")
 	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch9", ["가렌", "카이"])
+	var dn = b.grid.terrain.values().filter(func(t): return t == "door").size()
+	check(dn == 3 and _named(b, "오스만") != null and _named(b, "오스만").boss and b.MAP.goal == "escape" and b.MAP.villages.values()[0].recruit == "엘렌", "ch9: 수문 3, 오스만, 엘렌, escape")
+	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
 	Campaign.reset(); Campaign.route = "ch4b"; Campaign.record_clear("ch3")
 	check(Campaign.chapter == "ch4b", "branch: route ch4b after ch3")

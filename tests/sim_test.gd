@@ -148,6 +148,20 @@ func _act(b, u: Unit, target_cell: Vector2i) -> void:
 			_move(b, u, best)
 			if u.cell == target_cell:
 				b.selected = u; b.moved = true; b._do_open(); return
+	# door openers (thieves / key holders) head for the nearest locked door on escape maps
+	if b.MAP.goal == "escape" and (Roster.is_thief(u) or u.inventory.any(func(w): return w.is_item() and w.fx().get("key", "") in ["door", "both"])):
+		var doors = b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "door")
+		if doors.size():
+			var bc = u.cell; var bl3 = 9999
+			for c in reach:
+				if b._unit_at(c) and b._unit_at(c) != u: continue
+				for dr in doors:
+					var l = b._dist(c, dr)
+					if l < bl3: bl3 = l; bc = c
+			_move(b, u, bc)
+			var act0 = b._action(u)
+			if not act0.is_empty() and act0.kind == "door": b.selected = u; b.moved = true; b._do_open(); return
+			_done(b, u); return
 	# healer
 	var st = u.staff()
 	if st:
