@@ -23,6 +23,7 @@ func _put(b, u, c: Vector2i) -> void:
 	u.cell = c; u.position = b.grid.cell_to_pos(c)
 
 func _ready() -> void:
+	Campaign.absent = []
 	# 1. every map: spawns on walkable tiles, villages/chests on matching terrain
 	for ch in ["ch1", "ch2", "ch3", "ch4a", "ch4b", "ch5", "ch6"]:
 		var b = await _battle(ch)
@@ -111,6 +112,17 @@ func _ready() -> void:
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("ch12", ["가렌", "카이"])
 	check(_named(b, "그림자 장군") != null and _named(b, "카이린").talk_from == "리엘" and ChapterData.TALK.has("리엘|카이린"), "ch12: 그림자 장군, 카이린 talk via 리엘")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch13", ["가렌", "카이"])
+	check(_named(b, "그라이브") != null and b.MAP.absent_add == ["노아"], "ch13: 그라이브, 노아 leaves after clear")
+	Campaign.absent = ["노아"]
+	check(not "노아" in Roster.joined_by("ch14"), "absent 노아 not deployable")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch14", ["가렌", "카이"])
+	var nh = _named(b, "노아"); var ns = nh.stats.str
+	b._talk(_named(b, "아린") if _named(b, "아린") else b.units[0], nh)
+	check(nh.team == 0 and nh.stats.str == maxi(1, ns - 3) and not "노아" in Campaign.absent, "ch14: 노아 persuaded → joins weakened")
+	Campaign.absent = []
 	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
 	Campaign.reset(); Campaign.route = "ch4b"; Campaign.record_clear("ch3")
@@ -360,7 +372,7 @@ func _ready() -> void:
 	var two = true
 	for b9 in bases: two = two and per.get(b9, 0) >= 2
 	check(two, ">=2 units per base class")
-	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch12") and not CampaignPlan.playable("ch13") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
+	check(CampaignPlan.PLAN.size() >= 20 and CampaignPlan.playable("ch14") and not CampaignPlan.playable("ch15") and CampaignPlan.special_share("ch10") == 0.0 and CampaignPlan.special_share("ch20") > 0.0, "chapter plan data, ch10 gated")
 	Skills.units = []; Skills.grid = null
 	var vb = Roster.make_unit("바르가스", 1, Vector2i.ZERO); vb.data.name = "바르가스"; vb.boss = true
 	var hit9 = Roster.make_unit("카엘", 0, Vector2i(0, 1)); hit9.inventory = [Weapons.make("철창")]

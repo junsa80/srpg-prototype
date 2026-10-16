@@ -103,14 +103,15 @@ static func _base_of(promoted: String) -> String:
 		if promoted in branches(k): return k
 	return ""
 
-const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "end": 12}
+const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "ch13": 12, "ch14": 13, "end": 14}
 static func joined_by(chapter: String) -> Array:
 	var idx = CH_INDEX.get(chapter, 0)
 	var rec = []
 	var ml = Engine.get_main_loop()
 	var C = ml.root.get_node_or_null("Campaign") if ml is SceneTree else null
 	if C: rec = C.recruited + (C.roster.keys() if C.keep_all else [])   # 강화 환생: everyone you had stays
-	return UNITS.keys().filter(func(n): return (UNITS[n][1] != "recruit" and CH_INDEX.get(UNITS[n][1], 99) <= idx) or n in rec)
+	var ab = C.absent if C else []
+	return UNITS.keys().filter(func(n): return not n in ab and (UNITS[n][1] != "recruit" and CH_INDEX.get(UNITS[n][1], 99) <= idx) or n in rec)
 ## Recruits join at this level (deterministic fixed-growth level-ups; class base stats untouched).
 const JOIN_LV = {"다린": 5, "소라": 6, "엘렌": 6, "카린": 7, "브록": 8, "라임": 8, "미르": 7, "제드": 9, "카이린": 10, "그렉": 4, "카스": 6, "리엘": 8, "레온": 3, "가렌": 5, "카이": 6, "리안": 6, "실라": 7, "아서": 8}
 

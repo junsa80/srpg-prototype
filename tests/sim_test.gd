@@ -10,7 +10,9 @@ const PLAN = {   # chapter: [party level, extra weapons, recruits, promote]
 	"ch9": [8, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라"], true],
 	"ch10": [9, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌"], true],
 	"ch11": [10, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린"], true],
-	"ch12": [11, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린"], true]}
+	"ch12": [11, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린"], true],
+	"ch13": [12, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린"], true],
+	"ch14": [13, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린"], true]}
 const TRIALS = 16
 var results = {}
 var threat = {}
@@ -70,6 +72,7 @@ func _ready() -> void:
 	Campaign.reset(); get_tree().quit(0 if ok else 1)
 
 func _prep_party(ch: String) -> void:
+	Campaign.absent = []
 	Campaign.reset(); Campaign.chapter = ch; Campaign.recruited = PLAN[ch][2].duplicate()
 	Campaign.ensure_roster()
 	var fg = Unit.fixed_growth; Unit.fixed_growth = true

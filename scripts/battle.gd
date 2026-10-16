@@ -887,6 +887,16 @@ func _talk(u: Unit, o: Unit) -> void:
 	busy = true
 	var lines = ChapterData.TALK.get(u.data.name + "|" + o.data.name, [[u.data.name, "함께 싸우자."], [o.data.name, "…좋다."]])
 	if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): await dialogue.play(lines)
+	if MAP.get("noah_choice", "") == o.data.name:   # 14장: 설득 성공 → 약해진 채 합류 / 떠나보냄
+		var join = true
+		if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): join = await _noah_choice(o)
+		if not join:
+			if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): await dialogue.play(ChapterData.TALK.get(o.data.name + "|떠남", []))
+			o.hp = 0; o.visible = false; units.erase(o); Campaign.set_meta("noah_left", true)
+			info.text = "%s은(는) 떠났다." % o.data.name; busy = false; _finish_unit(u); return
+		Campaign.absent.erase(o.data.name)
+		for st in ["str", "skl", "spd", "def"]: o.stats[st] = maxi(1, int(o.stats[st]) - 3)   # 그림자 후유증 (이 유닛 현재치만, 클래스 기본치·성장률 불변)
+		o.hp = mini(o.hp, o.stats.hp)
 	recruit_unit(o)
 	info.text = "%s이(가) 동료가 되었다!" % o.data.name; Sfx.play("levelup")
 	busy = false; _finish_unit(u)
@@ -1265,6 +1275,8 @@ func _check_end() -> bool:
 		Campaign.record_clear(CHAPTER)  # 각성 removed on clear; advances Campaign.chapter
 		clear_report["gold"] = g
 		info.text = "승리! 클리어 보상 %dG · 랭크 %s" % [g, clear_report.rank]
+		for n in MAP.get("absent_add", []):
+			if not n in Campaign.absent: Campaign.absent.append(n); Campaign.save_campaign()
 		_after_clear()
 		return true
 	return false
@@ -1289,6 +1301,17 @@ func _clear_screen() -> void:
 	var b = ItemMenus.big("계속", 100, 34); v.add_child(b); b.name = "Continue"
 	b.pressed.connect(func(): cl.queue_free(); _closed.emit())
 	await _closed
+
+func _noah_choice(o: Unit) -> bool:
+	var ov = Menus.overlay(ui, "노아의 선택", 45, 200, 200); var cl: CanvasLayer = ov[0]; var v: VBoxContainer = ov[1]; cl.name = "NoahChoice"
+	v.add_child(ItemMenus.label("그림자에서 돌아온 노아. 어떻게 할까?", 26, Menus.DIM))
+	var res = [true]
+	for opt in [[true, "함께 간다\n그림자 후유증: 힘·기술·속도·수비 -3"], [false, "떠나보낸다\n노아는 홀로 속죄의 길을 떠난다 (재합류 없음)"]]:
+		var bt = ItemMenus.big(opt[1], 200, 26); bt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(bt); var val = opt[0]
+		bt.name = "N_" + ("join" if val else "leave")
+		bt.pressed.connect(func(): res[0] = val; cl.queue_free(); _closed.emit())
+	await _closed
+	return res[0]
 
 func _branch_choice() -> void:
 	var o = Menus.overlay(ui, "진로 선택", 45, 200, 200); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "Branch"

@@ -15,7 +15,7 @@ var resume = {}            # battle snapshot to restore on next battle scene loa
 var chapter_start = {}     # campaign dict at chapter start (for 챕터 재시작)
 const CONVOY_MAX = 100
 const CLEAR_GOLD = {"ch1": 1000, "ch2": 1500}
-const NEXT = {"ch1": "ch2", "ch2": "ch3", "ch3": "ch4a", "ch4a": "ch5", "ch4b": "ch5", "ch5": "ch6", "ch6": "ch7", "ch7": "ch8", "ch8": "ch9", "ch9": "ch10", "ch10": "ch11", "ch11": "ch12", "ch12": "end"}
+const NEXT = {"ch1": "ch2", "ch2": "ch3", "ch3": "ch4a", "ch4a": "ch5", "ch4b": "ch5", "ch5": "ch6", "ch6": "ch7", "ch7": "ch8", "ch8": "ch9", "ch9": "ch10", "ch10": "ch11", "ch11": "ch12", "ch12": "ch13", "ch13": "ch14", "ch14": "end"}
 const TRAIN_EXP = 10        # 훈련 bonus EXP for each deployed unit after a defeat
 var recruited = []          # names recruited by talk/village/rescue
 var ranks = {}              # chapter -> best rank letter (S/A/B/C)
@@ -31,7 +31,8 @@ var rb_bonus = {}           # unit -> {"stats": {s: n}, "growth": {s: pct}, "wex
 var boosters = {}           # unit -> {s: n} stat boosters already used (kept through 표준 환생)
 var keep_all = false        # last rebirth was 강화 (units pre-joined as before)
 var camp_seen = []          # chapters whose camp conversation was shown
-var supports_seen = []      # support conversation ids read
+var supports_seen = []
+var absent = []              # story-absent units (e.g. 노아 after Ch13; back only if persuaded in Ch14)      # support conversation ids read
 ## Content version of the game build. Bump when an update changes classes/maps so old saves get migrated
 ## and are offered ONE free 업데이트 재시작 (Ch1, keep everything, no ★, normal enemies).
 const GAME_VERSION = 4      # 3 = 세라 시스터 / 성기사 상급, 4 = 기사→아머나이트, 그레이트나이트→제네럴, 리안 소셜나이트, 새 영입(그렉·카스·리엘)
@@ -210,7 +211,7 @@ func wipe_all() -> void:
 	reset(); cycle = 0; clears = 0; save_campaign()
 
 func to_dict() -> Dictionary:
-	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen, "enemy_lv": enemy_lv, "rb_bonus": rb_bonus, "boosters": boosters, "keep_all": keep_all, "difficulty": difficulty, "grind": grind, "game_ver": GAME_VERSION, "update_offer": update_offer, "update_restarts": update_restarts, "update_declined": update_declined}
+	return {"roster": roster, "attempts": attempts, "deploy": deploy, "gold": gold, "convoy": convoy, "chapter": chapter, "cleared": cleared, "playtime": playtime, "recruited": recruited, "ranks": ranks, "sides": sides, "route": route, "drop_seeds": drop_seeds, "cycle": cycle, "clears": clears, "camp_seen": camp_seen, "supports_seen": supports_seen, "absent": absent, "enemy_lv": enemy_lv, "rb_bonus": rb_bonus, "boosters": boosters, "keep_all": keep_all, "difficulty": difficulty, "grind": grind, "game_ver": GAME_VERSION, "update_offer": update_offer, "update_restarts": update_restarts, "update_declined": update_declined}
 
 ## Make sure every joined unit has a roster entry (default stats/loadout).
 func ensure_roster() -> void:
@@ -248,7 +249,7 @@ func from_dict(c: Dictionary) -> void:
 	gold = int(c.get("gold", 0)); convoy = c.get("convoy", []); chapter = c.get("chapter", "ch1"); cleared = c.get("cleared", []); playtime = float(c.get("playtime", 0))
 	recruited = c.get("recruited", []); ranks = c.get("ranks", {}); sides = c.get("sides", {}); route = c.get("route", "")
 	drop_seeds = c.get("drop_seeds", {}); cycle = int(c.get("cycle", 0)); clears = int(c.get("clears", 0))
-	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", [])
+	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", []); absent = c.get("absent", [])
 	if chapter == "end" and "ch6" in cleared and not "ch7" in cleared: chapter = "ch7"   # 7장 추가: 1부 완료 세이브는 7장으로
 	# migrate: pre-rework saves only had 강화-style cycles (+3 Lv each, everyone kept)
 	enemy_lv = int(c.get("enemy_lv", cycle * CYCLE_LV)); keep_all = bool(c.get("keep_all", cycle > 0))
