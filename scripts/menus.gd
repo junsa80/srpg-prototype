@@ -104,6 +104,11 @@ static func _fill_settings(list: VBoxContainer) -> void:
 	for opt in [[true, "켬"], [false, "끔"]]:
 		var b = _small(("▶" if Settings.anim == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]
 		b.pressed.connect(func(): Settings.anim = val; Sfx.play("select"); refill.call()); h4.add_child(b)
+	var h6 = _row(list, "자동 턴 종료")
+	for opt in [[true, "켬"], [false, "끔"]]:
+		var b = _small(("▶" if Settings.auto_end == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]; b.name = "AutoEnd_" + opt[1]
+		b.pressed.connect(func(): Settings.auto_end = val; Sfx.play("select"); refill.call()); h6.add_child(b)
+	list.add_child(ItemMenus.label("켬: 모든 아군이 행동하면 자동으로 턴 종료 / 끔: [턴 종료]를 직접 누름", 20, DIM))
 	var h5 = _row(list, "무기 아이콘")
 	for opt in [[true, "표시"], [false, "숨김"]]:
 		var b = _small(("▶" if Settings.weapon_badge == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]; b.name = "Badge_" + opt[1]

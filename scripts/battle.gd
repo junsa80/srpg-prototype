@@ -205,7 +205,7 @@ func _build_ui() -> void:
 		var b = ItemMenus.big("-" if d < 0 else "+", 64, 40); b.name = "ZoomOut" if d < 0 else "ZoomIn"; b.custom_minimum_size = Vector2(64, 64)
 		b.modulate = Color(1, 1, 1, 0.85); b.pressed.connect(func(): zoom_step(d)); zb.add_child(b)
 	fc_panel = Panel.new(); ui.add_child(fc_panel); fc_panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 248)))
-	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 300); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
+	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 340); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
 	terrain_win.visible = false; unit_win.visible = false
 	for w in [terrain_win, unit_win]: w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new(); ui.add_child(banner); banner.add_theme_font_size_override("font_size", 64); banner.visible = false
@@ -349,7 +349,7 @@ func next_unit() -> void:
 	if al.is_empty(): Menus.toast(ui, "행동할 유닛이 없습니다"); return
 	var cur = selected if selected else _unit_at(grid.cursor)
 	var u: Unit = al[(al.find(cur) + 1) % al.size()] if cur in al else al[0]
-	if selected and selected != u and not moved: _on_cancel()
+	if selected and selected != u: _on_cancel()   # also reverts an unconfirmed move (no lingering selection)
 	jump_to(u)
 	if selected == null: _select(u)
 
@@ -531,7 +531,7 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 		if tv != 0 and w:   # weapon triangle arrow (GBA style): green ▲ advantage, red ▼ disadvantage
 			var ta = ItemMenus.label("▲" if tv > 0 else "▼", 26, Color8(96, 230, 120) if tv > 0 else Color8(255, 90, 90)); ta.name = "Tri"; ta.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(ta)
 		var dm = "-" if sd[4] < 0 else (str(sd[4]) + (" ×%d" % sd[5] if sd[5] > 1 else ""))
-		var t = "HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "  특효!" if sd[8] else "",
+		var t = "명중 시 HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "  특효!" if sd[8] else "",
 			"-" if sd[6] < 0 else "%d%%" % sd[6], "-" if sd[7] < 0 else "%d%%" % sd[7]]
 		var l = ItemMenus.label(t, 22); l.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(l)
 		var b = sd[9]
@@ -551,7 +551,17 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 				var dl = ItemMenus.label("드롭 %s %s" % [dd[0].name, dd[1]], 18, Color8(255, 216, 32)); dl.autowrap_mode = TextServer.AUTOWRAP_OFF; dr.add_child(dl)
 				for c in dr.get_children(): c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		for c in v.get_children() + wr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var note = ItemMenus.label(forecast_note(f), 17, Color8(200, 200, 220)); note.name = "FcNote"; note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fc_panel.add_child(note); note.position = Vector2(14, 296); note.size = Vector2(672, 40)
 	fc_panel.visible = true
+
+## Uncertainty line under the forecast: HP above assumes every strike hits.
+static func forecast_note(f: Dictionary) -> String:
+	var p = ["※ HP는 모든 타격 명중 시 예상"]
+	if f.atk_hit < 100 or (f.def_hit > 0 and f.def_hit < 100): p.append("빗나가면 달라짐")
+	if f.atk_crit > 0 or f.def_crit > 0: p.append("치명 시 3배")
+	if f.get("extra_chance", false): p.append("스킬 추격 확률 미포함")
+	return " · ".join(p)
 
 func _cycle_weapon() -> void:
 	if selected == null or pending_target == null: return
@@ -618,10 +628,15 @@ func _show_enemy(u: Unit) -> void:
 	grid.highlight_attack = grid.attack_range(grid.highlight_move, r[0], r[1]) if r[1] > 0 else []
 	grid.queue_redraw()
 	var intent = ""
-	for i in intents: if i.unit == u: intent = "→ " + (i.target.data.name + " 공격 예정" if i.target else ("대기" if i.move_to == u.cell else "이동 예정"))
-	info.text = "%s Lv%d HP %d/%d  %s%s%s%s\n%s%s" % [u.data.name, u.level, u.hp, u.stats.hp, intent, "  (경계)" if u.guard else "",
+	for i in intents: if i.unit == u: intent = intent_text(i, u)
+	info.text = "%s Lv%d HP %d/%d  %s%s%s%s\n%s%s\n[붉은 칸=공격 가능 범위]" % [u.data.name, u.level, u.hp, u.stats.hp, intent, "  (경계)" if u.guard else "",
 		("  [대화: %s]" % u.talk_from) if u.talk_from != "" else "", "  (약탈)" if u.raider else "",
 		_items_text(u), ("\n★ 처치 시 획득: " + (u.drop.name if u.drop else "%dG" % u.gold_drop) if (u.drop or u.gold_drop > 0) else "") + drop_text(u)]
+
+## Enemy intent: a prediction from the current board, never a promise.
+static func intent_text(i, u: Unit) -> String:
+	if i.target: return "예상 목표: %s (현재 배치 기준)" % i.target.data.name
+	return "예상: %s (현재 배치 기준)" % ("대기" if i.move_to == u.cell else "이동")
 
 func drop_text(u: Unit) -> String:
 	var p = []
@@ -838,6 +853,11 @@ func _finish_unit(u: Unit) -> void:
 	_clear(false)
 	if _check_end(): return
 	_update_danger()
+	_maybe_auto_end()
+
+## Auto end turn when every ally has acted — only if the 설정 "자동 턴 종료" is ON.
+func _maybe_auto_end() -> void:
+	if not Settings.auto_end: return
 	if units.filter(func(o): return o.team == 0 and o.hp > 0 and not o.has_acted).is_empty(): _on_end_turn()
 
 func _clear(reset_text = true) -> void:
@@ -913,7 +933,7 @@ func _escape(u: Unit) -> void:
 	_clear(false)
 	if _check_end(): return
 	_update_danger()
-	if units.filter(func(o): return o.team == 0 and o.hp > 0 and not o.has_acted).is_empty(): _on_end_turn()
+	_maybe_auto_end()
 
 # ---------------------------------------------------------------- convoy (lord only, in battle)
 ## 아이템: use a consumable (ends the unit's action) / keys info / 아린 opens the convoy.

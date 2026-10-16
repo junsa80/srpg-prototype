@@ -123,7 +123,8 @@ static func forecast(a: Unit, d: Unit) -> Dictionary:
 		"vantage": counter and Skills.vantage(d, a), "triangle": tri(a, d),
 		"atk_count": strikes(a, a, d), "def_count": strikes(d, a, d) if counter else 0,
 		"atk_eff": is_effective(a, d), "def_eff": counter and is_effective(d, a),
-		"atk_bonus": bonus(a), "def_bonus": bonus(d), "atk_w": a.weapon(), "def_w": d.weapon()}
+		"atk_bonus": bonus(a), "def_bonus": bonus(d), "atk_w": a.weapon(), "def_w": d.weapon(),
+		"assumes_all_hit": true, "extra_chance": Skills.extra_double_chance(a) > 0 or (counter and Skills.extra_double_chance(d) > 0)}
 
 ## FE-like EXP.
 static func exp_for(u: Unit, foe: Unit, dealt: bool, killed: bool) -> int:
