@@ -435,9 +435,9 @@ const CH = {
 	# ---CH ch9 
 	"ch9": {
 		"rows": [
-			"..FF....FF..",
+			"..FF.###FF..",
 			".F..#T.#..F.",
-			"....#..#....",
+			"....#.##....",
 			".F........F.",
 			"..##....##..",
 			"..F..T...F..",
@@ -467,13 +467,15 @@ const CH = {
 			["그림자 중갑병", "강철창", Vector2i(5, 3), {"lv": 17, "guard": true}],
 			["그림자 술사", "엘파이어", Vector2i(7, 2), {"lv": 17, "guard": true}],
 			["그림자 궁병", "철활", Vector2i(2, 2), {"lv": 17}],
-			["그림자 창병", "강철창", Vector2i(4, 1), {"lv": 17, "guard": true}],
-			["그림자 궁병", "강철활", Vector2i(6, 1), {"lv": 17, "guard": true}],
+			["그림자 창병", "강철창", Vector2i(6, 1), {"lv": 17, "guard": true}],
+			["그림자 궁병", "강철활", Vector2i(7, 3), {"lv": 17, "guard": true}],
 			["그림자 병사", "강철도끼", Vector2i(6, 6), {"lv": 17}],
 			["그림자 술사", "썬더", Vector2i(3, 5), {"lv": 17}],
+			["그림자 창병", "강철창", Vector2i(5, 4), {"lv": 17, "guard": true}],
 			["아머나이트", "강철창", Vector2i(5, 1), {"boss": true, "name": "그림자 기사", "lv": 20, "guard": true, "drop": "은창"}],
 		],
 		"reinforcements": [
+			{"turn": 2, "units": [["그림자 기병", "강철창", Vector2i(0, 12), {"lv": 17}], ["그림자 병사", "강철도끼", Vector2i(11, 12), {"lv": 17}]]},
 			{"turn": 5, "units": [["그림자 기병", "철창", Vector2i(0, 3), {"lv": 17}], ["그림자 기병", "철창", Vector2i(11, 3), {"lv": 17}]]},
 		],
 		"side": [{"id": "noloss9", "type": "nodeath", "text": "아군 전원 생존", "reward": {"gold": 1500}}],
@@ -567,6 +569,7 @@ const CH = {
 			["소셜나이트", "은창", Vector2i(6, 0), {"boss": true, "name": "그림자 기병 대장", "lv": 20, "guard": true, "drop": "은창"}],
 		],
 		"reinforcements": [
+			{"turn": 2, "units": [["그림자 기병", "강철창", Vector2i(0, 11), {"lv": 18}], ["그림자 기병", "강철창", Vector2i(11, 11), {"lv": 18}]]},
 			{"turn": 4, "units": [["그림자 기병", "철창", Vector2i(0, 7), {"lv": 17}], ["그림자 기병", "철창", Vector2i(11, 7), {"lv": 17}]]},
 		],
 		"side": [{"id": "villages", "type": "villages", "text": "시민 5가구 모두 대피", "reward": {"gold": 2000}}],
@@ -703,8 +706,8 @@ const CH = {
 	"ch15": {
 		"ground": "castle",
 		"rows": [
-			"####.HH.####",
-			"#....##....#",
+			"#####HH#####",
+			"#.....#....#",
 			"#.R......R.#",
 			"#..........#",
 			"####.##.####",
@@ -734,11 +737,12 @@ const CH = {
 			["워리어", "강철도끼", Vector2i(4, 3), {"lv": 4}],
 			["스나이퍼", "강철활", Vector2i(8, 3), {"lv": 4, "guard": true}],
 			["그림자 술사", "엘파이어", Vector2i(2, 2), {"lv": 20, "guard": true}],
-			["그림자 창병", "강철창", Vector2i(4, 0), {"lv": 20, "guard": true}],
-			["그림자 창병", "강철창", Vector2i(7, 0), {"lv": 20, "guard": true}],
+			["그림자 중갑병", "강철창", Vector2i(5, 1), {"lv": 20, "guard": true}],
+			["그림자 창병", "강철창", Vector2i(4, 1), {"lv": 20, "guard": true}],
 			["제네럴", "은창", Vector2i(5, 0), {"boss": true, "name": "그림자 근위대장", "lv": 6, "guard": true, "bonus": {"hp": 20, "str": 6, "def": 6, "skl": 6, "spd": 4}, "drop": "힘의 반지"}],
 		],
 		"reinforcements": [
+			{"turn": 2, "units": [["팔라딘", "강철창", Vector2i(1, 12), {"lv": 6}], ["워리어", "강철도끼", Vector2i(10, 12), {"lv": 6}]]},
 			{"turn": 3, "units": [["워리어", "강철도끼", Vector2i(1, 11), {"lv": 6}], ["팔라딘", "강철창", Vector2i(10, 11), {"lv": 6}], ["그림자 술사", "썬더", Vector2i(1, 12), {"lv": 20}]]},
 			{"turn": 5, "units": [["그림자 비룡", "강철창", Vector2i(0, 4), {"lv": 20}], ["그림자 궁병", "강철활", Vector2i(10, 9), {"lv": 20}]]},
 			{"turn": 7, "units": [["그림자 기병", "강철창", Vector2i(1, 12), {"lv": 20}], ["그림자 기병", "강철창", Vector2i(10, 12), {"lv": 20}]]},
