@@ -645,7 +645,7 @@ const CH = {
 			["그림자 중갑병", "강철창", Vector2i(4, 0), {"lv": 21, "guard": true}],
 			["그림자 술사", "엘파이어", Vector2i(7, 0), {"lv": 21, "guard": true}],
 			["그림자 창병", "강철창", Vector2i(5, 1), {"lv": 21, "guard": true}],
-			["용병", "은검", Vector2i(6, 1), {"boss": true, "name": "그라이브", "bonus": {"hp": 15, "str": 4, "skl": 4, "spd": 3, "def": 4, "res": 3}, "lv": 22, "guard": true, "drop": "힘의 반지"}],
+			["용병", "은검", Vector2i(6, 1), {"boss": true, "name": "그라이브", "bonus": {"hp": 20, "str": 6, "skl": 6, "spd": 5, "def": 5, "res": 3}, "lv": 22, "guard": true, "drop": "힘의 반지"}],
 		],
 		"reinforcements": [
 			{"turn": 2, "units": [["그림자 기병", "강철창", Vector2i(0, 12), {"lv": 20}], ["그림자 기병", "강철창", Vector2i(11, 12), {"lv": 20}], ["그림자 술사", "썬더", Vector2i(1, 13), {"lv": 20}]]},
