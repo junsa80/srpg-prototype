@@ -33,7 +33,7 @@ const LIST = {
 static var units: Array = []   # set by chapter for aura checks
 static var grid = null          # set by chapter for terrain checks
 
-static func has(u: Unit, n: String) -> bool: return u.data.name == n
+static func has(u: Unit, n: String) -> bool: return u.data.name == n or Bosses.ALIAS.get(u.data.name, "") == n
 
 static func _dist(a: Unit, b: Unit) -> int: return abs(a.cell.x - b.cell.x) + abs(a.cell.y - b.cell.y)
 
