@@ -106,7 +106,7 @@ static func _base_of(promoted: String) -> String:
 		if promoted in branches(k): return k
 	return ""
 
-const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "ch13": 12, "ch14": 13, "ch15": 14, "ch16": 15, "end": 16}
+const CH_INDEX = {"ch1": 0, "ch2": 1, "ch3": 2, "ch4a": 3, "ch4b": 3, "ch5": 4, "ch6": 5, "ch7": 6, "ch8": 7, "ch9": 8, "ch10": 9, "ch11": 10, "ch12": 11, "ch13": 12, "ch14": 13, "ch15": 14, "ch16": 15, "ch17": 16, "ch18": 17, "end": 18}
 static func joined_by(chapter: String) -> Array:
 	var idx = CH_INDEX.get(chapter, 0)
 	var rec = []

@@ -14,7 +14,9 @@ const PLAN = {   # chapter: [party level, extra weapons, recruits, promote]
 	"ch13": [12, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린"], true],
 	"ch14": [13, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린"], true],
 	"ch15": [15, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘"], true],
-	"ch16": [16, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘"], true]}
+	"ch16": [16, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘"], true],
+	"ch17": [17, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘", "제드"], true],
+	"ch18": [17, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘", "제드"], true]}
 const TRIALS = 16
 var results = {}
 var threat = {}
@@ -122,6 +124,7 @@ func run(ch: String, seed_: int) -> Dictionary:
 		if b.ended: break
 		if b.tm.turn == turn0: b._on_end_turn()
 		await get_tree().process_frame
+	if OS.get_environment("SIM_V") != "": print("  doors=", b.grid.terrain.values().count("door"), " luke=", b.units.filter(func(x): return x.data.name == "루크").map(func(x): return [x.cell, x.unit_class.name]), " arin=", b.units.filter(func(x): return x.data.name == "아린").map(func(x): return x.cell))
 	var win = b.ended and not b.clear_report.is_empty()
 	var deaths = b.units.filter(func(u): return u.team == 0 and u.hp <= 0).size()
 	if OS.get_environment("SIM_V") != "": print("  ", ch, " t", b.tm.turn, " ended=", b.ended, " lost=", b._lost(), " rep=", b.clear_report.keys(), " dead=", b.units.filter(func(u): return u.team == 0 and u.hp <= 0).map(func(u): return u.data.name), " foes=", b.units.filter(func(u): return u.team == 1 and u.hp > 0).size())
@@ -164,8 +167,12 @@ func _act(b, u: Unit, target_cell: Vector2i) -> void:
 			for c in reach:
 				if b._unit_at(c) and b._unit_at(c) != u: continue
 				for dr in doors:
-					var l = b._dist(c, dr)
-					if l < bl3: bl3 = l; bc = c
+					for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+						var nb = dr + dd
+						if not b.grid.in_bounds(nb) or b.grid.walls.has(nb): continue
+						var l = 0 if c == nb else b.grid.path(c, nb).size()
+						if c != nb and l == 0: continue
+						if l < bl3: bl3 = l; bc = c
 			_move(b, u, bc)
 			var act0 = b._action(u)
 			if not act0.is_empty() and act0.kind == "door": b.selected = u; b.moved = true; b._do_open(); return
@@ -204,6 +211,9 @@ func _act(b, u: Unit, target_cell: Vector2i) -> void:
 				if nd < bd: bd = nd; dest = c
 			best = {"move_to": dest, "target": null}
 		plan = best
+	if b.MAP.goal == "escape" and not Roster.is_thief(u) and plan.target == null:   # keep door-side tiles free for the thieves
+		for dr in b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "door"):
+			if b._dist(dr, plan.move_to) == 1: plan.move_to = u.cell; break
 	_move(b, u, plan.move_to)
 	if plan.target and plan.target.hp > 0:
 		var d = plan.target
