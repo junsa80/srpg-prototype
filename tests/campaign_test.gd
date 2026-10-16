@@ -101,8 +101,7 @@ func _ready() -> void:
 	check(_named(b, "노르드 왕") != null and _named(b, "베일") != null and _named(b, "베일").boss and b.MAP.villages.values()[0].recruit == "소라" and b.MAP.rout_early, "ch8: 왕 NPC, 베일, 소라 village recruit, early rout win")
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("ch9", ["가렌", "카이"])
-	var dn = b.grid.terrain.values().filter(func(t): return t == "door").size()
-	check(dn == 3 and _named(b, "오스만") != null and _named(b, "오스만").boss and b.MAP.goal == "escape" and b.MAP.villages.values()[0].recruit == "엘렌", "ch9: 수문 3, 오스만, 엘렌, escape")
+	check(_named(b, "그림자 기사") != null and b.MAP.goal == "boss" and b.MAP.villages.values()[0].recruit == "엘렌" and b.units.filter(func(u): return u.team == 1 and u.unit_class.name in ["제네럴","그레이트나이트","팔라딘","워리어","버서커","영웅","검성","스나이퍼","레인저","세이지","메이지나이트","어쌔신","로그","드래곤마스터","드래곤나이트","비숍","성기사"]).is_empty(), "ch9: 그림자 기사 boss, 엘렌, base-class foes")
 	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
 	Campaign.reset(); Campaign.route = "ch4b"; Campaign.record_clear("ch3")
