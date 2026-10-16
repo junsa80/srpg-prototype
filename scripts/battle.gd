@@ -32,7 +32,7 @@ const DROP_W = 3; const DROP_I = 5; const DROP_W_ELITE = 12; const DROP_I_ELITE 
 var spawn_seq = 0
 var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
 var kills = 0; var stole = 0; var chests_got = 0; var escaped: Array = []; var seized = false
-var visited: Array = []; var ruined: Array = []; var killed_names: Array = []; var clear_report = {}; var events_seen: Array = []
+var visited: Array = []; var ruined: Array = []; var killed_names: Array = []; var clear_report = {}; var events_seen: Array = []; var boss_talked = false
 var drag_from = Vector2.ZERO; var dragging = false; var press_pos = Vector2.ZERO; var pressed = false
 const PANEL_H = 380
 
@@ -98,7 +98,7 @@ func _ready() -> void:
 		for n in ROSTER_NAMES:
 			if Roster.UNITS[n][1] == CHAPTER and Roster.UNITS[n][2] != "" and CHAPTER != "ch1": lines.append([n, Roster.UNITS[n][2]])
 		if CHAPTER == "ch1" and Campaign.cycle == 0 and resume.is_empty(): lines.append_array(ChapterData.PROLOGUE)
-		lines.append_array(ch.pre); lines.append_array(ch.get("boss", []))
+		lines.append_array(ch.pre)   # 보스 대사는 첫 교전 때 (_boss_talk)
 		if not "nodialog" in demo and not "combat" in demo: await dialogue.play(lines)
 		if not "combat" in demo:
 			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
@@ -152,6 +152,8 @@ func _spawn_enemy(e: Array) -> Unit:
 		u.drop_i = opts.get("drop_i", DROP_I_ELITE if elite else DROP_I) if u.items().size() > 0 else 0
 	EnemyAI.smart = Campaign.difficulty >= 2
 	_level_to(u, int(opts.get("lv", 1)) + Campaign.enemy_lv)
+	for st in opts.get("bonus", {}): u.stats[st] = int(u.stats[st]) + int(opts.bonus[st])   # boss-only flat bonus (cap-exempt)
+	if opts.has("bonus"): u.hp = u.stats.hp
 	_place(u); return u
 
 ## Deterministic enemy/NPC levels (fixed growth) — chapter difficulty curve lives in maps.gd "lv".
@@ -222,7 +224,7 @@ func _snapshot() -> Dictionary:
 	for i in MAP.get("reinforcements", []).size(): if MAP.reinforcements[i].get("done", false): rd.append(i)
 	return {"chapter": CHAPTER, "turn": tm.turn, "units": units.filter(func(u): return u.hp > 0).map(func(u): return u.to_dict()),
 		"opened": opened.map(func(c): return [c.x, c.y]), "reinf_done": rd, "deployed": deployed, "chapter_start": Campaign.chapter_start,
-		"state": {"events": events_seen, "kills": kills, "stole": stole, "chests": chests_got, "escaped": escaped, "killed": killed_names,
+		"state": {"events": events_seen, "boss_talked": boss_talked, "kills": kills, "stole": stole, "chests": chests_got, "escaped": escaped, "killed": killed_names,
 			"visited": visited.map(func(c): return [c.x, c.y]), "ruined": ruined.map(func(c): return [c.x, c.y])}}
 
 ## Save payload for SaveManager (campaign + mid-battle snapshot).
@@ -255,7 +257,7 @@ func _restore(r: Dictionary) -> void:
 	for i in r.get("reinf_done", []): MAP.reinforcements[int(i)]["done"] = true
 	var st: Dictionary = r.get("state", {})
 	kills = int(st.get("kills", 0)); stole = int(st.get("stole", 0)); chests_got = int(st.get("chests", 0)); escaped = st.get("escaped", [])
-	killed_names = st.get("killed", []); events_seen = st.get("events", []).map(func(x): return int(x))
+	killed_names = st.get("killed", []); events_seen = st.get("events", []).map(func(x): return int(x)); boss_talked = st.get("boss_talked", true)
 	for v in st.get("visited", []):
 		var c = Vector2i(int(v[0]), int(v[1])); visited.append(c); grid.visit_village(c)
 	for v in st.get("ruined", []):
@@ -658,6 +660,7 @@ func _on_confirm() -> void:
 		info.text = "\n".join(log)
 	elif pending_target:
 		var d = pending_target
+		await _boss_talk(a, d)
 		var log = BattleManager.resolve(a, d)
 		await _animate(a, d)
 		log.append_array(_handle_kills(a, d))
@@ -1151,6 +1154,7 @@ func _run_enemy_phase() -> void:
 		if plan.get("ruin", false) and grid.terrain.get(e.cell, "") == "village":
 			grid.ruin_village(e.cell); ruined.append(e.cell); lines.append("%s이(가) 마을을 파괴했다!" % e.data.name)
 		if plan.target:
+			await _boss_talk(e, plan.target)
 			lines.append_array(BattleManager.resolve(e, plan.target))
 			await _animate(e, plan.target)
 			lines.append_array(_handle_kills(plan.target, e))
@@ -1301,6 +1305,13 @@ func _clear_screen() -> void:
 	var b = ItemMenus.big("계속", 100, 34); v.add_child(b); b.name = "Continue"
 	b.pressed.connect(func(): cl.queue_free(); _closed.emit())
 	await _closed
+
+## Pre-boss '왜 싸우는가' lines: once, the first time anyone fights the boss (either side).
+func _boss_talk(a: Unit, d: Unit) -> void:
+	if boss_talked or not (a.boss or d.boss): return
+	boss_talked = true
+	var lines = ChapterData.CHAPTERS.get(CHAPTER, {}).get("boss", [])
+	if lines.size() and is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): await dialogue.play(lines)
 
 func _noah_choice(o: Unit) -> bool:
 	var ov = Menus.overlay(ui, "노아의 선택", 45, 200, 200); var cl: CanvasLayer = ov[0]; var v: VBoxContainer = ov[1]; cl.name = "NoahChoice"

@@ -24,6 +24,11 @@ func _put(b, u, c: Vector2i) -> void:
 
 func _ready() -> void:
 	Campaign.absent = []
+	var bt = await _battle("ch9", ["가렌", "카이"])
+	check(not bt.boss_talked, "boss talk not in opening")
+	var bs = _named(bt, "그림자 기사"); await bt._boss_talk(bt.units[0], bs)
+	check(bt.boss_talked, "boss talk fires on first engagement")
+	bt.queue_free(); await get_tree().process_frame
 	# 1. every map: spawns on walkable tiles, villages/chests on matching terrain
 	for ch in ["ch1", "ch2", "ch3", "ch4a", "ch4b", "ch5", "ch6"]:
 		var b = await _battle(ch)
