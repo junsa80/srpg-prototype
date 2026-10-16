@@ -43,7 +43,7 @@ func _init() -> void:
 		for ch in src:
 			if not ChapterData.CHAPTERS.has(ch): errors.append("EVENTS/CAMP 키 %s: 장 없음" % ch)
 	for n in Roster.UNITS:
-		if not Roster.CLASSES.has(Roster.UNITS[n].get("class", "")) and Roster.UNITS[n].has("class"): errors.append("유닛 %s: 클래스 없음" % n)
+		if not Roster.CLASSES.has(Roster.UNITS[n][0]): errors.append("유닛 %s: 클래스 없음 '%s'" % [n, Roster.UNITS[n][0]])
 		if not ResourceLoader.exists("res://assets/portraits/%s.png" % n): _w("초상 없음(아군)", n)
 	for k in warns: print("WARN %s (%d): %s" % [k, warns[k].size(), ", ".join(warns[k].keys())])
 	for e in errors: print("ERROR ", e)
