@@ -85,7 +85,7 @@ func _save_unit(u: Unit) -> void:
 func _shop() -> void:
 	_clear(); Sfx.play("select")
 	var row = HBoxContainer.new(); body.add_child(row)
-	var p = TextureRect.new(); p.texture = Sprites.portrait("상인"); p.custom_minimum_size = Vector2(96, 96)
+	var p = TextureRect.new(); p.texture = Sprites.portrait("상인"); p.custom_minimum_size = Vector2(128, 128)
 	p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; row.add_child(p)
 	var line = ItemMenus.label("상인: \"좋은 물건 있을 때 사 가!\"  구입한 무기는 수송대로.", 24, Color8(255, 232, 176))
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(line)
