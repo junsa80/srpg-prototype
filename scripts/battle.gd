@@ -1281,6 +1281,7 @@ func _check_end() -> bool:
 		clear_report = evaluate_clear()
 		for u in units: if u.team == 0: Campaign.record_progress(u, false)
 		var g = MAP.get("clear_gold", Campaign.CLEAR_GOLD.get(CHAPTER, 500))
+		if MAP.get("noah_choice", "") != "": _record_noah_outcome(MAP.noah_choice)
 		Campaign.record_clear(CHAPTER)  # 각성 removed on clear; advances Campaign.chapter
 		clear_report["gold"] = g
 		info.text = "승리! 클리어 보상 %dG · 랭크 %s" % [g, clear_report.rank]
@@ -1290,12 +1291,23 @@ func _check_end() -> bool:
 		return true
 	return false
 
+## 14장 클리어 시 노아 결과를 저장에 남긴다 (엔딩 판정·구버전 이전용).
+func _record_noah_outcome(n: String) -> void:
+	for f in Campaign.NOAH_OUTCOMES: Campaign.camp_seen.erase(f)
+	var f = "noah_out_lost"
+	if units.any(func(x): return x.team == 0 and x.data.name == n and x.hp > 0) or (n in Campaign.recruited and not n in Campaign.absent): f = "noah_out_joined"
+	elif n in killed_names: f = "noah_out_killed"
+	elif units.any(func(x): return x.team == 1 and x.data.name == n and x.hp > 0): f = "noah_out_lost"   # 끝내 설득 못 함
+	elif "noah_farewell" in Campaign.camp_seen: f = "noah_out_farewell"
+	if f != "noah_out_farewell": Campaign.camp_seen.erase("noah_farewell")   # 이전 시도의 떠나보냄 기록은 무효
+	Campaign.camp_seen.append(f)
+
 func _after_clear() -> void:
 	if "--flowtest" in OS.get_cmdline_user_args(): return
 	await _clear_screen()
 	var post_lines = ChapterData.CHAPTERS[CHAPTER].post
 	if CHAPTER == "final":
-		var eid = ChapterData.ending_id("노아" in Campaign.absent or not Campaign.roster.has("노아"), Campaign.supports_seen, "noah_farewell" in Campaign.camp_seen)
+		var eid = Campaign.ending_for(Campaign.absent, Campaign.roster.has("노아"), Campaign.camp_seen, Campaign.supports_seen)
 		post_lines = post_lines + ChapterData.ENDINGS[eid]
 		if not ("ending_" + eid) in Campaign.camp_seen: Campaign.camp_seen.append("ending_" + eid)
 	await dialogue.play(post_lines)

@@ -250,6 +250,7 @@ func from_dict(c: Dictionary) -> void:
 	recruited = c.get("recruited", []); ranks = c.get("ranks", {}); sides = c.get("sides", {}); route = c.get("route", "")
 	drop_seeds = c.get("drop_seeds", {}); cycle = int(c.get("cycle", 0)); clears = int(c.get("clears", 0))
 	camp_seen = c.get("camp_seen", []); supports_seen = c.get("supports_seen", []); absent = c.get("absent", [])
+	migrate_noah_outcome()
 	if chapter == "end" and "ch6" in cleared and not "ch7" in cleared: chapter = "ch7"   # 7장 추가: 1부 완료 세이브는 7장으로
 	# migrate: pre-rework saves only had 강화-style cycles (+3 Lv each, everyone kept)
 	enemy_lv = int(c.get("enemy_lv", cycle * CYCLE_LV)); keep_all = bool(c.get("keep_all", cycle > 0))
@@ -266,6 +267,22 @@ func from_dict(c: Dictionary) -> void:
 			ensure_roster()
 		if roster.size() > 0 and not GAME_VERSION in update_restarts and not GAME_VERSION in update_declined: update_offer = GAME_VERSION
 		game_ver = GAME_VERSION
+
+## 14장 노아 결과 기록 (camp_seen 플래그). 2026-10-17 이전 저장은 결과를 남기지 않았다:
+## 14장을 이미 클리어했는데 noah_out_* 가 없으면 "noah_out_legacy" 를 찍는다 (격파 여부를 알 수 없으므로 떠나보냄으로 간주 → 기본 엔딩).
+const NOAH_OUTCOMES = ["noah_out_joined", "noah_out_farewell", "noah_out_killed", "noah_out_lost", "noah_out_legacy"]
+func migrate_noah_outcome() -> void:
+	if not "ch14" in cleared: return
+	for f in NOAH_OUTCOMES: if f in camp_seen: return
+	camp_seen.append("noah_out_farewell" if "noah_farewell" in camp_seen else "noah_out_legacy")
+
+## Ending inputs from the saved state. 잿빛 = 14장에서 격파됐거나 끝내 설득 못 함 (기록이 있을 때만).
+## 노아가 동행 중이 아니어도 떠나보냄/구버전(기록 없음)이면 기본 엔딩.
+static func ending_for(absent_: Array, roster_has_noah: bool, camp: Array, supports: Array) -> String:
+	var gone = "노아" in absent_ or not roster_has_noah
+	var recorded = NOAH_OUTCOMES.any(func(f): return f in camp)
+	var farewell = ("noah_out_farewell" in camp or ("noah_out_legacy" in camp and gone)) if recorded else "noah_farewell" in camp
+	return ChapterData.ending_id(gone, supports, farewell)
 
 ## Per-unit save migration between content versions (roster entries and battle-snapshot units).
 static func migrate_entry(n: String, e: Dictionary, from_ver: int) -> void:

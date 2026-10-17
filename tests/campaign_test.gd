@@ -127,6 +127,18 @@ func _ready() -> void:
 	var nh = _named(b, "노아"); var ns = nh.stats.str
 	b._talk(_named(b, "아린") if _named(b, "아린") else b.units[0], nh)
 	check(nh.team == 0 and nh.stats.str == maxi(1, ns - 3) and not "노아" in Campaign.absent, "ch14: 노아 persuaded → joins weakened")
+	b._record_noah_outcome("노아"); check("noah_out_joined" in Campaign.camp_seen, "ch14 outcome: joined recorded")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch14", ["가렌", "카이"]); Campaign.absent = ["노아"]; Campaign.camp_seen = ["noah_farewell"]
+	b.killed_names = ["노아"]; var nk = _named(b, "노아"); nk.hp = 0; b.units.erase(nk)
+	b._record_noah_outcome("노아"); check("noah_out_killed" in Campaign.camp_seen and not "noah_farewell" in Campaign.camp_seen, "ch14 outcome: killed recorded (overrides stale farewell)")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch14", ["가렌", "카이"]); Campaign.absent = ["노아"]; Campaign.camp_seen = ["noah_farewell"]
+	var nf = _named(b, "노아"); b.units.erase(nf); nf.visible = false
+	b._record_noah_outcome("노아"); check("noah_out_farewell" in Campaign.camp_seen, "ch14 outcome: farewell recorded")
+	b.queue_free(); await get_tree().process_frame
+	b = await _battle("ch14", ["가렌", "카이"]); Campaign.absent = ["노아"]; Campaign.camp_seen = []
+	b._record_noah_outcome("노아"); check("noah_out_lost" in Campaign.camp_seen, "ch14 outcome: never persuaded recorded")
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("ch15", ["가렌", "카이"])
 	check(_named(b, "그림자 근위대장") != null and b.units.filter(func(u): return u.team == 1 and u.unit_class.name in ["워리어", "스나이퍼", "제네럴"]).size() >= 3, "ch15: promoted foes begin, 근위대장")
@@ -177,6 +189,27 @@ func _ready() -> void:
 		hurt.cell = Vector2i(5, 12); hurt.hp = 1; b._start_of_phase(0)
 		check(healed and hurt.hp == 1 and b.MAP.light_only_heal and lc.size() == 4 and fc.size() == 0, "final: light pillar heals, abyss does not")
 	check(ChapterData.ending_id(true, []) == "ash" and ChapterData.ending_id(false, []) == "basic" and ChapterData.ending_id(false, ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"]) == "dawn" and ChapterData.ending_id(true, [], true) == "basic" and ChapterData.ending_id(true, ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"], true) == "basic", "ending branches (farewell -> basic)")
+	# 구버전 저장 이전: 14장 클리어 + 결과 기록 없음 → noah_out_legacy → 노아 부재여도 기본 엔딩
+	var keep_c = Campaign.to_dict()
+	var hi = ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"]
+	var old_save = keep_c.duplicate(true); old_save["cleared"] = ["ch13", "ch14"]; old_save["absent"] = ["노아"]; old_save["camp_seen"] = ["ch13", "ch14"]
+	Campaign.from_dict(old_save)
+	check("noah_out_legacy" in Campaign.camp_seen, "migrate: legacy ch14 save stamped")
+	check(Campaign.ending_for(Campaign.absent, Campaign.roster.has("노아"), Campaign.camp_seen, []) == "basic", "migrate: legacy absent -> basic (not ash)")
+	check(Campaign.ending_for(Campaign.absent, Campaign.roster.has("노아"), Campaign.camp_seen, hi) == "basic", "migrate: legacy absent never dawn")
+	var re = Campaign.to_dict(); Campaign.from_dict(re)
+	check(Campaign.camp_seen.count("noah_out_legacy") == 1, "migrate: idempotent")
+	var joined = old_save.duplicate(true); joined["absent"] = []; Campaign.from_dict(joined)
+	check(Campaign.ending_for(Campaign.absent, true, Campaign.camp_seen, hi) == "dawn" and Campaign.ending_for(Campaign.absent, true, Campaign.camp_seen, []) == "basic", "migrate: legacy joined unchanged")
+	var pre14 = old_save.duplicate(true); pre14["cleared"] = ["ch13"]; Campaign.from_dict(pre14)
+	check(not "noah_out_legacy" in Campaign.camp_seen, "migrate: ch14 not cleared -> no stamp")
+	# 새 기록: 격파/설득 실패 = 잿빛, 떠나보냄 = 기본; 이전 시도의 떠나보냄 기록보다 결과 플래그가 우선
+	check(Campaign.ending_for(["노아"], true, ["noah_out_killed", "noah_farewell"], []) == "ash", "outcome: killed -> ash")
+	check(Campaign.ending_for(["노아"], true, ["noah_out_lost"], hi) == "ash", "outcome: never persuaded -> ash")
+	check(Campaign.ending_for(["노아"], true, ["noah_out_farewell"], hi) == "basic", "outcome: farewell -> basic")
+	var newer = old_save.duplicate(true); newer["camp_seen"] = ["noah_farewell"]; Campaign.from_dict(newer)
+	check("noah_out_farewell" in Campaign.camp_seen and not "noah_out_legacy" in Campaign.camp_seen, "migrate: recorded farewell kept")
+	Campaign.from_dict(keep_c)
 	Campaign.absent = []
 	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련
