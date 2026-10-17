@@ -270,7 +270,7 @@ func _restore(r: Dictionary) -> void:
 	_refresh_intents(); _update_warnings(); _update_danger()
 	var first = units.filter(func(u): return u.team == 0)
 	if first.size(): _focus(first[0].cell)
-	info.text = "%s — 턴 %d 재개\n유닛을 탭하세요 (빈 칸 탭=메뉴)" % [ChapterData.CHAPTERS[CHAPTER].title, tm.turn]
+	info.text = "%s — 턴 %d 재개\n유닛을 탭하세요 (빈 칸 탭=지형 확인 · [메뉴]=메뉴)" % [ChapterData.CHAPTERS[CHAPTER].title, tm.turn]
 	btn_end.disabled = false
 
 # ---------------------------------------------------------------- camera / input
@@ -368,7 +368,7 @@ func _status_button() -> void:
 	if u == null: u = units.filter(func(o): return o.team == 0 and o.hp > 0)[0]
 	open_status(u)
 
-# ---------------------------------------------------------------- battle menu (빈 칸 탭 / [메뉴])
+# ---------------------------------------------------------------- battle menu ([메뉴] 버튼 전용 — 빈 칸 탭으로는 안 열림)
 func open_menu() -> void:
 	if busy or prep_active or tm.phase != TurnManager.Phase.PLAYER: return
 	var o = Menus.overlay(ui, "메뉴", 30, 150, 150); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "BattleMenu"
@@ -475,7 +475,7 @@ func tap(c: Vector2i) -> void:
 		if u and u.team == 0 and not u.has_acted: _select(u)
 		elif u and u.team == 1: _show_enemy(u)
 		elif u: _show_info(u)
-		else: open_menu()
+		else: _clear()   # empty tile: inspect terrain only (clears enemy range); menu opens only via [메뉴]
 		return
 	if u and u.team == 0 and u != selected and u in _heal_targets(selected) and moved:
 		pending_target = null; pending_heal = u
@@ -1110,7 +1110,7 @@ func _on_phase(phase: int, turn: int) -> void:
 		for u in units: u.has_acted = false; u.visible = u.hp > 0; u.queue_redraw()
 		_refresh_intents(); _update_warnings(); _update_danger()
 		SaveManager.autosave(CHAPTER, turn, payload())  # autosave each turn
-		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛 탭=선택 · 길게=상태 · 빈 칸=메뉴" % turn
+		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛 탭=선택 · 길게=상태 · 빈 칸=지형 · [메뉴]=메뉴" % turn
 		if _check_end(): return
 		await _banner("플레이어 페이즈", Color8(120, 176, 255))
 		await _turn_event(turn)

@@ -33,6 +33,20 @@ func _ready() -> void:
 	print("restored turn ", c2.tm.turn, " 아린 hp ", a2.hp, " acted ", a2.has_acted, " poison ", a2.poison, " boss hp ", b2.hp, " door open ", not c2.grid.walls.has(Vector2i(2, 2)), " lineup ", c2.deployed)
 	ok = ok and c2.tm.turn == 3 and a2.hp == 7 and a2.has_acted and a2.poison == 2 and b2.hp == 11 and b2.boss and not c2.grid.walls.has(Vector2i(2, 2)) and "카엘" in c2.deployed
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 29")
+	# map tap: empty tile / enemy tile never opens the battle menu; ally select + cancel still works
+	c2._clear(); var foe2: Unit = c2.units.filter(func(u): return u.team == 1 and u.hp > 0)[0]
+	var empty = Vector2i(-1, -1)
+	for y in range(c2.grid.size.y):
+		for x in range(c2.grid.size.x):
+			var cc = Vector2i(x, y)
+			if empty.x < 0 and c2.grid.in_bounds(cc) and not c2.grid.walls.has(cc) and not c2.grid.water.has(cc) and c2._unit_at(cc) == null: empty = cc
+	c2.tap(empty); ok = ok and c2.ui.get_node_or_null("BattleMenu") == null and c2.selected == null and c2.terrain_win.visible
+	c2.tap(foe2.cell); ok = ok and c2.ui.get_node_or_null("BattleMenu") == null and not c2.grid.highlight_move.is_empty()
+	c2.tap(empty); ok = ok and c2.ui.get_node_or_null("BattleMenu") == null and c2.grid.highlight_move.is_empty()
+	var free_ally: Unit = c2.units.filter(func(u): return u.team == 0 and u.hp > 0 and not u.has_acted)[0]
+	c2.tap(free_ally.cell); ok = ok and c2.selected == free_ally
+	c2._on_cancel(); ok = ok and c2.selected == null and c2.ui.get_node_or_null("BattleMenu") == null
+	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT tap-no-menu")
 	# menus build without errors
 	c2.open_menu(); ok = ok and c2.ui.get_node_or_null("BattleMenu") != null
 	c2.open_status(b2); Menus.unit_list(c2.ui, c2.units); Menus.settings(c2.ui); Menus.slots(c2.ui, "load", null, func(s): pass)
