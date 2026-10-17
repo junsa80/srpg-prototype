@@ -1,0 +1,65 @@
+# 처치 드롭 감사 (tests/drop_test.tscn) — 2026-10-17
+## 이전
+DROP ch1    boss=0 other=1 random(exp)=0.14  items/clear=1.14  철창
+DROP ch2    boss=1 other=8 random(exp)=0.15  items/clear=9.15  손도끼, 문 열쇠, 철활, 아머킬러, 상자 열쇠, 투창, 볼트, ★그림자 창 우르, 호스슬레이어
+DROP ch3    boss=1 other=3 random(exp)=0.44  items/clear=4.44  ★파멸의 도끼, 해머, 썬더, 상자 열쇠
+DROP ch4a   boss=0 other=2 random(exp)=0.42  items/clear=2.42  강철창, 상자 열쇠
+DROP ch4b   boss=0 other=2 random(exp)=0.38  items/clear=2.38  아머킬러, 상자 열쇠
+DROP ch5    boss=1 other=2 random(exp)=0.71  items/clear=3.71  ★용사의 창, 해제의 지팡이, 문 열쇠
+DROP ch6    boss=0 other=3 random(exp)=1.25  items/clear=4.25  은창, 문 열쇠, 은검
+DROP ch7    boss=1 other=0 random(exp)=0.45  items/clear=1.45  ★은창
+DROP ch8    boss=1 other=0 random(exp)=0.48  items/clear=1.48  ★킬러소드
+DROP ch9    boss=1 other=0 random(exp)=0.99  items/clear=1.99  ★은창
+DROP ch10   boss=1 other=0 random(exp)=1.08  items/clear=2.08  ★힘의 반지
+DROP ch11   boss=1 other=0 random(exp)=0.87  items/clear=1.87  ★은창
+DROP ch12   boss=1 other=0 random(exp)=0.72  items/clear=1.72  ★힘의 반지
+DROP ch13   boss=1 other=0 random(exp)=0.96  items/clear=1.96  ★힘의 반지
+DROP ch14   boss=1 other=0 random(exp)=1.05  items/clear=2.05  ★힘의 반지
+DROP ch15   boss=1 other=0 random(exp)=1.23  items/clear=2.23  ★힘의 반지
+DROP ch16   boss=1 other=0 random(exp)=0.84  items/clear=1.84  ★힘의 반지
+DROP ch17   boss=1 other=0 random(exp)=1.04  items/clear=2.04  ★마스터 키
+DROP ch18   boss=1 other=0 random(exp)=1.11  items/clear=2.11  ★힘의 반지
+DROP ch19   boss=1 other=0 random(exp)=0.99  items/clear=1.99  ★스피드링
+DROP ch20   boss=1 other=0 random(exp)=0.78  items/clear=1.78  ★힘의 반지
+DROP ch21   boss=0 other=0 random(exp)=1.20  items/clear=1.20  
+DROP ch22   boss=1 other=0 random(exp)=0.93  items/clear=1.93  ★스피드링
+DROP ch23   boss=0 other=0 random(exp)=1.32  items/clear=1.32  
+DROP ch24   boss=1 other=0 random(exp)=0.90  items/clear=1.90  ★힘의 반지
+DROP ch25   boss=0 other=0 random(exp)=0.78  items/clear=0.78  
+DROP ch26   boss=1 other=0 random(exp)=0.66  items/clear=1.66  ★스피드링
+DROP ch27   boss=1 other=0 random(exp)=0.81  items/clear=1.81  ★그림자 창 우르
+DROP final  boss=0 other=0 random(exp)=0.69  items/clear=0.69  
+DROP TOTAL chapters=29 boss=21 other=21 random(exp)=23.4  items/campaign=65.4  avg/chapter=2.25  convoy max 100
+DROPTEST PASS
+## 이후
+DROP ch1    boss=0 other=0 random(exp)=0.00  items/clear=0.00  
+DROP ch2    boss=1 other=2 random(exp)=0.11  items/clear=3.11  아머킬러, 상자 열쇠, ★그림자 창 우르
+DROP ch3    boss=1 other=2 random(exp)=0.01  items/clear=3.01  ★파멸의 도끼, 해머, 상자 열쇠
+DROP ch4a   boss=0 other=1 random(exp)=0.01  items/clear=1.01  상자 열쇠
+DROP ch4b   boss=0 other=2 random(exp)=0.01  items/clear=2.01  아머킬러, 상자 열쇠
+DROP ch5    boss=1 other=2 random(exp)=0.05  items/clear=3.05  ★용사의 창, 해제의 지팡이, 문 열쇠
+DROP ch6    boss=0 other=2 random(exp)=0.24  items/clear=2.24  은창, 은검
+DROP ch7    boss=1 other=0 random(exp)=0.04  items/clear=1.04  ★은창
+DROP ch8    boss=1 other=0 random(exp)=0.04  items/clear=1.04  ★킬러소드
+DROP ch9    boss=1 other=0 random(exp)=0.12  items/clear=1.12  ★은창
+DROP ch10   boss=1 other=0 random(exp)=0.12  items/clear=1.12  ★힘의 반지
+DROP ch11   boss=1 other=0 random(exp)=0.16  items/clear=1.16  ★은창
+DROP ch12   boss=1 other=0 random(exp)=0.11  items/clear=1.11  ★힘의 반지
+DROP ch13   boss=1 other=0 random(exp)=0.07  items/clear=1.07  ★힘의 반지
+DROP ch14   boss=1 other=0 random(exp)=0.17  items/clear=1.17  ★힘의 반지
+DROP ch15   boss=1 other=0 random(exp)=0.12  items/clear=1.12  ★힘의 반지
+DROP ch16   boss=1 other=0 random(exp)=0.07  items/clear=1.07  ★힘의 반지
+DROP ch17   boss=1 other=0 random(exp)=0.15  items/clear=1.15  ★마스터 키
+DROP ch18   boss=1 other=0 random(exp)=0.13  items/clear=1.13  ★힘의 반지
+DROP ch19   boss=1 other=0 random(exp)=0.16  items/clear=1.16  ★스피드링
+DROP ch20   boss=1 other=0 random(exp)=0.10  items/clear=1.10  ★힘의 반지
+DROP ch21   boss=0 other=0 random(exp)=0.36  items/clear=0.36  
+DROP ch22   boss=1 other=0 random(exp)=0.30  items/clear=1.30  ★스피드링
+DROP ch23   boss=0 other=0 random(exp)=0.41  items/clear=0.41  
+DROP ch24   boss=1 other=0 random(exp)=0.19  items/clear=1.19  ★힘의 반지
+DROP ch25   boss=0 other=0 random(exp)=0.24  items/clear=0.24  
+DROP ch26   boss=1 other=0 random(exp)=0.21  items/clear=1.21  ★스피드링
+DROP ch27   boss=1 other=0 random(exp)=0.29  items/clear=1.29  ★그림자 창 우르
+DROP final  boss=0 other=0 random(exp)=0.24  items/clear=0.24  
+DROP TOTAL chapters=29 boss=21 other=11 random(exp)=4.2  items/campaign=36.2  avg/chapter=1.25  convoy max 100
+DROPTEST PASS

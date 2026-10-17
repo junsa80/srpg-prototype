@@ -28,7 +28,7 @@ var danger_on = false
 var anim_on = true
 var fc_panel: Panel; var unit_wicon: TextureRect
 var btn_status: Button; var btn_menu: Button
-const DROP_W = 3; const DROP_I = 5; const DROP_W_ELITE = 12; const DROP_I_ELITE = 10   # weapon drops lowered (was 8/15)
+const DROP_W = 1; const DROP_I = 1; const DROP_W_ELITE = 5; const DROP_I_ELITE = 5   # rare (was 3/5 normal, 12/10 elite); junk never rolls
 var spawn_seq = 0
 var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var opened: Array = []
 var kills = 0; var stole = 0; var chests_got = 0; var escaped: Array = []; var seized = false
@@ -149,8 +149,8 @@ func _spawn_enemy(e: Array) -> Unit:
 	u.uid = spawn_seq; spawn_seq += 1
 	if not u.boss and u.drop == null and u.talk_from == "":
 		var elite = opts.get("elite", false) or u.guard
-		u.drop_w = opts.get("drop_w", DROP_W_ELITE if elite else DROP_W)
-		u.drop_i = opts.get("drop_i", DROP_I_ELITE if elite else DROP_I) if u.items().size() > 0 else 0
+		u.drop_w = opts.get("drop_w", DROP_W_ELITE if elite else DROP_W) if not junk(u.weapon()) else 0   # no ordinary-weapon drops
+		u.drop_i = opts.get("drop_i", DROP_I_ELITE if elite else DROP_I) if u.items().size() > 0 and not junk(u.items()[0]) else 0
 	EnemyAI.smart = Campaign.difficulty >= 2
 	_level_to(u, int(opts.get("lv", 1)) + Campaign.enemy_lv)
 	for st in opts.get("bonus", {}): u.stats[st] = int(u.stats[st]) + int(opts.bonus[st])   # boss-only flat bonus (cap-exempt)
@@ -749,6 +749,12 @@ func show_loot() -> void:
 
 ## Deterministic random drop roll: hash(chapter attempt seed, spawn id, slot). Same result after save/load or restart.
 func roll(u: Unit, slot: String) -> int: return absi(hash([Campaign.drop_seed(CHAPTER), CHAPTER, u.uid, slot])) % 100
+
+## "Junk" for random drops: basic/steel-tier weapons (rank E/D, no 특효/용사) and plain 상처약. Never rolled randomly.
+static func junk(w: WeaponData) -> bool:
+	if w == null: return true
+	if w.is_item(): return w.name == "상처약"
+	return w.rank <= 1 and w.effective.is_empty() and not w.brave
 
 func random_drops(dead: Unit) -> Array:
 	var out = []

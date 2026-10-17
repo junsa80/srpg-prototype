@@ -18,6 +18,7 @@ for t in flow_test menu_test weapons_test campaign_test; do $G --headless res://
 $G --headless --script tests/selftest.gd
 $G --headless --script tests/skills_test.gd
 $G --headless res://tests/qol_test.tscn -- --flowtest     # P0/P1 QoL, 저장 내보내기·손상 복구
+$G --headless res://tests/drop_test.tscn -- --flowtest    # 처치 드롭 감사: 일반 무기 드롭 없음, 장당 고정 ≤2(보스 제외), 무작위 ≤1%/5% (DROP_REPORT_ONLY=1 = 보고만)
 $G --headless --script tests/consistency_test.gd      # 맵·대본·클래스·무기·초상 정합성 (초상 누락=WARN)
 $G --headless res://tests/sim_test.tscn -- --flowtest      # 밸런스 시뮬 (SIM_ONLY=ch6, SIM_V=1, SIM_NOHEAL=1)
 # 웹 빌드 (export_presets.cfg: thread_support=false → COOP/COEP 없는 정적 호스팅 OK)
@@ -157,3 +158,9 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 저장 내보내기 코드 형식: `SRPGSAVE1:` + base64(JSON 문서). `SaveManager.import_text(slot, text)`는 슬롯 1~3만, 원본 JSON도 허용.
 - `load_slot()`은 손상 시 `{"corrupt": true}` 반환 → UI가 빈 슬롯과 구분. 클라우드 동기화(`cloud_sync`)는 여전히 TODO, UI 노출 금지.
 - 실기기 확인 필요: 노치/작은 화면 안전 영역, 두 손가락 확대, 한 손 드래그, 웹 다운로드·클립보드(iOS Safari 제한), 가져오기 TextEdit 가상 키보드.
+
+
+## 드롭 규칙 (2026-10-17)
+- 무작위: `battle.gd` DROP_W/DROP_I = 1%, 정예(guard/elite) 5%. `Battle.junk()`(E/D랭크·특효/용사 아님, 상처약)는 굴리지 않음.
+- 고정(`maps.gd` "drop"): 보스 + 장마다 0~2개. 적의 장비 무기를 그대로 고정 드롭하지 말 것 (`drop_test`가 막음). 노란 사각 = 드롭 표시.
+- 전투 맵 빈 칸 탭 = 지형 정보만, 메뉴는 [메뉴] 버튼 전용.

@@ -241,8 +241,10 @@ func _ready() -> void:
 	check(lina2.weapon() != null and not lina2.weapon().is_item(), "items never equipped as weapons")
 	var foes = b.units.filter(func(u): return u.team == 1 and not u.boss and u.drop == null)
 	var e1 = foes[0]
-	var ew = 12 if e1.guard else 3
-	check(e1.drop_w == ew and b.drop_text(e1).contains("?%d%%" % ew), "random drop shown: %s" % b.drop_text(e1).strip_edges())
+	var ew = 0 if b.junk(e1.weapon()) else (5 if e1.guard else 1)   # ordinary (junk) weapons never drop
+	check(e1.drop_w == ew and (ew == 0 or b.drop_text(e1).contains("?%d%%" % ew)), "random drop rate: %d %s" % [e1.drop_w, b.drop_text(e1).strip_edges()])
+	var e1w = e1.weapon(); e1.inventory.erase(e1w); e1.inventory.insert(0, Weapons.make("은검")); e1.drop_w = 5
+	check(b.drop_text(e1).contains("은검 ?5%"), "rare drop shown: %s" % b.drop_text(e1).strip_edges())
 	var r1 = b.roll(e1, "w"); var r2 = b.roll(e1, "w")
 	check(r1 == r2 and r1 >= 0 and r1 < 100, "drop roll deterministic per seed (%d)" % r1)
 	var seed0 = Campaign.drop_seed("ch2")
@@ -250,7 +252,7 @@ func _ready() -> void:
 	e1.drop_w = 100; e1.drop_i = 0; var got = b.random_drops(e1)
 	check(got.size() == 1 and not got[0].is_item(), "100%% weapon drop -> %s" % [got.map(func(w): return w.name)])
 	var guard = b.units.filter(func(u): return u.team == 1 and u.guard and u.drop == null and u != e1)
-	check(guard.is_empty() or guard[0].drop_w == 12, "elite/guard drop 12%")
+	check(guard.is_empty() or guard[0].drop_w == (0 if b.junk(guard[0].weapon()) else 5), "elite/guard drop 5% (0 for ordinary weapons)")
 	var boss2 = b.units.filter(func(u): return u.boss)[0]
 	check(boss2.drop_w == 0 and boss2.drop != null, "boss: fixed drop only")
 	# forecast triangle arrow (sword vs axe)
