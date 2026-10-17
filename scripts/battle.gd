@@ -451,7 +451,7 @@ func relayout_forecast(cells: Array) -> void:
 func _show_terrain(c: Vector2i) -> void:
 	relayout_windows(c)
 	var t = grid.terrain.get(c, "wall" if grid.walls.has(c) else "")
-	var names = {"": "평지", "forest": "숲", "fort": "요새", "throne": "옥좌", "door": "문(잠김)", "chest": "보물상자", "chest_open": "빈 상자", "side": "옆문", "wall": "벽"}
+	var names = {"": "평지", "forest": "숲", "fort": "요새", "throne": "옥좌", "light": "빛 기둥(HP 20% 회복)", "door": "문(잠김)", "chest": "보물상자", "chest_open": "빈 상자", "side": "옆문", "wall": "벽"}
 	var b = grid.terrain_bonus(c)
 	terrain_lbl.text = "%s\n방어 +%d\n회피 +%d%s" % [names.get(t, t), b[0], b[1], ("  회복%d%%" % b[2]) if b[2] > 0 else ""]
 	terrain_win.visible = true
@@ -899,6 +899,7 @@ func _talk(u: Unit, o: Unit) -> void:
 		if not join:
 			if is_inside_tree() and not "--flowtest" in OS.get_cmdline_user_args(): await dialogue.play(ChapterData.TALK.get(o.data.name + "|떠남", []))
 			o.hp = 0; o.visible = false; units.erase(o); Campaign.set_meta("noah_left", true)
+			if not "noah_farewell" in Campaign.camp_seen: Campaign.camp_seen.append("noah_farewell")   # 엔딩: 떠나보냄 = 기본 엔딩
 			info.text = "%s은(는) 떠났다." % o.data.name; busy = false; _finish_unit(u); return
 		Campaign.absent.erase(o.data.name)
 		for st in ["str", "skl", "spd", "def"]: o.stats[st] = maxi(1, int(o.stats[st]) - 3)   # 그림자 후유증 (이 유닛 현재치만, 클래스 기본치·성장률 불변)
@@ -1191,6 +1192,7 @@ func _start_of_phase(team: int) -> Array:
 		if u.hp <= 0 or u.team != team: continue
 		if team == 0 and Skills.has(u, "카이젠"): u.flags["kaizen"] = true
 		var h = grid.terrain_bonus(u.cell)[2]
+		if MAP.get("light_only_heal", false) and grid.terrain.get(u.cell, "") != "light": h = 0   # 종장 심연: 빛 기둥에서만 회복
 		if h > 0 and u.hp < u.stats.hp:
 			var amt = mini(u.stats.hp - u.hp, maxi(1, u.stats.hp * h / 100)); u.hp += amt; out.append("%s 지형 회복 +%d" % [u.data.name, amt])
 		if u.poison > 0:
@@ -1293,7 +1295,7 @@ func _after_clear() -> void:
 	await _clear_screen()
 	var post_lines = ChapterData.CHAPTERS[CHAPTER].post
 	if CHAPTER == "final":
-		var eid = ChapterData.ending_id("노아" in Campaign.absent or not Campaign.roster.has("노아"), Campaign.supports_seen)
+		var eid = ChapterData.ending_id("노아" in Campaign.absent or not Campaign.roster.has("노아"), Campaign.supports_seen, "noah_farewell" in Campaign.camp_seen)
 		post_lines = post_lines + ChapterData.ENDINGS[eid]
 		if not ("ending_" + eid) in Campaign.camp_seen: Campaign.camp_seen.append("ending_" + eid)
 	await dialogue.play(post_lines)

@@ -169,7 +169,14 @@ func _ready() -> void:
 	b.queue_free(); await get_tree().process_frame
 	b = await _battle("final", ["가렌", "카이"])
 	check(_named(b, "에레보스") != null and Skills.has(_named(b, "에레보스"), "그림자 왕"), "final: 에레보스")
-	check(ChapterData.ending_id(true, []) == "ash" and ChapterData.ending_id(false, []) == "basic" and ChapterData.ending_id(false, ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"]) == "dawn", "ending branches")
+	var lc = b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "light")
+	var fc = b.grid.terrain.keys().filter(func(c): return b.grid.terrain[c] == "fort")
+	var hurt = b.units.filter(func(x): return x.team == 0)[0]
+	if true:
+		hurt.cell = lc[0]; hurt.hp = 1; b._start_of_phase(0); var healed = hurt.hp > 1
+		hurt.cell = Vector2i(5, 12); hurt.hp = 1; b._start_of_phase(0)
+		check(healed and hurt.hp == 1 and b.MAP.light_only_heal and lc.size() == 4 and fc.size() == 0, "final: light pillar heals, abyss does not")
+	check(ChapterData.ending_id(true, []) == "ash" and ChapterData.ending_id(false, []) == "basic" and ChapterData.ending_id(false, ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"]) == "dawn" and ChapterData.ending_id(true, [], true) == "basic" and ChapterData.ending_id(true, ["riel_kairin_s", "arin_kairin_a", "arin_sera_a2"], true) == "basic", "ending branches (farewell -> basic)")
 	Campaign.absent = []
 	b.queue_free(); await get_tree().process_frame
 	# 6. branch + 훈련

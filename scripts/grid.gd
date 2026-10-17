@@ -1,11 +1,12 @@
 class_name Grid extends Node2D
 ## Square grid with ASCII-map terrain. Legend:
 ##  . plain  # wall  F forest  T fort  H throne  D locked door  C chest  S side door (reinforcement spawn)
+##  L light pillar (종장: 턴 시작 HP 20% 회복)
 ##  ~ river (flyers only)  = bridge  ^ mountain  V village  X cracked wall (breakable)  E escape point  R ruins/pillar
 const CELL = 80
 const TERRAIN = {  # def, avo, heal% per turn
 	"forest": [0, 20, 0], "fort": [2, 20, 20], "throne": [2, 20, 20], "mountain": [1, 30, 0], "village": [0, 10, 0],
-	"bridge": [0, 0, 0], "pillar": [1, 20, 0],
+	"bridge": [0, 0, 0], "pillar": [1, 20, 0], "light": [0, 10, 20],
 }
 ## Ground move cost by terrain for walkers (flyers always 1, can cross river/walls-of-water).
 const COST = {"forest": 2, "mountain": 3, "pillar": 2}
@@ -51,6 +52,7 @@ func load_map(rows: Array) -> void:
 				"X": terrain[c] = "crack"; walls[c] = true
 				"E": terrain[c] = "escape"
 				"R": terrain[c] = "pillar"
+				"L": terrain[c] = "light"
 	# indoor = enclosed region above the first all-wall row containing a gap (fort maps start with a wall border)
 	outdoor_walls = rows[0].count("#") < rows[0].length()
 	if not outdoor_walls:
@@ -165,6 +167,9 @@ func _draw() -> void:
 				"throne":
 					draw_rect(r.grow(-10), Color8(160, 24, 40)); draw_rect(Rect2(r.position + Vector2(22, 8), Vector2(36, 30)), Color8(216, 176, 48))
 					draw_rect(r.grow(-10), Color8(248, 216, 96), false, 3)
+				"light":
+					draw_rect(r, Color8(40, 34, 64)); draw_rect(r.grow(-14), Color8(255, 240, 170, 200))
+					draw_rect(Rect2(r.position + Vector2(32, 6), Vector2(16, CELL - 12)), Color8(255, 252, 220)); draw_rect(r.grow(-14), Color8(255, 216, 96), false, 3)
 				"door", "side", "chest", "chest_open": draw_texture_rect(_tt(t) if _tt(t) else Sprites.tile_tex(t), r, false)
 				"river":
 					draw_rect(r, Color8(56, 112, 200))
