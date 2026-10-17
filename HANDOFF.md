@@ -6,7 +6,7 @@
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `eb288b4328edcf19c0b119233ed34d8b` (2026-10-17, 결정 반영).
+- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `79b007e7c6526b3d0e1446d73d17422b` (2026-10-17, 음향 설정·유닛 전환·레온·23장·노아 이전·SD 통일).
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
@@ -69,7 +69,9 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - **맵 스프라이트**: `tools/chibi.py` 재실행으로 모든 SD 시트 재생성 (유닛 추가 시 UNITS 표에 한 줄). 비룡 클래스 시트는 미리 만들어 둠(아군 비룡 미구현, 제안만).
 - **상점 입고**: `base.gd` BASIC(처음) / STEEL+UTILITY(`ch3` 클리어 후) / SILVER(은·킬러·해커·멘드·피지오, `ch5` 클리어 후). 드롭·상자는 그대로. 필터 `Settings.usable_only` = `Unit.block_reason()` 기준.
 - **맵 확대/축소**: `battle.gd` `set_zoom()/zoom_step()/_pinch_input()`, `Settings.map_zoom`, 단계 `Settings.ZOOM_STEPS`. 카메라는 왼쪽 위 기준, `_clamp_cam`은 화면 크기/배율로 계산.
-- **오디오**: 백그라운드에서 BGM/SFX 일시정지 (`scripts/audio.gd`).
+- **오디오**: 백그라운드에서 BGM/SFX 일시정지 (`scripts/audio.gd`). 설정 `Settings.bgm_on`/`sfx_on`(켬/끔, 기본 켬) + 음량 `bgm`/`sfx`(0~10). 끔이면 BGM 정지·SFX 재생 안 함. 예전 전체 음소거(`user://muted`)도 유지.
+- **출전 준비 유닛 전환**: `prep.gd _unit_items(u, open_convoy)` 상단 `ItemMenus.nav_row()` ◀▶, 수송대 패널은 `ItemMenus.convoy_panel(..., cycle)`로 같은 버튼(출전 유닛 순환, 수송대 화면은 다음 유닛 수송대로 바로 열림). 거점 상점/수송/장비는 원래 ◀▶ 있음.
+- **14장 노아 결과**: 클리어 시 `battle._record_noah_outcome()`가 `camp_seen`에 `noah_out_joined/farewell/killed/lost` 기록. 엔딩은 `Campaign.ending_for()`. 구버전 저장(14장 클리어, 기록 없음)은 불러올 때 `noah_out_legacy` → 노아 부재여도 기본 엔딩(격파 여부를 알 수 없어 잿빛으로 판정하지 않음).
 - **환생**:
   - 언제든 가능(타이틀·거점·전투 메뉴). 1장부터 다시 시작. 유닛은 합류 레벨로 돌아가고, 동료는 스토리 지점에서 다시 합류.
   - 난이도: 보통 +0 / 어려움 +2 / 매우 어려움 +4(AI 강화). 상위 난이도는 6장 클리어 후에만 고를 수 있고, 진행 도중 환생하면 현재 난이도까지만.
@@ -113,13 +115,13 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 주의: 상급 적은 숨은 하급 15레벨이 붙어 **Lv 1 차이로 승률이 크게 흔들린다** (ch25 Lv10 13/16 → Lv11 2/16). 자세한 기록 `tests/sim_results.txt`. 단일 장: `SIM_ONLY=ch25`.
 
 ## 7. 미완료 · 열린 작업
-1. 결정 완료(2026-10-17, `story/OPEN_QUESTIONS.md` §2): 떠나보냄=기본 엔딩, 종장 빛 기둥, 7장 8턴 방어 유지, 아린/세라 변경 없음, 미구현 영입 21명·이졸데·발레리우스 보류. **남은 것**: 레온 새 초상화(아머나이트 유지, 묘사는 OPEN_QUESTIONS D1), 업데이트 재시작 시 enemy_lv 초기화 여부.
-2. 보리스 전용 초상화·SD 완료. SD만 다시 만들 땐 `tools/chibi.py`를 모듈로 불러 `class_sheet()`로 해당 유닛만 생성(전체 재실행은 모든 시트를 덮어씀).
+1. 결정 완료(2026-10-17, `story/OPEN_QUESTIONS.md` §2): 떠나보냄=기본 엔딩, 종장 빛 기둥, 7장 8턴 방어 유지, 아린/세라 변경 없음, 미구현 영입 21명·이졸데·발레리우스 보류. 레온 초상화 교체 완료(2026-10-17). **남은 것**: 업데이트 재시작 시 enemy_lv 초기화 여부(유지 권장).
+2. 보리스 전용 초상화·SD 완료. **아트 감사 `story/ART_AUDIT.md`** (재생성: `tools/art_audit.gd`): 임시(코드 생성) 초상 12명, 구형 96px 3명+상인, 이름 NPC 화자 초상 없음 22명. 그림자 일반병 5종·바르가스 SD는 chibi.py로 통일(원본 `assets/user_art/sliced/*_old_sheet.png`). SD만 다시 만들 땐 `tools/chibi.py`를 모듈로 불러 `class_sheet()`로 해당 유닛만 생성(전체 재실행은 모든 시트를 덮어씀).
 3. 실기기 확인 (`DEVICE_CHECKLIST.md` 11항목). safe area(노치) 처리 코드 없음.
 4. 원안 메커닉(보류): 5장 안개, 6장 성 안/밖 분할·노아 침식, 7장 호위 NPC.
 5. 클라우드 저장 미구현 (UI에 "미지원" 표기). 로컬 내보내기/가져오기·손상 복구는 구현.
 6. 스크린샷 러너 재구축 필요 (보고용 화면 캡처).
-7. 시뮬 AI가 조잡함 (탈출·제압형 목표에서 사망 과대 추정, 예: ch23 평균 사망 7).
+7. 시뮬 AI가 조잡함 (탈출·제압형 목표에서 사망 과대 추정, 예: ch23 평균 사망 4.9 — 2026-10-17 완화 전 6.4).
 
 ### 이어서 작업하는 법
 - 새 장 추가: `data/maps.gd` CH 항목 → `chapters/chapter_data.gd` CHAPTERS/EVENTS/CAMP/SUPPORTS → `scripts/campaign.gd` NEXT, `data/roster.gd` CH_INDEX → `tests/campaign_test.gd`·`tests/sim_test.gd` PLAN → 시뮬 → 빌드·배포. 이야기 이름 보스는 `Bosses.ALIAS`로 기존 패시브 연결.
