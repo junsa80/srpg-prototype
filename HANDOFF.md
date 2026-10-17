@@ -174,3 +174,10 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 맵 스프라이트 실루엣: `tools/fe_sprites.py`(계열별 그리기) + `tools/chibi.py` `SPEC`(클래스→계열·상급 장식). 적 일반 시트 `<클래스>_적.png`. 참조 시트 `build/class_sprites_sheet.png`.
 - 스프라이트 색: `python3 tools/portrait_palette.py && python3 tools/chibi.py` (자동 추출 + `OVERRIDE` 손보정, 결과 `tools/portrait_palette.json`). 확인 `build/palette_compare.png`.
 - NPC 초상 별칭 `Sprites.NPC_ALIAS` → `assets/portraits/npc_<type>.png` (파일 없으면 그림 없음).
+
+## GBA FE식 전투 화면 / 아이콘 (2026-10-17)
+- 참고 메모 `assets/battle/REFERENCE_NOTES.md` (구조·아이콘 관례; 원작 그림 미사용, 전부 코드로 그린 원본).
+- 아이콘: `python3 tools/make_icons.py` → `assets/icons/<id>.png` 16x16 50종 + `build/icons_sheet.png`. 무기 이름→id `Icons.ICON_ID` (새 무기 추가 시 한 줄 + 생성기에 그림, 없으면 `icon_id()`가 종류+등급으로 대체, 파일도 없으면 옛 절차 아이콘). `Icons.rect(w, px)`는 16의 배수로 내림(`px_snap`). 추가 후 `godot --headless --import`.
+- 배경·발판: `python3 tools/make_battle_bg.py` → `assets/battle/bg/*.png`(240x160) + `assets/battle/platform/*.png`(64x16) + `build/battle_bg_sheet.png`. 매핑 `CombatScene.BG_OF_TERRAIN/BG_OF_GROUND/PLAT_OF_TERRAIN/PLAT_OF_GROUND`.
+- `combat_scene._setup()` 세로 배치: 이름판(100) | 무대 160*BS(BS=3) | 아래 창(232) | 안내+[건너뛰기]. `AY` = 무대 위 + 130*BS. 위쪽 = max(`_safe_top()`+18, 중앙 정렬). 아래 창 노드: `StatBox`(S_HIT/S_DMG/S_CRT, X2), `Tri`, `Eff`, `HPNum`, `HPBar`(칸 = `bars[u][0]` 배열). 발판 `PlatformL/R`, 배경 `BattleBG`.
+- 스크린샷: `URL='http://127.0.0.1:18931/#combat+late+nodialog'`(근접) / `#combatfx+late+nodialog`(활) / `#combatfx+magic+late+nodialog`(마법) + `shotrunner/battle_shot.js` (T0=9000). 결과 `build/battle_fe_ref.png`.

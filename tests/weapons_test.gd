@@ -78,5 +78,11 @@ func _ready() -> void:
 	chk("아머나이트->제네럴: sword rank D, lance C", kael.rank_letter(0) == "D" and kael.rank_letter(1) == "C")
 	# icons
 	chk("icons per type/tint", Icons.of(Weapons.make("철검")) != Icons.of(Weapons.make("킬러소드")) and Icons.of(Weapons.make("철활")).get_width() == 16)
+	var miss = []
+	for n in Weapons.LIST:   # every catalog weapon/item has its own drawn 16x16 icon (tools/make_icons.py)
+		var p = "res://assets/icons/%s.png" % Icons.icon_id(Weapons.make(n))
+		if not ResourceLoader.exists(p) or not Icons.ICON_ID.has(n): miss.append(n)
+	chk("drawn icon for every weapon/item " + str(miss), miss.is_empty())
+	chk("icon sizes snap to 16x integer", Icons.px_snap(40) == 32 and Icons.px_snap(64) == 64 and Icons.px_snap(24) == 16)
 	print("WEAPONTEST ", "PASS" if ok else "FAIL")
 	get_tree().quit(0 if ok else 1)

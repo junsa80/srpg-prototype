@@ -1422,19 +1422,22 @@ func _demo_forecast() -> void:
 	_select(a); moved = true; grid.highlight_move = []; tap(e[0].cell)
 
 func _demo_combat() -> void:
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(6.5 if "late" in demo_flags() else 1.6).timeout   # +late: after the chapter-start toasts (clean screenshots)
 	var a = units.filter(func(u): return u.team == 0)[0]
 	var e = units.filter(func(u): return u.team == 1 and (u.boss if "boss" in demo_flags() else not u.boss))[0]   # #combat+boss = boss aura shot
 	a.exp = 95; a.cell = e.cell + Vector2i(0, 1); a.position = grid.cell_to_pos(a.cell); _focus(a.cell)
 	selected = a; moved = true; pending_target = e
 	await _on_confirm()
 
-## Dev (#combatfx): visual-only replay of a ranged crit + miss for screenshots. Never touches HP/RNG/saves.
+## Dev (#combatfx[+magic]): visual-only replay of a ranged (bow, or tome with +magic) crit + miss for screenshots. Never touches HP/RNG/saves.
 func _demo_fx() -> void:
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(6.5 if "late" in demo_flags() else 1.6).timeout
 	var allies = units.filter(func(u): return u.team == 0)
 	var a = allies[0]
-	for u in allies: if u.weapon() and u.weapon().type == WeaponData.Type.BOW: a = u
+	var want = WeaponData.Type.TOME if "magic" in demo_flags() else WeaponData.Type.BOW   # #combatfx+magic = tome shot
+	var found = false
+	for u in allies: if u.weapon() and u.weapon().type == want: a = u; found = true
+	if not found and want == WeaponData.Type.TOME: a.inventory.push_front(Weapons.make("파이어"))   # dev screenshot only (page is never saved)
 	var e = units.filter(func(u): return u.team == 1 and not u.boss)[0]
 	a.cell = e.cell + Vector2i(0, 2)
 	BattleManager.pre_fc = BattleManager.forecast(a, e)

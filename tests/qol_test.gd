@@ -154,6 +154,10 @@ func _ready() -> void:
 	cs3.play(e3, kael, [{"type": "strike", "x": e3, "y": kael, "hit": false, "crit": false, "dmg": 0, "w": e3.weapon(), "x_hp": e3.hp, "y_hp": kael.hp}], [], {e3: e3.hp, kael: kael.hp}); cs3._set_speed(12.0)
 	await get_tree().process_frame
 	var pe = cs3.find_child("Eff", true, false); chk(pe != null and pe.text.contains("×%d" % BattleManager.EFF_MULT), "eff-plate-banner")
+	# GBA FE layout: per side plate + HP panel (HIT/DMG/CRT box, big HP number, segmented ticks) + terrain platform + backdrop
+	chk(cs3.find_children("StatBox", "", true, false).size() == 2 and cs3.find_children("HPNum", "", true, false).size() == 2, "gba-panels")
+	chk(cs3.find_children("Platform*", "", true, false).size() == 2 and cs3.find_child("BattleBG", true, false) != null, "gba-platform+bg")
+	chk(cs3.bars[kael][0].size() == mini(kael.stats.hp, 90), "gba-hp-ticks")
 	t_end = Time.get_ticks_msec() + 10000
 	while fin3[0] < 1 and Time.get_ticks_msec() < t_end: await get_tree().process_frame
 	cs3.queue_free(); e3.inventory.pop_front(); b.units.erase(kael); kael.queue_free()

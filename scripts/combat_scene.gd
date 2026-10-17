@@ -79,48 +79,68 @@ func _ground_kind() -> String:
 	if b and "grid" in b and b.grid: return str(b.grid.ground)
 	return "grass"
 
+## GBA FE (6/7/8) battle-screen structure, original art: [enemy plate | ally plate] (name + weapon icon/name) on top,
+## 240x160 terrain backdrop at an integer scale with a terrain platform under each unit (enemy left, ally right),
+## bottom panel per side = outer HIT/DMG/CRT box + inner ▲▼/특효 + big HP number and a segmented HP tick bar.
+## Frames: blue = player side, red = enemy side.
+const ALLY_EDGE = Color8(136, 184, 255); const FOE_EDGE = Color8(255, 136, 120)
+var BS = 3            # backdrop pixel scale (240x160 -> 720x480 on a 720-wide screen)
+var TICK_W = 7.0      # HP tick pitch (5 px tick + 2 px gap)
+func _side_col(u: Unit) -> Color: return ALLY if u.team == 0 else FOE
+func _side_edge(u: Unit) -> Color: return ALLY_EDGE if u.team == 0 else FOE_EDGE
+
+## Framed GBA-style window: dark outline, side-coloured bevel, flat fill.
+func _frame(col: Color, edge: Color, pos: Vector2, size: Vector2) -> ColorRect:
+	var o = _rect(root, Color8(16, 12, 24), pos - Vector2(6, 6), size + Vector2(12, 12))
+	var e = _rect(o, edge, Vector2(3, 3), size + Vector2(6, 6))
+	_rect(e, edge.darkened(0.35), Vector2(3, size.y + 3), Vector2(size.x + 3, 3))   # lower bevel shadow
+	var p = _rect(e, col, Vector2(3, 3), size)
+	_rect(p, col.lightened(0.12), Vector2(0, 0), Vector2(size.x, 4))                 # top highlight
+	return p
+
 func _setup(a: Unit, d: Unit) -> void:
 	_clear(); visible = true; spd = 2.0 if Settings.anim_fast else 1.0
 	var vs = get_viewport().get_visible_rect().size
 	W = maxf(720.0, vs.x); H = maxf(1100.0, vs.y)
+	BS = maxi(3, int(W / 240.0)) if W <= 960.0 else 3
 	root = Control.new(); add_child(root); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.gui_input.connect(func(e):
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: _set_speed(4.0))
 	bg = _rect(root, Color8(16, 20, 40), Vector2(-60, -60), Vector2(W + 120, H + 120))   # oversized so screen shake never shows the map
-	# vertical layout: plates | arena | hp panels | info, centred in the visible height
-	var plate_h = 96.0; var arena_h = clampf(H * 0.34, 400.0, 520.0); var hp_h = 150.0
-	var total = plate_h + 16 + arena_h + 16 + hp_h + 70
-	var top = maxf(24.0, (H - total) * 0.45)
-	var arena_y = top + plate_h + 16
-	AY = arena_y + arena_h - 64   # GBA-style ground line: low in the arena, units stand on it
+	# vertical stack: plates | arena (160*BS) | bottom panels | hint+skip, centred; never under a notch / status bar
+	var plate_h = 100.0; var arena_h = 160.0 * BS; var hp_h = 232.0; var btn_h = 64.0
+	var total = plate_h + 14 + arena_h + 14 + hp_h + 16 + btn_h
+	var top = maxf(_safe_top() + 18.0, (H - total) * 0.45)
+	var arena_y = top + plate_h + 14
+	AY = arena_y + 130.0 * BS   # feet line = native y 130 of the 240x160 backdrop (on the platforms)
 	SZ = RW
-	# arena: sky gradient bands + far hills + ground tinted by the defender's terrain
-	var sky_cols = [Color8(56, 96, 176), Color8(72, 120, 200), Color8(96, 148, 216), Color8(128, 172, 228)]
-	var band = (AY - arena_y) / sky_cols.size()
-	for i in sky_cols.size(): _rect(root, sky_cols[i], Vector2(-60, arena_y + band * i), Vector2(W + 120, band + 1))
+	# underlay (fills the sides when the screen is wider than the backdrop): sky bands + ground
 	var g = GROUND.get(_ground_kind(), GROUND.grass)
-	var t = TERRAIN_TINT.get(_terrain_of(d), g)
-	var hills = Polygon2D.new(); root.add_child(hills); hills.color = g.darkened(0.35)
-	var pts = PackedVector2Array([Vector2(-60, AY)])
-	for i in 9: pts.append(Vector2(-60 + (W + 120) * i / 8.0, AY - 60 - 40 * sin(i * 1.7)))
-	pts.append(Vector2(W + 60, AY)); hills.polygon = pts
-	_rect(root, g, Vector2(-60, AY), Vector2(W + 120, arena_y + arena_h - AY))
-	_rect(root, g.darkened(0.2), Vector2(-60, AY), Vector2(W + 120, 6))
+	var sky_cols = [Color8(56, 96, 176), Color8(72, 120, 200), Color8(96, 148, 216), Color8(128, 172, 228)]
+	var band = (arena_y + 104.0 * BS - arena_y) / sky_cols.size()
+	for i in sky_cols.size(): _rect(root, sky_cols[i], Vector2(-60, arena_y + band * i), Vector2(W + 120, band + 1))
+	_rect(root, g, Vector2(-60, arena_y + 104.0 * BS), Vector2(W + 120, 56.0 * BS))
 	var bgt = bg_texture(_terrain_of(d), _ground_kind())
-	if bgt:   # drop-in backdrop replaces sky/hills/ground (ideal 240x160 px art, drawn covered + nearest)
+	if bgt:   # original 240x160 backdrop, integer scale, centred
 		var bt = TextureRect.new(); root.add_child(bt); bt.texture = bgt; bt.mouse_filter = Control.MOUSE_FILTER_IGNORE; bt.name = "BattleBG"
-		bt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		bt.position = Vector2(-60, arena_y); bt.size = Vector2(W + 120, arena_h); bt.clip_contents = true
+		bt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bt.stretch_mode = TextureRect.STRETCH_SCALE
+		bt.size = Vector2(240.0 * BS, 160.0 * BS); bt.position = Vector2(roundf((W - bt.size.x) * 0.5), arena_y)
 	var dist = absi(a.cell.x - d.cell.x) + absi(a.cell.y - d.cell.y)
-	var gap = 0.0 if dist <= 1 else 160.0   # ranged: units stand further apart
+	var gap = 0.0 if dist <= 1 else 160.0   # ranged: units stand further apart (each on its own platform)
+	var pw = W * 0.5 - 18.0
 	for u in [a, d]:
 		var right = _side_right(u, a, d)
 		var off = minf(gap * 0.5 + RW * 0.78, W * 0.5 - RW * 0.6)
 		var cx = W * 0.5 + off * (1 if right else -1)
-		var plat = _rect(root, (t if u == d else g).darkened(0.1), Vector2(cx - RW * 0.75, AY - 6), Vector2(RW * 1.5, 16))
-		_rect(plat, (t if u == d else g).lightened(0.15), Vector2(0, 0), Vector2(RW * 1.5, 4))
-		var shadow = _rect(root, Color(0, 0, 0, 0.3), Vector2(cx - RW * 0.36, AY - 6), Vector2(RW * 0.72, 8))
+		var pt = platform_texture(_terrain_of(u), _ground_kind())
+		if pt:
+			var plat = TextureRect.new(); root.add_child(plat); plat.texture = pt; plat.name = "PlatformR" if right else "PlatformL"; plat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			plat.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; plat.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; plat.stretch_mode = TextureRect.STRETCH_SCALE
+			plat.size = pt.get_size() * BS; plat.position = Vector2(roundf(cx - plat.size.x * 0.5), AY - 6.0 * BS)
+		else:
+			var pr = _rect(root, g.darkened(0.1), Vector2(cx - RW * 0.75, AY - 6), Vector2(RW * 1.5, 16)); _rect(pr, g.lightened(0.15), Vector2.ZERO, Vector2(RW * 1.5, 4))
+		var shadow = _rect(root, Color(0, 0, 0, 0.28), Vector2(cx - RW * 0.36, AY - 4), Vector2(RW * 0.72, 8))
 		shadow.name = "shadow"
 		var rig = _make_rig(u, right)
 		var lift = 40.0 if "flying" in u.tags() else 0.0
@@ -131,46 +151,78 @@ func _setup(a: Unit, d: Unit) -> void:
 		if Sprites.user_sheet(u) != null and not poses.has(u):
 			for i in 3: fr.append(Sprites.unit_frame(u, i))
 		frames[u] = fr
-		# name/weapon plate (top) and HP panel (bottom)
-		var px = W * 0.5 + 6 if right else 10.0; var pw = W * 0.5 - 16
-		var plate = _panel(ALLY if u.team == 0 else FOE, Vector2(px, top), Vector2(pw, plate_h))
-		var nm = _lbl(u.data.name, 32); plate.add_child(nm); nm.position = Vector2(14, 4)
+		var px = W * 0.5 + 9.0 if right else 9.0
+		var col = _side_col(u); var edge = _side_edge(u)
+		# --- top plate: name + weapon icon (16x16 at 3x) + weapon name in its triangle colour
+		var plate = _frame(col, edge, Vector2(px, top), Vector2(pw, plate_h)); plate.name = "Plate"
+		var nm = _lbl(u.data.name, 32); plate.add_child(nm); nm.position = Vector2(14, 2)
 		var w = u.weapon() if a.team != d.team else (u.staff() if u == a else null)
 		var wname = w.name if w else "-"
-		var wl = HBoxContainer.new(); plate.add_child(wl); wl.position = Vector2(14, 50); wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if w: var ic = Icons.rect(w, 34); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; wl.add_child(ic)
-		var tc = Icons.tri_color(w)
-		if tc.a > 0:   # weapon name on a chip in its triangle colour (blue/red/green), readable on either plate
-			var chip = PanelContainer.new(); chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var sb = StyleBoxFlat.new(); sb.bg_color = tc.darkened(0.1); sb.border_color = tc.lightened(0.4); sb.set_border_width_all(2); sb.set_corner_radius_all(6)
-			sb.content_margin_left = 10; sb.content_margin_right = 10; chip.add_theme_stylebox_override("panel", sb)
-			chip.add_child(_lbl(wname, 24, Color.WHITE)); wl.add_child(_lbl(" ", 12)); wl.add_child(chip)
-		else: wl.add_child(_lbl(" " + wname, 24, Color8(240, 228, 160)))
+		var wl = HBoxContainer.new(); plate.add_child(wl); wl.position = Vector2(10, 46); wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wl.add_theme_constant_override("separation", 8)
+		if w: var ic = Icons.rect(w, 48); ic.name = "WIcon"; wl.add_child(ic)
+		var wlab = _lbl(wname, 26, Icons.tri_text(w, Color8(248, 240, 208))); wlab.name = "WName"; wl.add_child(wlab)
+		# --- bottom panel
 		var other = d if u == a else a
 		var ow = other.weapon() if a.team != d.team else null
 		var tv = WeaponData.triangle(w.type, ow.type) if (w and ow and not w.is_item() and not ow.is_item()) else 0
+		var hp_y = arena_y + arena_h + 14
+		var hb = _frame(col, edge, Vector2(px, hp_y), Vector2(pw, hp_h)); hb.name = "HPPanel"
+		var sbw = 160.0; var sbx = (pw - sbw - 8) if right else 8.0   # HIT/DMG/CRT box on the outer edge (GBA)
+		var sb = _rect(hb, col.darkened(0.45), Vector2(sbx, 10), Vector2(sbw, 112)); sb.name = "StatBox"
+		_rect(sb, edge.darkened(0.2), Vector2(0, 0), Vector2(sbw, 2)); _rect(sb, edge.darkened(0.2), Vector2(0, 110), Vector2(sbw, 2))
+		var sv = _stat_vals(u, a, d)
+		var rows = [["HIT", sv[1]], ["DMG", sv[0]], ["CRT", sv[2]]]
+		for ri in 3:
+			var kl = _lbl(rows[ri][0], 24, Color8(232, 216, 152)); sb.add_child(kl); kl.position = Vector2(10, 4 + ri * 35)
+			var vl = _lbl(rows[ri][1], 28); vl.name = "S_" + rows[ri][0]; sb.add_child(vl)
+			vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; vl.size = Vector2(80, 34); vl.position = Vector2(sbw - 90, 1 + ri * 35)
+		if sv[3]: var x2 = _lbl("×2", 22, Color8(255, 224, 64)); x2.name = "X2"; sb.add_child(x2); x2.position = Vector2(80, 40)
+		var ix = 8.0 if right else sbw + 20.0   # inner area (toward the centre): ▲▼ and 특효
+		if tv != 0:   # weapon triangle: ▲ advantage (gold) / ▼ disadvantage (grey)
+			var ta = _lbl(("▲" if tv > 0 else "▼"), 52, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"
+			hb.add_child(ta); ta.position = Vector2(ix + 4, 0)
+			var tt = _lbl("유리" if tv > 0 else "불리", 24, ta.get_theme_color("font_color")); hb.add_child(tt); tt.position = Vector2(ix + 70, 18)
 		if a.team != d.team and w and not w.is_item() and BattleManager.is_effective(u, other):   # 특효 banner (real multiplier)
-			var ef = _lbl("특효! ×%d" % BattleManager.EFF_MULT, 28, Color8(255, 72, 64)); ef.name = "Eff"
-			plate.add_child(ef); ef.position = Vector2(pw - 200, 52)
-		if tv != 0:   # big triangle arrow on the plate: ▲ advantage (gold) / ▼ disadvantage (grey)
-			var ta = _lbl("▲" if tv > 0 else "▼", 56, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"
-			plate.add_child(ta); ta.position = Vector2(pw - 64, 10)
-		var hp_y = arena_y + arena_h + 16
-		var hb = _panel(ALLY if u.team == 0 else FOE, Vector2(px, hp_y), Vector2(pw, hp_h))
-		var num = _lbl("", 40); hb.add_child(num); num.position = Vector2(14, 4)
-		BAR_W = pw - 28
-		var back = _rect(hb, Color8(12, 12, 20), Vector2(14, 60), Vector2(BAR_W, 26))
-		var lag = _rect(back, Color8(232, 72, 56), Vector2(3, 3), Vector2(BAR_W - 6, 20))
-		var fill = _rect(back, Color8(88, 232, 96), Vector2(3, 3), Vector2(BAR_W - 6, 20))
-		var st = _lbl("", 22, Color8(220, 224, 240)); hb.add_child(st); st.position = Vector2(14, 98)
-		st.text = _stat_line(u, a, d)
-		bars[u] = [fill, lag, num]
+			var ef = _lbl("특효! ×%d" % BattleManager.EFF_MULT, 28, Color8(255, 80, 72)); ef.name = "Eff"
+			hb.add_child(ef); ef.position = Vector2(ix + 4, 70)
+		# HP: big number + segmented tick bar (1 tick = 1 HP, up to 30 per row)
+		var hpk = _lbl("HP", 24, Color8(232, 216, 152)); hb.add_child(hpk); hpk.position = Vector2(12, 150)
+		var num = _lbl("", 56); hb.add_child(num); num.position = Vector2(48, 128); num.name = "HPNum"
+		num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; num.size = Vector2(76, 70)
+		var mh = maxi(1, u.stats.hp); var per = 30; var nrows = mini(3, int(ceil(mh / float(per))))
+		var bar_x = 134.0; var bar_w = pw - bar_x - 12.0
+		TICK_W = floorf(bar_w / per)
+		var th = 26.0 if nrows == 1 else (17.0 if nrows == 2 else 12.0)
+		var bar_h = nrows * th + (nrows - 1) * 4 + 8
+		var back = _rect(hb, Color8(16, 12, 24), Vector2(bar_x, 132 + (82 - bar_h) * 0.5), Vector2(TICK_W * mini(mh, per) + 6, bar_h)); back.name = "HPBar"
+		var ticks = []
+		for i in mini(mh, per * 3):
+			var r = i / per; var c = i % per
+			ticks.append(_rect(back, Color8(48, 44, 64), Vector2(4 + c * TICK_W, 4 + r * (th + 4)), Vector2(TICK_W - 2, th)))
+		bars[u] = [ticks, null, num]
 	flash = _rect(root, Color(1, 1, 1, 0), Vector2(-60, -60), Vector2(W + 120, H + 120))
-	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, arena_y + arena_h + 16 + hp_h + 22)
+	var by = arena_y + arena_h + 14 + hp_h + 16
+	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, by + 18)
 	skip_btn = Button.new(); skip_btn.text = "건너뛰기 ▶▶"; skip_btn.name = "CombatSkip"; skip_btn.add_theme_font_size_override("font_size", 26)
-	root.add_child(skip_btn); skip_btn.size = Vector2(220, 60); skip_btn.position = Vector2(W - 236, arena_y + arena_h + 16 + hp_h + 10)
+	root.add_child(skip_btn); skip_btn.size = Vector2(220, 60); skip_btn.position = Vector2(W - 236, by)
 	skip_btn.pressed.connect(func(): _set_speed(12.0))
 	_idle_loop()
+
+## Top inset (notch / status bar) in viewport units; 0 where the platform reports none.
+func _safe_top() -> float:
+	var ss = DisplayServer.screen_get_size(); var sa = DisplayServer.get_display_safe_area()
+	var vs = get_viewport().get_visible_rect().size
+	if ss.y <= 0 or sa.size.y <= 0: return 0.0
+	return clampf(sa.position.y * vs.y / float(ss.y), 0.0, 200.0)
+
+## [DMG, HIT, CRT, doubles] strings for the panel (captured before the exchange).
+func _stat_vals(u: Unit, a: Unit, d: Unit) -> Array:
+	var f: Dictionary = BattleManager.pre_fc
+	if a.team == d.team or f.is_empty(): return ["--", "--", "--", false]
+	var p = "atk_" if u == a else "def_"
+	if int(f.get(p + "dmg", -1)) < 0: return ["--", "--", "--", false]
+	return [str(f[p + "dmg"]), str(f[p + "hit"]), str(f[p + "crit"]), bool(f.get(p + "x2", false))]
 
 const MOUNTED = ["소셜나이트", "비룡기사", "드래곤마스터", "성기사", "팔라딘", "발키리", "그레이트나이트", "레인저", "메이지나이트", "드래곤나이트", "그림자 기병", "그림자 비룡", "그림자 기사", "그림자 비룡기사"]
 const POSES = ["ready", "attack", "hit", "dodge"]
@@ -190,12 +242,27 @@ static func pose_set(u: Unit) -> Dictionary:
 		if got.has("ready"): return got
 	return {}
 
-## Optional terrain backdrop: assets/battle/bg/<terrain>.png (forest, fort, throne, village, ...; "" = plain), then bg/<ground>.png.
+## Backdrop (assets/battle/bg, 240x160 originals): the defender's terrain picks a scene, else the map's ground.
+const BG_OF_TERRAIN = {"forest": "forest", "mountain": "mountain", "fort": "fort", "throne": "castle", "pillar": "castle", "light": "castle", "village": "village"}
+const BG_OF_GROUND = {"grass": "plain", "snow": "snow", "sand": "desert", "castle": "castle"}
 static func bg_texture(terrain: String, ground: String) -> Texture2D:
-	for k in [terrain if terrain != "" else "plain", ground]:
+	var keys = []
+	if terrain != "": keys.append(terrain); keys.append(BG_OF_TERRAIN.get(terrain, ""))
+	keys.append(ground); keys.append(BG_OF_GROUND.get(ground, "plain")); keys.append("plain")
+	for k in keys:
 		var path = "res://assets/battle/bg/%s.png" % k
 		if k != "" and _has(path): return load(path)
 	return null
+
+## Platform under each combatant (assets/battle/platform, 64x16), from that unit's own tile.
+const PLAT_OF_TERRAIN = {"forest": "forest", "mountain": "rock", "fort": "stone", "throne": "floor", "pillar": "floor", "light": "floor", "bridge": "wood", "village": "grass"}
+const PLAT_OF_GROUND = {"grass": "grass", "snow": "snow", "sand": "sand", "castle": "floor"}
+static func platform_texture(terrain: String, ground: String) -> Texture2D:
+	var k = PLAT_OF_TERRAIN.get(terrain, PLAT_OF_GROUND.get(ground, "grass"))
+	if ground == "snow" and k in ["grass", "forest"]: k = "snow"
+	if ground == "sand" and k == "grass": k = "sand"
+	var path = "res://assets/battle/platform/%s.png" % k
+	return load(path) if _has(path) else null
 
 func _sil_mat(col: Color) -> ShaderMaterial:
 	if _sil == null:
@@ -301,10 +368,10 @@ func _idle_loop() -> void:
 
 func _set_hp(u: Unit, v: float) -> void:
 	shown_hp[u] = v
-	var b = bars[u]; var ratio = clampf(v / u.stats.hp, 0, 1)
-	b[0].size.x = (BAR_W - 6) * ratio
-	b[0].color = Color8(88, 232, 96) if ratio > 0.5 else (Color8(248, 200, 48) if ratio > 0.25 else Color8(240, 64, 48))
-	b[2].text = "HP %d / %d" % [int(round(v)), u.stats.hp]
+	var b = bars[u]; var ratio = clampf(v / maxf(1.0, u.stats.hp), 0, 1); var lit = int(round(v))
+	var on = Color8(120, 236, 112) if ratio > 0.5 else (Color8(248, 208, 56) if ratio > 0.25 else Color8(244, 72, 56))
+	for i in b[0].size(): b[0][i].color = on if i < lit else Color8(48, 44, 64)
+	b[2].text = str(maxi(0, lit))
 
 func _shake(strength: float, dur: float) -> Tween:
 	var tw = _tw()
@@ -401,7 +468,7 @@ func _sparkle(u: Unit) -> void:
 func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictionary) -> void:
 	_setup(a, d)
 	for u in [a, d]:
-		_set_hp(u, start_hp.get(u, u.hp)); bars[u][1].size.x = bars[u][0].size.x   # lag bar starts at current HP
+		_set_hp(u, start_hp.get(u, u.hp))
 	await _wait(0.3)
 	for ev in events:
 		if ev.type == "heal":
@@ -451,15 +518,13 @@ func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictiona
 	await _wait(0.25)
 	visible = false; _clear(); done.emit()
 
-## HP drains smoothly; a red "lag" bar trails behind (GBA-style damage readout).
+## HP drains tick by tick (GBA-style segmented bar + number).
 func _tick(u: Unit, to_hp: int) -> void:
 	var from = shown_hp.get(u, float(u.hp))
 	if abs(from - to_hp) < 0.5: return
 	var b = bars[u]
 	var tw = _tw(); tw.tween_method(func(v): _set_hp(u, v), from, float(to_hp), clampf(abs(from - to_hp) * 0.04, 0.2, 0.7))
 	await tw.finished
-	if to_hp > from: b[1].size.x = b[0].size.x; return
-	var lt = _tw(); lt.tween_property(b[1], "size:x", b[0].size.x, 0.25).set_delay(0.08)
 
 func _exp(ee: Dictionary) -> void:
 	var u: Unit = ee.unit
