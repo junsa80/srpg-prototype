@@ -249,7 +249,7 @@ func _draw() -> void:
 		var bw = weapon() if weapon() else staff()
 		if bw:
 			draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(16, 16, 24, 220)); draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(248, 216, 112), false, 1.5)
-			draw_texture_rect(Icons.of(bw), Rect2(-sz / 2.0, sz / 2.0 - 22, 20, 20), false)
+			draw_texture_rect(Icons.of(bw), Rect2(-sz / 2.0 + 2, sz / 2.0 - 20, 16, 16), false)   # 1:1 pixels (integer scale)
 	var et = eff_weapon_tags()   # 특효 badge(s) right of the weapon badge: dark red chip + target-type glyph
 	for i in et.size():
 		var r = Rect2(-sz / 2.0 + 23 + i * 19, sz / 2.0 - 22, 18, 18)
