@@ -222,7 +222,7 @@ func _layer(u: Unit, mat: Material) -> Control:
 		add.call(t, Vector2((RW - sz.x) * 0.5, RH - sz.y), sz, -1, -1)
 		return c
 	var base = Sprites.unit_tex(u)
-	if base is AtlasTexture and base.region.size == Vector2(32, 32) and not (u.unit_class.name in MOUNTED):
+	if false and base is AtlasTexture:   # 2026-10-17: FE-silhouette sheets drawn whole (no head/body stretch) so battle = map art
 		add.call(_sub(base, 0, 16), Vector2(0, 0), Vector2(32 * PX, 16 * PX), 0, 16)                     # head: PX x PX
 		add.call(_sub(base, 16, 32), Vector2(0, 16 * PX), Vector2(32 * PX, 16 * (PX + 1)), 16, 32)       # body: PX x (PX+1)
 	else:

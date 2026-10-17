@@ -30,7 +30,9 @@ static func has_user_tile(kind: String) -> bool: return ResourceLoader.exists("r
 
 ## User/drop-in sprite sheet: assets/units/<unit name or class>.png, N frames of 32x32 laid out horizontally.
 static func user_sheet(u: Unit):
-	for n in [u.data.name + "@" + u.unit_class.name, u.data.name, u.unit_class.name]:   # 세라@성기사 = class-specific look
+	var cands = [u.data.name + "@" + u.unit_class.name, u.data.name, u.unit_class.name]
+	if u.team != 0: cands.insert(2, u.unit_class.name + "_적")   # generic enemy: red-palette class sheet (GBA team colours)
+	for n in cands:   # 세라@성기사 = class-specific look
 		var path = "res://assets/units/%s.png" % n
 		if ResourceLoader.exists(path): return load(path)
 	return null

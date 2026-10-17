@@ -3,7 +3,8 @@
    python3 tools/chibi.py   -> assets/units/<클래스>.png, <이름>@<클래스>.png, enemy sheets, missing portraits, build/sprite_sheet.png
 Class = silhouette + clothing colour + weapon; unit = hair colour/style + accent."""
 from PIL import Image
-import os
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 O = (20, 14, 28, 255)  # outline
 def C(*a): return tuple(a) + (255,)
 SKIN = C(248, 208, 168); SKIN_D = C(220, 168, 128)
@@ -198,51 +199,147 @@ def draw(cls_body, cloth, wkind, extras, hair, style, f, dark_mode=False):
         head(s, 16, 9, hair, style, eyes, skin, f, extras)
     s.outline(); return s.im
 
-def sheet(frames):
-    sh = Image.new('RGBA', (32 * len(frames), 32))
-    for i, fr in enumerate(frames): sh.paste(fr, (32 * i, 0))
+# ---- 2026-10-17: GBA-FE class silhouettes (tools/fe_sprites.py). Old head/body/weapon above kept only for portrait(). ----
+import fe_sprites as FS
+RED = C(200, 48, 52); RED_D = C(150, 32, 40)
+ALLY_OL = C(16, 20, 44); ENEMY_OL = C(72, 8, 16)
+# class -> (family, weapon/extra params). tier-2 classes get cape/crest/bigger weapon ("big").
+SPEC = {
+    "용병": ("sword", {}), "영웅": ("sword", {"big": 1, "cape": C(200, 40, 40), "crest": GOLD}),
+    "검성": ("sword", {"katana": 1, "cape": C(236, 236, 240), "crest": GOLD, "style": "pony"}),
+    "도적": ("thief", {"hw": {"head": "bandana", "hc": C(40, 104, 104)}}), "로그": ("thief", {"hw": {"head": "hood", "hc": C(48, 80, 48)}, "big": 1}),
+    "어쌔신": ("thief", {"hw": {"head": "hood", "hc": C(32, 32, 48)}, "scarf": C(176, 32, 48), "big": 1}),
+    "전사": ("fighter", {}), "워리어": ("fighter", {"big": 1, "cape": C(96, 64, 40), "crest": GOLD}),
+    "버서커": ("fighter", {"big": 1, "bare_chest": 1, "hw": {"head": "horns"}}),
+    "궁수": ("archer", {}), "스나이퍼": ("archer", {"big": 1, "cape": C(200, 176, 96), "crest": GOLD}),
+    "마법사": ("robe", {"hw": {"head": "hat", "hc": None}}), "세이지": ("robe", {"staff_mage": 1, "cape": C(240, 236, 228), "trim": GOLD, "crest": GOLD}),
+    "시스터": ("robe", {"healer": 1, "white": 1, "hw": {"head": "veil", "hc": C(64, 96, 192)}, "trim": C(64, 96, 192)}),
+    "비숍": ("robe", {"healer": 1, "white": 1, "big": 1, "hw": {"head": "mitre"}, "trim": GOLD}),
+    "아머나이트": ("armor", {}), "제네럴": ("armor", {"big": 1, "cape": C(176, 40, 48), "plume": GOLD, "trim": GOLD}),
+    "소셜나이트": ("cav", {"weapon": "lance", "mountcol": C(150, 96, 56)}),
+    "팔라딘": ("cav", {"weapon": "lance", "big": 1, "mountcol": C(236, 232, 222), "barding": "cloth", "cape": C(176, 40, 48), "plate": 1, "rider_helm": 1, "plume": GOLD}),
+    "성기사": ("cav", {"weapon": "lance", "mountcol": C(240, 236, 228), "barding": "cloth", "trim": GOLD, "plate": 1}),
+    "발키리": ("cav", {"weapon": "staff", "big": 1, "mountcol": C(244, 244, 250), "barding": "cloth", "trim": GOLD, "cape": C(240, 236, 228)}),
+    "그레이트나이트": ("cav", {"weapon": "axe", "big": 1, "heavy": 1, "mountcol": C(60, 50, 50), "barding": "cloth", "plume": GOLD}),
+    "레인저": ("cav", {"weapon": "bow", "big": 1, "mountcol": C(150, 96, 56), "cape": C(200, 176, 96)}),
+    "메이지나이트": ("cav", {"weapon": "tome", "big": 1, "mountcol": C(96, 72, 64), "barding": "cloth", "trim": GOLD, "hw": {"head": "hat", "hc": None}}),
+    "비룡기사": ("flier", {"weapon": "lance", "mountcol": C(96, 140, 80)}),
+    "드래곤마스터": ("flier", {"weapon": "axe", "big": 1, "mountcol": C(80, 120, 68), "cape": C(144, 40, 40), "plume": GOLD}),
+    "드래곤나이트": ("flier", {"weapon": "lance", "big": 1, "mountcol": C(112, 150, 96), "cape": C(48, 80, 160), "plume": GOLD}),
+    # shadow enemies (dark palette) + 3장 boss
+    "그림자 병사": ("sword", {}), "그림자 창병": ("armor", {"light_armor": 1}), "그림자 궁병": ("archer", {"hw": {"head": "hood", "hc": C(40, 24, 56)}}),
+    "그림자 술사": ("robe", {"hw": {"head": "hood", "hc": C(40, 24, 56)}, "tome": C(120, 40, 180)}),
+    "그림자 지휘관": ("armor", {"big": 1, "cape": C(144, 32, 48), "plume": GOLD, "trim": GOLD}),
+    "그림자 중갑병": ("armor", {}), "그림자 기병": ("cav", {"weapon": "lance"}),
+    "그림자 기사": ("cav", {"weapon": "lance", "big": 1, "heavy": 1, "barding": "cloth"}),
+    "그림자 비룡": ("flier", {"weapon": "lance"}), "그림자 비룡기사": ("flier", {"weapon": "lance", "big": 1, "cape": C(96, 24, 40)}),
+    "바르가스": ("fighter", {"big": 1, "cape": C(96, 24, 32), "hw": {"head": "horns"}, "crest": C(255, 64, 64)}),
+}
+
+def params(cname, cloth, hair, style, team=0, shadow=False):
+    fam, sp = SPEC[cname]; P = dict(sp)
+    base_cloth = CLASS[cname][1] if cname in CLASS else C(72, 40, 104)
+    if sp.get("white"): cloth = C(240, 240, 248) if team == 0 else C(236, 208, 208)
+    P["cloth"] = cloth or base_cloth
+    if team == 1 and not shadow and not sp.get("white"): P["cloth"] = RED
+    P["legc"] = dark(P["cloth"], .6); P["hair"] = hair; P["style"] = sp.get("style", style) if style != "beard" else style
+    P["skin"] = C(72, 56, 88) if shadow else FS.SKIN; P["eyes"] = C(255, 64, 64) if shadow else C(30, 30, 60)
+    hw = dict(sp.get("hw", {"head": "hair"}))
+    if hw.get("hc", 1) is None: hw["hc"] = dark(P["cloth"], .8)
+    if sp.get("crest"): hw["crest"] = sp["crest"]
+    if sp.get("plume"): hw["plume"] = sp["plume"]
+    if team == 1 and not shadow and "hc" in hw and hw["head"] != "veil": hw["hc"] = RED_D
+    P["hw"] = hw
+    if fam in ("cav", "flier"):
+        mc = sp.get("mountcol", C(150, 96, 56) if fam == "cav" else C(96, 140, 80))
+        P["mountcol"] = C(56, 40, 64) if shadow else (C(72, 56, 96) if shadow else mc)
+        if shadow and fam == "flier": P["mountcol"] = C(72, 56, 96)
+        if sp.get("barding") == "cloth": P["barding"] = dark(P["cloth"], .85)
+    if team == 1 and not shadow and sp.get("cape"): P["cape"] = C(60, 24, 32)
+    return fam, P
+
+def frames(cname, hair, style, cloth, team=0, shadow=False):
+    fam, P = params(cname, cloth, hair, style, team, shadow)
+    ol = ENEMY_OL if team == 1 else ALLY_OL
+    out = []
+    for f in (0, 1):
+        im = FS.render(fam, P, f, ol)
+        if f == 1 and fam not in ("cav", "flier"):   # foot units: 1px breathing bob (mounts animate legs/wings instead)
+            b = Image.new('RGBA', (32, 32)); b.paste(im.crop((0, 0, 32, 31)), (0, 1)); im = b
+        if shadow:   # shadow army: whole figure (incl. steel) sunk into violet, red eyes kept
+            px = im.load()
+            for y in range(32):
+                for x in range(32):
+                    r, g, b, a = px[x, y]
+                    if a and not (r > 200 and g < 90): px[x, y] = (int(r * .45 + 24), int(g * .38 + 14), int(b * .5 + 40), a)
+        out.append(im)
+    return out
+
+def sheet(frames_):
+    sh = Image.new('RGBA', (32 * len(frames_), 32))
+    for i, fr in enumerate(frames_): sh.paste(fr, (32 * i, 0))
     return sh
 
-def class_sheet(cname, hair=C(70, 52, 40), style="short", cloth=None):
-    b, cl, w, ex = CLASS[cname]
-    return sheet([draw(b, cloth or cl, w, ex, hair, style, f) for f in (0, 1)])
+def class_sheet(cname, hair=C(70, 52, 40), style="short", cloth=None, team=0):
+    return sheet(frames(cname, hair, style, cloth, team))
 
 def enemy_sheet(n):
-    b, w, ex = ENEMY[n]; return sheet([draw(b, C(72, 40, 104), w, ex, C(40, 24, 56), "short", f, True) for f in (0, 1)])
+    return sheet(frames(n, C(40, 24, 56), "short", C(72, 40, 104), 1, True))
 
 def portrait(n):
-    """Pixel bust 128x128 (4x of a 32px head-and-shoulders), matches the existing pixel portraits."""
+    """Pixel bust 128x128 (only for units still missing a painted portrait)."""
     hair, style, acc, base, _ = UNITS[n]
     b, cl, w, ex = CLASS[base]
     s = Px(); ex2 = {k: v for k, v in ex.items() if k != "mount"}
     s.rect(4, 24, 27, 31, acc or cl)
     if b == "armor": s.rect(2, 23, 29, 26, STEEL)
     s.rect(13, 21, 18, 24, SKIN)
-    # big head: draw at 2x by sampling a head-only sprite
     h = Px(); head(h, 16, 12, hair, style, C(30, 30, 60), SKIN, 0, ex2)
     hb = h.im.crop((4, 1, 28, 22)).resize((24 * 1, 21 * 1))
     s.im.alpha_composite(hb, (4, 0))
     bg = Image.new('RGBA', (32, 32), C(*[int(v * .45) + 30 for v in (acc or cl)[:3]]))
     bg.alpha_composite(s.im); return bg.resize((128, 128), Image.NEAREST)
 
+def ref_sheet(path="build/class_sprites_sheet.png"):
+    from PIL import ImageDraw, ImageFont
+    fp = [p for p in ("assets/fonts/" + f for f in os.listdir("assets/fonts")) if p.endswith((".ttf", ".otf"))]
+    font = ImageFont.truetype(fp[0], 18) if fp else None
+    names = list(CLASS) + list(ENEMY)
+    cols = 6; CW, CH = 300, 190
+    out = Image.new('RGBA', (cols * CW, ((len(names) + cols - 1) // cols) * CH + 40), C(52, 60, 76))
+    d = ImageDraw.Draw(out); d.text((10, 8), "class sprites — 왼쪽 2프레임: 아군(파랑 바닥), 오른쪽 2프레임: 적(빨강). x4", fill=(255, 255, 255), font=font)
+    for i, n in enumerate(names):
+        x, y = (i % cols) * CW + 6, (i // cols) * CH + 44
+        if n in ENEMY: sets = [(None, enemy_sheet(n))]
+        else: sets = [((48, 96, 232), class_sheet(n)), ((216, 40, 40), class_sheet(n, C(60, 40, 30), "short", None, 1))]
+        for j, (base, sh) in enumerate(sets):
+            for k in range(2):
+                fx = x + (j * 2 + k) * 70; fy = y
+                if base: d.ellipse((fx + 8, fy + 108, fx + 60, fy + 124), fill=base + (200,))
+                elif True: d.ellipse((fx + 8, fy + 108, fx + 60, fy + 124), fill=(216, 40, 40, 200))
+                out.alpha_composite(sh.crop((32 * k, 0, 32 * k + 32, 32)).resize((64, 64), Image.NEAREST).resize((64, 64)), (fx + 2, fy + 52)) if False else out.alpha_composite(sh.crop((32 * k, 0, 32 * k + 32, 32)).resize((128, 128), Image.NEAREST).resize((64, 64), Image.NEAREST) if False else sh.crop((32 * k, 0, 32 * k + 32, 32)).resize((64, 64), Image.NEAREST), (fx + 2, fy + 52))
+        d.text((x, y + 4), n + (" (적 전용)" if n in ENEMY else "") + "  [" + SPEC[n][0] + "]", fill=(255, 240, 200), font=font)
+    os.makedirs("build", exist_ok=True); out.save(path); print("ref sheet", path)
+
 if __name__ == "__main__":
     os.makedirs("assets/units", exist_ok=True); prev = []
-    for c in CLASS: class_sheet(c).save("assets/units/%s.png" % c)
+    for c in CLASS:
+        class_sheet(c).save("assets/units/%s.png" % c)
+        class_sheet(c, C(60, 40, 30), "short", None, 1).save("assets/units/%s_적.png" % c)   # generic enemy of this class (red palette, GBA)
+    BR = {"용병": ["영웅", "검성"], "궁수": ["스나이퍼", "레인저"], "시스터": ["성기사", "비숍"], "마법사": ["세이지", "메이지나이트"],
+          "아머나이트": ["제네럴", "그레이트나이트"], "소셜나이트": ["팔라딘", "그레이트나이트"], "비룡기사": ["드래곤마스터", "드래곤나이트"],
+          "도적": ["어쌔신", "로그"], "전사": ["워리어", "버서커"]}
     for n, (hair, style, acc, base, promos) in UNITS.items():
-        BR = {"용병": ["영웅", "검성"], "궁수": ["스나이퍼", "레인저"], "시스터": ["성기사", "비숍"], "마법사": ["세이지", "메이지나이트"],
-              "아머나이트": ["제네럴", "그레이트나이트"], "소셜나이트": ["팔라딘", "그레이트나이트"], "비룡기사": ["드래곤마스터", "드래곤나이트"],
-              "도적": ["어쌔신", "로그"], "전사": ["워리어", "버서커"]}
         for c in [base] + list(dict.fromkeys(promos + BR.get(base, []))):
-            cloth = acc   # portrait outfit colour on every class sheet (class silhouette/capes/armour stay), so the unit stays recognisable after promotion
-            im = class_sheet(c, hair, style, cloth); im.save("assets/units/%s@%s.png" % (n, c))
+            im = class_sheet(c, hair, style, acc); im.save("assets/units/%s@%s.png" % (n, c))
             if c == base: prev.append((n, im))
     for n in ENEMY: enemy_sheet(n).save("assets/units/%s.png" % n)
     for n in UNITS:
         if not os.path.exists("assets/portraits/%s.png" % n): portrait(n).save("assets/portraits/%s.png" % n); print("portrait", n)
-    # preview sheet (x4)
     rows = prev + [(c, class_sheet(c)) for c in CLASS] + [(n, enemy_sheet(n)) for n in ENEMY]
     cols = 8; W = 64 * 4 + 8
     out = Image.new('RGBA', (cols * W, ((len(rows) + cols - 1) // cols) * (32 * 4 + 8)), C(48, 56, 72))
     for i, (n, im) in enumerate(rows):
         out.alpha_composite(im.resize((256, 128), Image.NEAREST), ((i % cols) * W, (i // cols) * 136))
     os.makedirs("build", exist_ok=True); out.save("build/sprite_sheet.png"); print(len(rows), "previews")
+    ref_sheet()

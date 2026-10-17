@@ -171,5 +171,6 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 포즈: `pose_set(u)` → `assets/battle/<이름@클래스|이름|클래스>/{ready,attack,hit,dodge}.png` (왼쪽 바라봄, 64x72 권장 → 2배). `_pose(u, p)`가 모션 타이밍에 교체(이미지 없으면 기울기만 변화). 배경 `bg_texture()` → `assets/battle/bg/<지형|바닥>.png`. 자세한 규칙 `assets/battle/README.md`.
 - class_id(= `unit_class.name`): 용병 궁수 시스터 성기사 비숍 마법사 아머나이트 소셜나이트 비룡기사 드래곤마스터 도적 전사 워리어 버서커 영웅 스나이퍼 발키리 세이지 제네럴 팔라딘 그레이트나이트 레인저 메이지나이트 로그 드래곤나이트 어쌔신 검성 / 적 전용: 그림자 병사 그림자 창병 그림자 궁병 그림자 술사 그림자 중갑병 그림자 기병 그림자 비룡 바르가스 그림자 지휘관.
 - 상성 색 `Icons.TRI` (검 파랑 / 도끼 빨강 / 창 초록), `Icons.tri_color()/tri_text()`. 공식은 `WeaponData.triangle()` 그대로.
+- 맵 스프라이트 실루엣: `tools/fe_sprites.py`(계열별 그리기) + `tools/chibi.py` `SPEC`(클래스→계열·상급 장식). 적 일반 시트 `<클래스>_적.png`. 참조 시트 `build/class_sprites_sheet.png`.
 - 스프라이트 색: `python3 tools/portrait_palette.py && python3 tools/chibi.py` (자동 추출 + `OVERRIDE` 손보정, 결과 `tools/portrait_palette.json`). 확인 `build/palette_compare.png`.
 - NPC 초상 별칭 `Sprites.NPC_ALIAS` → `assets/portraits/npc_<type>.png` (파일 없으면 그림 없음).
