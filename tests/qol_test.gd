@@ -106,6 +106,30 @@ func _ready() -> void:
 			if not l.is_queued_for_deletion() and l.text == "수송대 — %s" % ps._live()[0].data.name: found = true
 		chk(found, "convoy-prev-unit")
 		ps.queue_free()
+	# battle scene replay: finishes at skip speed, all weapon motions, purely visual (HP untouched), anim_fast persisted
+	var a2: Unit = allies[0]; var e2: Unit = foes[0]
+	var hp0 = [a2.hp, e2.hp]
+	var cs = CombatScene.new(); add_child(cs)
+	BattleManager.pre_fc = BattleManager.forecast(a2, e2)
+	var evs = []
+	for wn in ["철검", "철창", "철도끼", "철활", "파이어", "라이트"]:
+		evs.append({"type": "strike", "x": a2, "y": e2, "hit": true, "crit": wn == "철활", "dmg": 1, "w": Weapons.make(wn), "x_hp": a2.hp, "y_hp": maxi(1, e2.hp - 1)})
+	evs.append({"type": "strike", "x": e2, "y": a2, "hit": false, "crit": false, "dmg": 0, "w": e2.weapon(), "x_hp": e2.hp, "y_hp": a2.hp})
+	evs.append({"type": "strike", "x": a2, "y": e2, "hit": true, "crit": false, "dmg": 0, "w": null, "x_hp": a2.hp, "y_hp": 0})
+	var fin = [0]; cs.done.connect(func(): fin[0] += 1)
+	cs.play(a2, e2, evs, [], {a2: a2.hp, e2: e2.hp}); cs._set_speed(12.0)
+	var t_end = Time.get_ticks_msec() + 20000
+	while fin[0] < 1 and Time.get_ticks_msec() < t_end: await get_tree().process_frame
+	chk(fin[0] == 1, "combat-scene-done")
+	cs.play(a2, a2, [{"type": "heal", "x": a2, "y": a2, "amt": 3, "y_hp": a2.hp}], [], {a2: a2.hp}); cs._set_speed(12.0)
+	t_end = Time.get_ticks_msec() + 10000
+	while fin[0] < 2 and Time.get_ticks_msec() < t_end: await get_tree().process_frame
+	chk(fin[0] == 2, "combat-heal-done")
+	chk([a2.hp, e2.hp] == hp0, "combat-visual-only")
+	cs.queue_free()
+	var keep_fast = Settings.anim_fast; Settings.anim_fast = true; Settings.save()
+	chk(FileAccess.get_file_as_string(Settings.PATH).contains("\"anim_fast\":true"), "anim-fast-saved")
+	Settings.anim_fast = keep_fast; Settings.save()
 	# no UI claims cloud save
 	for fn in ["res://scripts/menus.gd", "res://scripts/title.gd", "res://scripts/base.gd"]:
 		var src = FileAccess.get_file_as_string(fn)

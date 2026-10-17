@@ -6,6 +6,7 @@ static var rng = RandomNumberGenerator.new()
 ## Structured record of the last resolve()/heal() for the animated combat scene.
 static var events: Array = []    # {type:"strike", x, y, hit, crit, dmg, x_hp, y_hp, broke} | {type:"heal", ...}
 static var start_hp = {}
+static var pre_fc = {}            # forecast captured at the start of the last resolve() (combat scene stat lines; visual only)
 static var rank_ups: Array = []  # ["아린 검 랭크 C!"] from the last resolve()/heal()
 static var exp_events: Array = [] # {unit, gained, before, after, level_before, ups:[gains]}
 
@@ -161,6 +162,7 @@ static func give_exp(u: Unit, gained: int) -> Array:
 static func resolve(a: Unit, d: Unit) -> Array:
 	var log = []
 	events = []; exp_events = []; start_hp = {a: a.hp, d: d.hp}
+	pre_fc = forecast(a, d) if a.team != d.team else {}
 	var a_hp0 = a.hp; var d_hp0 = d.hp
 	var n = {a: 0, d: 0}
 	for s in strike_order(a, d, _extra(a, d), _extra(d, a)):
@@ -169,7 +171,7 @@ static func resolve(a: Unit, d: Unit) -> Array:
 		var w = x.weapon()
 		if w == null: continue
 		n[x] += 1; x.weapon_used = w
-		var ev = {"type": "strike", "x": x, "y": y, "hit": false, "crit": false, "dmg": 0}
+		var ev = {"type": "strike", "x": x, "y": y, "hit": false, "crit": false, "dmg": 0, "w": w}
 		if roll_hit(hit_rate(x, y)):
 			var dm = damage(x, y, s[2], n[x]); var crit = rng.randi_range(0, 99) < crit_rate(x, y)
 			if crit: dm = dm * 3 + Skills.crit_dmg_bonus(x)

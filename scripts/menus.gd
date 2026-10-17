@@ -106,9 +106,11 @@ static func _fill_settings(list: VBoxContainer) -> void:
 		b.pressed.connect(func(): Settings.growth_fixed = val; Sfx.play("select"); refill.call()); h3.add_child(b)
 	list.add_child(ItemMenus.label("랜덤: 레벨업마다 성장률 확률로 상승 / 고정: 성장률을 누적해 평균값대로 상승", 20, DIM))
 	var h4 = _row(list, "전투 연출")
-	for opt in [[true, "켬"], [false, "끔"]]:
-		var b = _small(("▶" if Settings.anim == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]
-		b.pressed.connect(func(): Settings.anim = val; Sfx.play("select"); refill.call()); h4.add_child(b)
+	for opt in [[true, false, "켬"], [true, true, "빠르게"], [false, false, "끔"]]:
+		var cur = Settings.anim == opt[0] and (not opt[0] or Settings.anim_fast == opt[1])
+		var b = _small(("▶" if cur else "") + opt[2], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]; var fast = opt[1]; b.name = "Anim_" + opt[2]
+		b.pressed.connect(func(): Settings.anim = val; Settings.anim_fast = fast if val else Settings.anim_fast; Sfx.play("select"); refill.call()); h4.add_child(b)
+	list.add_child(ItemMenus.label("켬/빠르게: 전투 장면 재생 (전투 중 화면 터치=빨리 감기, [건너뛰기]) / 끔: 맵에서 바로 결과", 20, DIM))
 	var h6 = _row(list, "자동 턴 종료")
 	for opt in [[true, "켬"], [false, "끔"]]:
 		var b = _small(("▶" if Settings.auto_end == opt[0] else "") + opt[1], 0); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var val = opt[0]; b.name = "AutoEnd_" + opt[1]

@@ -112,7 +112,8 @@ func _ready() -> void:
 		var z = minf(_view_size().x / grid.pixel_size().x, _view_size().y / grid.pixel_size().y)
 		cam.zoom = Vector2(z, z); cam.position = Vector2.ZERO
 	if "camtop" in demo: cam.position = Vector2(grid.pixel_size().x - _view_size().x, 0)   # dev: screenshot top-right of map
-	if "combat" in demo: _demo_combat.call_deferred()
+	if "combatfx" in demo: _demo_fx.call_deferred()
+	elif "combat" in demo: _demo_combat.call_deferred()
 	if "forecast" in demo: _demo_forecast.call_deferred()
 	var rd = RegEx.create_from_string("recruit=([^+&]+)").search(demo)   # dev: #recruit=아린|카스 talk dialogue screenshot
 	if rd: dialogue.play.call_deferred(ChapterData.TALK.get("아린|" + rd.get_string(1).uri_decode(), ChapterData.CAMP.get(rd.get_string(1).uri_decode(), [])))
@@ -1377,3 +1378,17 @@ func _demo_combat() -> void:
 	a.exp = 95; a.cell = e.cell + Vector2i(0, 1); a.position = grid.cell_to_pos(a.cell); _focus(a.cell)
 	selected = a; moved = true; pending_target = e
 	await _on_confirm()
+
+## Dev (#combatfx): visual-only replay of a ranged crit + miss for screenshots. Never touches HP/RNG/saves.
+func _demo_fx() -> void:
+	await get_tree().create_timer(1.6).timeout
+	var allies = units.filter(func(u): return u.team == 0)
+	var a = allies[0]
+	for u in allies: if u.weapon() and u.weapon().type == WeaponData.Type.BOW: a = u
+	var e = units.filter(func(u): return u.team == 1 and not u.boss)[0]
+	a.cell = e.cell + Vector2i(0, 2)
+	BattleManager.pre_fc = BattleManager.forecast(a, e)
+	var dm = maxi(1, e.hp - 2)
+	var evs = [{"type": "strike", "x": a, "y": e, "hit": false, "crit": false, "dmg": 0, "w": a.weapon(), "x_hp": a.hp, "y_hp": e.hp},
+		{"type": "strike", "x": a, "y": e, "hit": true, "crit": true, "dmg": dm, "w": a.weapon(), "x_hp": a.hp, "y_hp": e.hp - dm}]
+	combat.play(a, e, evs, [], {a: a.hp, e: e.hp})
