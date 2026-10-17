@@ -109,7 +109,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 ## 6. 현재 시뮬 승률 (16회, 조잡한 AI 기준. 통과선 15%, 9장 이후 목표 8~13)
 - 1~8장: ch1 16 · ch2 11 · ch3 9 · ch4a 7 · ch4b 5 · ch5 9 · ch6 5 · ch7 14 · ch8 10
 - 9~16장: ch9 12 · ch10 13 · ch11 9 · ch12 12 · ch13 10 · ch14 9 · ch15 13 · ch16 13
-- 17~종장: ch19 13 · ch20 11 · ch21 13 · ch22 10 · ch23 9 · ch24 8 · ch25 13 · ch26 8 · ch27 8 · final 9 (빛 기둥 적용 후)
+- 17~종장: ch19 13 · ch20 11 · ch21 13 · ch22 10 · ch23 12 · ch24 8 · ch25 13 · ch26 8 · ch27 8 · final 9 (빛 기둥 적용 후)
 - 주의: 상급 적은 숨은 하급 15레벨이 붙어 **Lv 1 차이로 승률이 크게 흔들린다** (ch25 Lv10 13/16 → Lv11 2/16). 자세한 기록 `tests/sim_results.txt`. 단일 장: `SIM_ONLY=ch25`.
 
 ## 7. 미완료 · 열린 작업
