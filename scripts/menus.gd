@@ -81,7 +81,12 @@ static func _fill_settings(list: VBoxContainer) -> void:
 	for c in list.get_children(): c.queue_free()
 	var refill = func(): Settings.save(); _fill_settings(list)
 	for key in [["bgm", "배경음악"], ["sfx", "효과음"]]:
-		var h = _row(list, key[1]); var k = key[0]
+		var k = key[0]; var onk = k + "_on"
+		var ht = _row(list, key[1])
+		for opt in [[true, "켬"], [false, "끔"]]:
+			var tb = _small(("▶" if Settings.get(onk) == opt[0] else "") + opt[1], 0); tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL; var tv = opt[0]; tb.name = k.to_upper() + "_" + opt[1]
+			tb.pressed.connect(func(): Settings.set(onk, tv); Settings.save(); Sfx.play("select"); refill.call()); ht.add_child(tb)
+		var h = _row(list, "  └ 음량"); h.modulate.a = 1.0 if Settings.get(onk) else 0.5
 		var minus = _small("-"); minus.name = k + "_minus"; h.add_child(minus)
 		var val = Settings.get(k)
 		var mid = VBoxContainer.new(); mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL; mid.alignment = BoxContainer.ALIGNMENT_CENTER; h.add_child(mid)

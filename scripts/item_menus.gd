@@ -14,6 +14,13 @@ static func _panel(parent: Node, title: String, on_close: Callable) -> Array:
 	var close = big("닫기"); close.pressed.connect(on_close); v.add_child(close)
 	return [root, list, t]
 
+## ◀ 이전 / 다음 ▶ row (touch-sized) for switching units without backing out.
+static func nav_row(cycle: Callable, prefix := "N") -> HBoxContainer:
+	var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 10); h.name = prefix + "Nav"
+	var pv = big("◀ 이전 유닛", 76, 26); pv.name = prefix + "Prev"; pv.pressed.connect(func(): cycle.call(-1)); h.add_child(pv)
+	var nx = big("다음 유닛 ▶", 76, 26); nx.name = prefix + "Next"; nx.pressed.connect(func(): cycle.call(1)); h.add_child(nx)
+	return h
+
 static func big(t: String, h = 88, fs = 28) -> Button:
 	var b = Ornate.button(Button.new()); b.text = t; b.custom_minimum_size = Vector2(0, h)
 	b.add_theme_font_size_override("font_size", fs); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; return b
@@ -36,8 +43,12 @@ static func dict_str(d: Dictionary) -> String:
 	var w = Weapons.make(d.name, int(d.uses)); return item_str(w)
 
 ## Convoy for a live Unit (battle) — deposit unit items / withdraw convoy items.
-static func convoy_panel(parent: Node, u: Unit, on_close: Callable) -> Control:
+## cycle (optional): func(d: int) — ◀ ▶ buttons switch straight to the previous/next unit (출전 준비).
+static func convoy_panel(parent: Node, u: Unit, on_close: Callable, cycle := Callable()) -> Control:
 	var p = _panel(parent, "수송대 — %s" % u.data.name, on_close)
+	if cycle.is_valid():
+		var t: Label = p[2]; var v = t.get_parent()
+		v.add_child(nav_row(cycle, "CV")); v.move_child(v.get_child(v.get_child_count() - 1), t.get_index() + 1)
 	_fill_convoy(p[1], u, func(): Campaign.record_progress(u))
 	return p[0]
 

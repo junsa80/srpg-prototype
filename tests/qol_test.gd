@@ -68,6 +68,44 @@ func _ready() -> void:
 	chk(SaveManager.load_slot(3).get("turn", -1) == 2, "recover-tmp")
 	SaveManager.delete_slot(3)
 	if keep3 != "": SaveManager.write_atomic(p3, keep3)
+	# audio ON/OFF: separate music / sfx toggles, default ON, old settings files (no keys) load as ON
+	var keep_set = FileAccess.get_file_as_string(Settings.PATH) if FileAccess.file_exists(Settings.PATH) else ""
+	var kb = Settings.bgm_on; var ks = Settings.sfx_on; var kv = [Settings.bgm, Settings.sfx, Settings.anim]
+	fh = FileAccess.open(Settings.PATH, FileAccess.WRITE); fh.store_string('{"bgm": 3, "sfx": 4, "anim": false}'); fh.close()
+	Settings.bgm_on = false; Settings.sfx_on = false; Settings._ready()
+	chk(Settings.bgm_on and Settings.sfx_on and Settings.bgm == 3 and not Settings.anim, "audio-old-settings")
+	Settings.bgm_on = false; Settings.sfx_on = true; Settings.save(); Settings.bgm_on = true; Settings._ready()
+	chk(not Settings.bgm_on and Settings.sfx_on, "audio-persist")
+	chk(not Sfx.bgm.playing, "bgm-off-stops")
+	var sl = VBoxContainer.new(); add_child(sl); Menus._fill_settings(sl); await get_tree().process_frame
+	chk(sl.find_child("BGM_켬", true, false) != null and sl.find_child("SFX_끔", true, false) != null, "audio-buttons")
+	sl.queue_free()
+	Settings.bgm_on = kb; Settings.sfx_on = ks; Settings.bgm = kv[0]; Settings.sfx = kv[1]; Settings.anim = kv[2]
+	if keep_set != "": SaveManager.write_atomic(Settings.PATH, keep_set)
+	else: DirAccess.remove_absolute(Settings.PATH)
+	Settings._ready()
+	# prep 소지품 / 수송대: ◀ ▶ switch units directly
+	if allies.size() >= 2:
+		var ps = PrepScreen.new(); ps.b = b; add_child(ps)
+		ps._unit_items(allies[0]); await get_tree().process_frame
+		var nxb = ps.find_child("PINext", true, false); chk(nxb != null, "prep-nav")
+		if nxb: nxb.pressed.emit(); await get_tree().process_frame
+		var tops = ps.get_children().filter(func(c): return c.name.begins_with("PrepUnitItems") and not c.is_queued_for_deletion())
+		var title_ok = false
+		for t in tops:
+			for l in t.find_children("*", "Label", true, false): if l.text == "%s의 소지품" % ps._live()[1].data.name: title_ok = true
+		chk(title_ok, "prep-next-unit")
+		var cvb = null
+		for t in tops:
+			for bt in t.find_children("*", "Button", true, false): if bt.text.begins_with("수송대"): cvb = bt
+		if cvb: cvb.pressed.emit(); await get_tree().process_frame
+		var cvn = ps.find_child("CVPrev", true, false); chk(cvn != null, "convoy-nav")
+		if cvn: cvn.pressed.emit(); await get_tree().process_frame; await get_tree().process_frame
+		var found = false
+		for l in ps.find_children("*", "Label", true, false):
+			if not l.is_queued_for_deletion() and l.text == "수송대 — %s" % ps._live()[0].data.name: found = true
+		chk(found, "convoy-prev-unit")
+		ps.queue_free()
 	# no UI claims cloud save
 	for fn in ["res://scripts/menus.gd", "res://scripts/title.gd", "res://scripts/base.gd"]:
 		var src = FileAccess.get_file_as_string(fn)

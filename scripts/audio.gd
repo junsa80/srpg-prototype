@@ -36,12 +36,14 @@ func set_background(on: bool) -> void:
 func apply_volumes() -> void:
 	for n in players: players[n].volume_db = linear_to_db(Settings.sfx / 10.0) if Settings.sfx > 0 else -80.0
 	if bgm: bgm.volume_db = (linear_to_db(Settings.bgm / 10.0) - 8.0) if Settings.bgm > 0 else -80.0
+	if bgm and not Settings.bgm_on and bgm.playing: bgm.stop()
+	elif bgm and Settings.bgm_on and not muted and not bg and not bgm.playing and is_inside_tree(): bgm.play()
 
 func play(n: String) -> void:
-	if not muted and not bg and players.has(n): players[n].play()
+	if not muted and not bg and Settings.sfx_on and players.has(n): players[n].play()
 
 func start_bgm() -> void:
-	if not bgm.playing and not muted: bgm.play()
+	if not bgm.playing and not muted and Settings.bgm_on: bgm.play()
 
 func toggle_mute() -> bool:
 	muted = not muted; _apply()
@@ -51,4 +53,4 @@ func toggle_mute() -> bool:
 
 func _apply() -> void:
 	AudioServer.set_bus_mute(0, muted or bg)
-	if not muted and not bg and bgm and not bgm.playing and is_inside_tree(): bgm.play()
+	if not muted and not bg and Settings.bgm_on and bgm and not bgm.playing and is_inside_tree(): bgm.play()

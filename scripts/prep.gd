@@ -77,8 +77,16 @@ func _items() -> void:
 		bt.name = "I_" + u.data.name; bt.pressed.connect(func(): _unit_items(u)); list.add_child(bt)
 	Menus.close_btn(v, cl)
 
-func _unit_items(u: Unit) -> void:
+## Neighbour of u among deployed units (wraps). Used by ◀ ▶ in 소지품/수송대.
+func _cycle_target(u: Unit, d: int) -> Unit:
+	var lv = _live(); var i = lv.find(u)
+	return lv[(maxi(i, 0) + d + lv.size()) % lv.size()] if lv.size() else u
+
+func _unit_items(u: Unit, open_convoy := false) -> void:
 	var o = Menus.overlay(self, "%s의 소지품" % u.data.name, 32); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "PrepUnitItems"
+	var jump = func(d: int, to_convoy: bool):
+		Campaign.record_progress(u); Sfx.play("cursor"); cl.queue_free(); _unit_items(_cycle_target(u, d), to_convoy)
+	if _live().size() > 1: v.add_child(ItemMenus.nav_row(func(d): jump.call(d, false), "PI"))
 	var list = Menus.scroll(v)
 	var fill = func(self_ref):
 		for c in list.get_children(): c.queue_free()
@@ -92,9 +100,12 @@ func _unit_items(u: Unit) -> void:
 	fill.call(fill)
 	var cv = ItemMenus.big("수송대 (맡기기/꺼내기)", 92, 28); v.add_child(cv)
 	var holder = {}
-	cv.pressed.connect(func(): holder["p"] = ItemMenus.convoy_panel(cl, u, func(): holder.p.queue_free(); Campaign.record_progress(u); fill.call(fill)))
+	var open_cv = func(): holder["p"] = ItemMenus.convoy_panel(cl, u, func(): holder.p.queue_free(); Campaign.record_progress(u); fill.call(fill),
+		(func(d): jump.call(d, true)) if _live().size() > 1 else Callable())
+	cv.pressed.connect(open_cv)
 	var st = ItemMenus.big("상태 보기", 92, 28); v.add_child(st); st.pressed.connect(func(): Menus.status(self, _live(), _live().find(u)))
 	Menus.close_btn(v, cl, func(): Campaign.record_progress(u))
+	if open_convoy: open_cv.call()
 
 func _start() -> void:
 	Sfx.play("levelup")
