@@ -78,31 +78,32 @@ func _setup(a: Unit, d: Unit) -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.gui_input.connect(func(e):
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: _set_speed(4.0))
-	bg = _rect(root, Color8(16, 20, 40), Vector2.ZERO, Vector2(W, H)); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg = _rect(root, Color8(16, 20, 40), Vector2(-60, -60), Vector2(W + 120, H + 120))   # oversized so screen shake never shows the map
 	# vertical layout: plates | arena | hp panels | info, centred in the visible height
 	var plate_h = 96.0; var arena_h = clampf(H * 0.42, 460.0, 680.0); var hp_h = 150.0
 	var total = plate_h + 16 + arena_h + 16 + hp_h + 70
 	var top = maxf(24.0, (H - total) * 0.45)
 	var arena_y = top + plate_h + 16
 	AY = arena_y + arena_h - 70
-	SZ = clampf(arena_h * 0.56, 256.0, 352.0)
+	SZ = clampf(arena_h * 0.56, 256.0, 320.0)
 	# arena: sky gradient bands + far hills + ground tinted by the defender's terrain
 	var sky_cols = [Color8(56, 96, 176), Color8(72, 120, 200), Color8(96, 148, 216), Color8(128, 172, 228)]
 	var band = (AY - arena_y) / sky_cols.size()
-	for i in sky_cols.size(): _rect(root, sky_cols[i], Vector2(0, arena_y + band * i), Vector2(W, band + 1))
+	for i in sky_cols.size(): _rect(root, sky_cols[i], Vector2(-60, arena_y + band * i), Vector2(W + 120, band + 1))
 	var g = GROUND.get(_ground_kind(), GROUND.grass)
 	var t = TERRAIN_TINT.get(_terrain_of(d), g)
 	var hills = Polygon2D.new(); root.add_child(hills); hills.color = g.darkened(0.35)
-	var pts = PackedVector2Array([Vector2(0, AY)])
-	for i in 9: pts.append(Vector2(W * i / 8.0, AY - 60 - 40 * sin(i * 1.7)))
-	pts.append(Vector2(W, AY)); hills.polygon = pts
-	_rect(root, g, Vector2(0, AY), Vector2(W, arena_y + arena_h - AY))
-	_rect(root, g.darkened(0.2), Vector2(0, AY), Vector2(W, 6))
+	var pts = PackedVector2Array([Vector2(-60, AY)])
+	for i in 9: pts.append(Vector2(-60 + (W + 120) * i / 8.0, AY - 60 - 40 * sin(i * 1.7)))
+	pts.append(Vector2(W + 60, AY)); hills.polygon = pts
+	_rect(root, g, Vector2(-60, AY), Vector2(W + 120, arena_y + arena_h - AY))
+	_rect(root, g.darkened(0.2), Vector2(-60, AY), Vector2(W + 120, 6))
 	var dist = absi(a.cell.x - d.cell.x) + absi(a.cell.y - d.cell.y)
-	var gap = 40.0 if dist <= 1 else 150.0   # ranged: units stand further apart
+	var gap = 0.0 if dist <= 1 else 150.0   # ranged: units stand further apart
 	for u in [a, d]:
 		var right = _side_right(u, a, d)
-		var cx = W * 0.5 + (gap * 0.5 + SZ * 0.5) * (1 if right else -1)
+		var off = minf(gap * 0.5 + SZ * 0.5, W * 0.5 - SZ * 0.42)   # keep both units on screen (sprites have side margins)
+		var cx = W * 0.5 + off * (1 if right else -1)
 		var plat = _rect(root, (t if u == d else g).darkened(0.1), Vector2(cx - SZ * 0.55, AY - 6), Vector2(SZ * 1.1, 22))
 		_rect(plat, (t if u == d else g).lightened(0.15), Vector2(0, 0), Vector2(SZ * 1.1, 5))
 		var shadow = _rect(root, Color(0, 0, 0, 0.25), Vector2(cx - SZ * 0.32, AY - 8), Vector2(SZ * 0.64, 10))
@@ -137,7 +138,7 @@ func _setup(a: Unit, d: Unit) -> void:
 		var st = _lbl("", 22, Color8(220, 224, 240)); hb.add_child(st); st.position = Vector2(14, 98)
 		st.text = _stat_line(u, a, d)
 		bars[u] = [fill, lag, num]
-	flash = _rect(root, Color(1, 1, 1, 0), Vector2.ZERO, Vector2(W, H)); flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash = _rect(root, Color(1, 1, 1, 0), Vector2(-60, -60), Vector2(W + 120, H + 120))
 	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, arena_y + arena_h + 16 + hp_h + 22)
 	skip_btn = Button.new(); skip_btn.text = "건너뛰기 ▶▶"; skip_btn.name = "CombatSkip"; skip_btn.add_theme_font_size_override("font_size", 26)
 	root.add_child(skip_btn); skip_btn.size = Vector2(220, 60); skip_btn.position = Vector2(W - 236, arena_y + arena_h + 16 + hp_h + 10)
@@ -260,7 +261,8 @@ func _sparkle(u: Unit) -> void:
 
 func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictionary) -> void:
 	_setup(a, d)
-	for u in [a, d]: _set_hp(u, start_hp.get(u, u.hp))
+	for u in [a, d]:
+		_set_hp(u, start_hp.get(u, u.hp)); bars[u][1].size.x = bars[u][0].size.x   # lag bar starts at current HP
 	await _wait(0.3)
 	for ev in events:
 		if ev.type == "heal":
@@ -280,7 +282,7 @@ func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictiona
 			Sfx.play("crit" if ev.crit else "hit")
 			sy.modulate = Color(5, 5, 5)
 			if ev.crit:
-				_flash(Color.WHITE, 0.85, 0.25)
+				_flash(Color.WHITE, 0.7, 0.25)
 				_float("치명!", label_at + Vector2(-20, -70), Color8(255, 220, 64), 52)
 			_float(str(ev.dmg) if ev.dmg > 0 else "노 데미지", label_at, Color8(255, 255, 255) if ev.dmg > 0 else Color8(200, 200, 210), 64 if ev.dmg > 0 else 40)
 			var kb = _tw(); kb.tween_property(sy, "position:x", home[y].x + dir * (34 if ev.crit else 14), 0.05); kb.tween_property(sy, "position:x", home[y].x, 0.14)
