@@ -47,6 +47,7 @@ func _init() -> void:
 	for n in seen:
 		var s = seen[n]; var p = "res://assets/portraits/%s.png" % n
 		var port = "있음" if FileAccess.file_exists(p) else "없음"
+		if port == "없음" and Sprites.NPC_ALIAS.has(n): port = "별칭 npc_%s%s" % [Sprites.NPC_ALIAS[n], "" if FileAccess.file_exists("res://assets/portraits/npc_%s.png" % Sprites.NPC_ALIAS[n]) else " (파일 없음)"]
 		if port == "있음":
 			var share = md5[FileAccess.get_md5(p)]
 			if share.size() > 1: port = "공유(" + ",".join(share) + ")"

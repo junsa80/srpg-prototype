@@ -50,9 +50,22 @@ static func unit_tex(u: Unit) -> Texture2D:
 	if UNIT_TILE.has(key): return atlas(DUNGEON, UNIT_TILE[key])
 	return tex(u, 0)
 
+## Generic NPC speakers -> shared portrait type (assets/portraits/npc_<type>.png). A speaker's own file always wins.
+const NPC_ALIAS = {
+	"촌장": "oldman", "노인": "oldman", "둥지지기 노인": "oldman", "어부": "oldman",
+	"노파": "woman", "피난민": "woman", "어머니": "woman",
+	"마을 사람": "youngman", "마을 청년": "youngman", "시민": "youngman", "대장장이": "youngman", "견습 마법사": "youngman", "설원 사냥꾼": "youngman", "갇힌 비룡 조련사": "youngman",
+	"노르드 병사": "soldier", "경비병": "soldier",
+	"수녀": "nun",
+	"항구 상인": "merchant",
+}
 static func portrait(n: String) -> Texture2D:
 	var path = "res://assets/portraits/%s.png" % n
-	return load(path) if ResourceLoader.exists(path) else null
+	if ResourceLoader.exists(path): return load(path)
+	if NPC_ALIAS.has(n):   # missing npc_<type>.png -> null (no picture), never an error
+		path = "res://assets/portraits/npc_%s.png" % NPC_ALIAS[n]
+		if ResourceLoader.exists(path): return load(path)
+	return null
 ## Procedural 16x16 GBA-style pixel sprites (generated in code; no external art). Cached ImageTextures.
 ## Legend: k outline, h hair, s skin, b body (team), d body dark, l light, w weapon, m metal, c cape, e eye
 const BODY = [
