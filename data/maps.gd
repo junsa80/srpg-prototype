@@ -1331,6 +1331,7 @@ const CH = {
 			["팔라딘", "은창", Vector2i(9, 8), {"lv": 10}],
 			["제네럴", "은창", Vector2i(5, 5), {"lv": 10, "guard": true}],
 			["세이지", "썬더", Vector2i(8, 5), {"lv": 10}],
+			["버서커", "강철도끼", Vector2i(5, 4), {"lv": 10}],
 			["검성", "은검", Vector2i(4, 2), {"lv": 10, "guard": true}],
 			["세이지", "엘파이어", Vector2i(7, 2), {"lv": 10, "guard": true}],
 			["그림자 지휘관", "그림자 창 우르", Vector2i(6, 1), {"boss": true, "name": "에레보스", "lv": 14, "guard": true, "bonus": {"hp": 30, "str": 8, "skl": 7, "spd": 7, "def": 5, "res": 8}}],
