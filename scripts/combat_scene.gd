@@ -13,7 +13,16 @@ var spd = 1.0
 var tweens: Array = []
 var W = 720.0; var H = 1280.0
 var AY = 0.0      # arena ground line (feet)
-var SZ = 288.0    # sprite size
+var SZ = 128.0    # unit box width (= RW); used for reach / effects
+## Battle unit size: map sheet frames are 32x32. Head rows (0..15) drawn at PX, body rows (16..31) at PX x (PX+1)
+## (taller body = less chibi), so the unit box is 128 x 144 on every phone. Integer factors only -> crisp pixels.
+## Pose images (assets/battle/<id>/{ready,attack,hit,dodge}.png) are drawn at the largest integer scale that fits RH;
+## ideal canvas 64x72 (-> exactly 2x = 128x144), facing RIGHT, feet on the bottom row, transparent background.
+const PX = 4
+var RW = 128.0; var RH = 144.0
+var poses = {}    # Unit -> {pose: Texture2D} (only when pose images exist)
+var parts = {}    # Unit -> Array of [TextureRect, row0, row1] (map-sprite rig, idle frame swaps)
+var auras = {}    # Unit -> Control (boss aura) / scarf node
 var BAR_W = 300.0
 var skip_btn: Button
 const STAT_NAMES = {"hp": "HP", "str": "힘", "mag": "마력", "skl": "기술", "spd": "속도", "lck": "행운", "def": "수비", "res": "마방"}
@@ -27,7 +36,7 @@ func _ready() -> void:
 
 func _clear() -> void:
 	for c in get_children(): c.queue_free()
-	spr = {}; bars = {}; shown_hp = {}; home = {}; frames = {}; tweens = []
+	spr = {}; bars = {}; shown_hp = {}; home = {}; frames = {}; tweens = []; poses = {}; parts = {}; auras = {}
 
 func _lbl(t: String, sz: int, col = Color.WHITE) -> Label:
 	var l = Label.new(); l.text = t; l.add_theme_font_size_override("font_size", sz); l.add_theme_color_override("font_color", col)
@@ -80,12 +89,12 @@ func _setup(a: Unit, d: Unit) -> void:
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: _set_speed(4.0))
 	bg = _rect(root, Color8(16, 20, 40), Vector2(-60, -60), Vector2(W + 120, H + 120))   # oversized so screen shake never shows the map
 	# vertical layout: plates | arena | hp panels | info, centred in the visible height
-	var plate_h = 96.0; var arena_h = clampf(H * 0.42, 460.0, 680.0); var hp_h = 150.0
+	var plate_h = 96.0; var arena_h = clampf(H * 0.34, 400.0, 520.0); var hp_h = 150.0
 	var total = plate_h + 16 + arena_h + 16 + hp_h + 70
 	var top = maxf(24.0, (H - total) * 0.45)
 	var arena_y = top + plate_h + 16
-	AY = arena_y + arena_h - 70
-	SZ = clampf(arena_h * 0.56, 256.0, 320.0)
+	AY = arena_y + arena_h - 64   # GBA-style ground line: low in the arena, units stand on it
+	SZ = RW
 	# arena: sky gradient bands + far hills + ground tinted by the defender's terrain
 	var sky_cols = [Color8(56, 96, 176), Color8(72, 120, 200), Color8(96, 148, 216), Color8(128, 172, 228)]
 	var band = (AY - arena_y) / sky_cols.size()
@@ -98,25 +107,28 @@ func _setup(a: Unit, d: Unit) -> void:
 	pts.append(Vector2(W + 60, AY)); hills.polygon = pts
 	_rect(root, g, Vector2(-60, AY), Vector2(W + 120, arena_y + arena_h - AY))
 	_rect(root, g.darkened(0.2), Vector2(-60, AY), Vector2(W + 120, 6))
+	var bgt = bg_texture(_terrain_of(d), _ground_kind())
+	if bgt:   # drop-in backdrop replaces sky/hills/ground (ideal 240x160 px art, drawn covered + nearest)
+		var bt = TextureRect.new(); root.add_child(bt); bt.texture = bgt; bt.mouse_filter = Control.MOUSE_FILTER_IGNORE; bt.name = "BattleBG"
+		bt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; bt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bt.position = Vector2(-60, arena_y); bt.size = Vector2(W + 120, arena_h); bt.clip_contents = true
 	var dist = absi(a.cell.x - d.cell.x) + absi(a.cell.y - d.cell.y)
-	var gap = 0.0 if dist <= 1 else 150.0   # ranged: units stand further apart
+	var gap = 0.0 if dist <= 1 else 160.0   # ranged: units stand further apart
 	for u in [a, d]:
 		var right = _side_right(u, a, d)
-		var off = minf(gap * 0.5 + SZ * 0.5, W * 0.5 - SZ * 0.42)   # keep both units on screen (sprites have side margins)
+		var off = minf(gap * 0.5 + RW * 0.78, W * 0.5 - RW * 0.6)
 		var cx = W * 0.5 + off * (1 if right else -1)
-		var plat = _rect(root, (t if u == d else g).darkened(0.1), Vector2(cx - SZ * 0.55, AY - 6), Vector2(SZ * 1.1, 22))
-		_rect(plat, (t if u == d else g).lightened(0.15), Vector2(0, 0), Vector2(SZ * 1.1, 5))
-		var shadow = _rect(root, Color(0, 0, 0, 0.25), Vector2(cx - SZ * 0.32, AY - 8), Vector2(SZ * 0.64, 10))
+		var plat = _rect(root, (t if u == d else g).darkened(0.1), Vector2(cx - RW * 0.75, AY - 6), Vector2(RW * 1.5, 16))
+		_rect(plat, (t if u == d else g).lightened(0.15), Vector2(0, 0), Vector2(RW * 1.5, 4))
+		var shadow = _rect(root, Color(0, 0, 0, 0.3), Vector2(cx - RW * 0.36, AY - 6), Vector2(RW * 0.72, 8))
 		shadow.name = "shadow"
-		var tr = TextureRect.new(); root.add_child(tr); tr.texture = Sprites.unit_tex(u); tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if u.team == 1 and u.has_tag("dark"): tr.self_modulate = Color(0.85, 0.7, 1.0)
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.size = Vector2(SZ, SZ); tr.pivot_offset = Vector2(SZ * 0.5, SZ); tr.flip_h = not right
-		var lift = 60.0 if "flying" in u.tags() else 0.0
-		tr.position = Vector2(cx - SZ * 0.5, AY - SZ - lift + SZ * 0.06)
-		spr[u] = tr; home[u] = tr.position
+		var rig = _make_rig(u, right)
+		var lift = 40.0 if "flying" in u.tags() else 0.0
+		rig.position = Vector2(cx - RW * 0.5, AY - RH - lift + 4)
+		spr[u] = rig; home[u] = rig.position
+		_pose(u, "ready")
 		var fr = []
-		if Sprites.user_sheet(u) != null:
+		if Sprites.user_sheet(u) != null and not poses.has(u):
 			for i in 3: fr.append(Sprites.unit_frame(u, i))
 		frames[u] = fr
 		# name/weapon plate (top) and HP panel (bottom)
@@ -127,7 +139,19 @@ func _setup(a: Unit, d: Unit) -> void:
 		var wname = w.name if w else "-"
 		var wl = HBoxContainer.new(); plate.add_child(wl); wl.position = Vector2(14, 50); wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if w: var ic = Icons.rect(w, 34); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; wl.add_child(ic)
-		wl.add_child(_lbl(" " + wname, 24, Color8(240, 228, 160)))
+		var tc = Icons.tri_color(w)
+		if tc.a > 0:   # weapon name on a chip in its triangle colour (blue/red/green), readable on either plate
+			var chip = PanelContainer.new(); chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var sb = StyleBoxFlat.new(); sb.bg_color = tc.darkened(0.1); sb.border_color = tc.lightened(0.4); sb.set_border_width_all(2); sb.set_corner_radius_all(6)
+			sb.content_margin_left = 10; sb.content_margin_right = 10; chip.add_theme_stylebox_override("panel", sb)
+			chip.add_child(_lbl(wname, 24, Color.WHITE)); wl.add_child(_lbl(" ", 12)); wl.add_child(chip)
+		else: wl.add_child(_lbl(" " + wname, 24, Color8(240, 228, 160)))
+		var other = d if u == a else a
+		var ow = other.weapon() if a.team != d.team else null
+		var tv = WeaponData.triangle(w.type, ow.type) if (w and ow and not w.is_item() and not ow.is_item()) else 0
+		if tv != 0:   # big triangle arrow on the plate: ▲ advantage (gold) / ▼ disadvantage (grey)
+			var ta = _lbl("▲" if tv > 0 else "▼", 56, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"
+			plate.add_child(ta); ta.position = Vector2(pw - 64, 10)
 		var hp_y = arena_y + arena_h + 16
 		var hb = _panel(ALLY if u.team == 0 else FOE, Vector2(px, hp_y), Vector2(pw, hp_h))
 		var num = _lbl("", 40); hb.add_child(num); num.position = Vector2(14, 4)
@@ -145,6 +169,113 @@ func _setup(a: Unit, d: Unit) -> void:
 	skip_btn.pressed.connect(func(): _set_speed(12.0))
 	_idle_loop()
 
+const MOUNTED = ["소셜나이트", "비룡기사", "드래곤마스터", "성기사", "팔라딘", "발키리", "그레이트나이트", "레인저", "메이지나이트", "드래곤나이트", "그림자 기병", "그림자 비룡", "그림자 기사", "그림자 비룡기사"]
+const POSES = ["ready", "attack", "hit", "dodge"]
+static var _sil: Shader
+static var _exists = {}
+static func _has(path: String) -> bool:
+	if not _exists.has(path): _exists[path] = ResourceLoader.exists(path)
+	return _exists[path]
+
+## Pose images: assets/battle/<이름@클래스 | 이름 | 클래스>/<pose>.png. Missing poses fall back to ready, then to the map sprite rig.
+static func pose_set(u: Unit) -> Dictionary:
+	for id in [u.data.name + "@" + u.unit_class.name, u.data.name, u.unit_class.name]:
+		var got = {}
+		for p in POSES:
+			var path = "res://assets/battle/%s/%s.png" % [id, p]
+			if _has(path): got[p] = load(path)
+		if got.has("ready"): return got
+	return {}
+
+## Optional terrain backdrop: assets/battle/bg/<terrain>.png (forest, fort, throne, village, ...; "" = plain), then bg/<ground>.png.
+static func bg_texture(terrain: String, ground: String) -> Texture2D:
+	for k in [terrain if terrain != "" else "plain", ground]:
+		var path = "res://assets/battle/bg/%s.png" % k
+		if k != "" and _has(path): return load(path)
+	return null
+
+func _sil_mat(col: Color) -> ShaderMaterial:
+	if _sil == null:
+		_sil = Shader.new(); _sil.code = "shader_type canvas_item;\nuniform vec4 tint : source_color;\nvoid fragment() { COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a * tint.a); }"
+	var m = ShaderMaterial.new(); m.shader = _sil; m.set_shader_parameter("tint", col); return m
+
+func _sub(tex: Texture2D, r0: int, r1: int) -> Texture2D:
+	if not (tex is AtlasTexture): return tex
+	var a = AtlasTexture.new(); a.atlas = tex.atlas
+	a.region = Rect2(tex.region.position + Vector2(0, r0), Vector2(tex.region.size.x, r1 - r0)); return a
+
+## One drawable copy of the unit (main body, rim outline or aura all use this).
+func _layer(u: Unit, mat: Material) -> Control:
+	var c = Control.new(); c.mouse_filter = Control.MOUSE_FILTER_IGNORE; c.size = Vector2(RW, RH)
+	var add = func(tex: Texture2D, pos: Vector2, size: Vector2, r0: int, r1: int):
+		var tr = TextureRect.new(); tr.texture = tex; tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE; tr.position = pos; tr.size = size; tr.material = mat; c.add_child(tr)
+		if not parts.has(u): parts[u] = []
+		parts[u].append([tr, r0, r1])
+	if poses.has(u):
+		var t: Texture2D = poses[u].ready; var k = maxf(1.0, floorf(RH / t.get_height()))
+		var sz = t.get_size() * k
+		add.call(t, Vector2((RW - sz.x) * 0.5, RH - sz.y), sz, -1, -1)
+		return c
+	var base = Sprites.unit_tex(u)
+	if base is AtlasTexture and base.region.size == Vector2(32, 32) and not (u.unit_class.name in MOUNTED):
+		add.call(_sub(base, 0, 16), Vector2(0, 0), Vector2(32 * PX, 16 * PX), 0, 16)                     # head: PX x PX
+		add.call(_sub(base, 16, 32), Vector2(0, 16 * PX), Vector2(32 * PX, 16 * (PX + 1)), 16, 32)       # body: PX x (PX+1)
+	else:
+		add.call(base, Vector2(0, RH - 32 * PX), Vector2(32 * PX, 32 * PX), 0, 32)
+	return c
+
+## Battle rig: [aura] + rim/outline x4 + [scarf] + body, mirrored for the left side, with a combat lean.
+func _make_rig(u: Unit, right: bool) -> Control:
+	var pset = pose_set(u)
+	if not pset.is_empty(): poses[u] = pset
+	var rig = Control.new(); rig.mouse_filter = Control.MOUSE_FILTER_IGNORE; rig.size = Vector2(RW, RH); rig.pivot_offset = Vector2(RW * 0.5, RH)
+	root.add_child(rig)
+	var inner = Control.new(); inner.name = "inner"; inner.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.size = Vector2(RW, RH)
+	inner.pivot_offset = Vector2(RW * 0.5, RH); rig.add_child(inner)
+	inner.scale.x = 1.0 if right else -1.0   # map sheets + pose images face LEFT (player side, GBA FE); left-side units are mirrored
+	var foe = u.team != 0
+	if u.boss:   # faint dark aura, slowly pulsing
+		var aura = _layer(u, _sil_mat(Color(0.45, 0.1, 0.6, 0.45))); inner.add_child(aura)
+		aura.pivot_offset = Vector2(RW * 0.5, RH); aura.scale = Vector2(1.16, 1.1)
+		var at = aura.create_tween().set_loops(); at.tween_property(aura, "modulate:a", 0.35, 0.7); at.tween_property(aura, "modulate:a", 1.0, 0.7)
+	var rim = Color(0.95, 0.16, 0.2, 0.9) if foe else Color(1.0, 0.93, 0.62, 0.95)   # enemies: red rim light; allies: crisp gold outline
+	for o in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
+		var l = _layer(u, _sil_mat(rim)); l.position = o; inner.add_child(l)
+	if not foe and not poses.has(u) and not (u.unit_class.name in MOUNTED):   # heroic scarf flutter behind the shoulders
+		var sc = Control.new(); sc.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(sc); sc.position = Vector2(RW * 0.64, 16 * PX + 2)
+		var col = Color8(200, 40, 48)
+		for i in 3:
+			var seg = ColorRect.new(); seg.color = col.darkened(i * 0.12); seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			seg.size = Vector2(PX * 4.0, PX * 2.0 - (PX * 0.5 if i == 2 else 0.0)); seg.position = Vector2(PX * 3.5 * i, i * PX * 0.75); sc.add_child(seg)
+		sc.pivot_offset = Vector2(0, PX)
+		var st = sc.create_tween().set_loops(); st.tween_property(sc, "rotation", 0.28, 0.32).set_trans(Tween.TRANS_SINE); st.tween_property(sc, "rotation", -0.06, 0.32).set_trans(Tween.TRANS_SINE)
+		auras[u] = sc
+	var body = _layer(u, null); body.name = "body"; inner.add_child(body)
+	if foe:
+		body.modulate = Color(0.72, 0.62, 0.78) if u.has_tag("dark") else Color(0.82, 0.78, 0.86)   # darker, colder palette
+	rig.set_meta("lean", (0.07 if foe else 0.025) * (-1.0 if right else 1.0))   # forward lean toward the opponent
+	inner.rotation = rig.get_meta("lean")
+	return rig
+
+## Pose switch, timed by the motions: ready (rest) / attack (wind-up..blow) / hit (impact) / dodge (miss).
+## With pose images: texture swap. Without: the map-sprite rig leans further in / recoils instead.
+func _pose(u: Unit, p: String) -> void:
+	if not spr.has(u) or not is_instance_valid(spr[u]): return
+	var rig: Control = spr[u]; var inner: Control = rig.get_node("inner"); var lean: float = rig.get_meta("lean")
+	rig.set_meta("pose", p)
+	if poses.has(u):
+		var t: Texture2D = poses[u].get(p, poses[u].ready)
+		for pr in parts.get(u, []): pr[0].texture = t
+		inner.rotation = 0.0
+		return
+	match p:
+		"attack": inner.rotation = lean * 2.2
+		"hit": inner.rotation = -lean * 1.6
+		"dodge": inner.rotation = -lean * 0.8
+		_: inner.rotation = lean
+
 ## 위력/명중/치명 for this unit, captured before the exchange (weapon may have broken since).
 func _stat_line(u: Unit, a: Unit, d: Unit) -> String:
 	var f: Dictionary = BattleManager.pre_fc
@@ -160,7 +291,10 @@ func _idle_loop() -> void:
 		if not visible: return
 		k += 1
 		for u in spr:
-			if is_instance_valid(spr[u]) and frames[u].size() > 1: spr[u].texture = frames[u][k % frames[u].size()]
+			if poses.has(u) or not is_instance_valid(spr[u]) or frames.get(u, []).size() < 2: continue
+			var f: Texture2D = frames[u][k % frames[u].size()]
+			for pr in parts.get(u, []):
+				if is_instance_valid(pr[0]): pr[0].texture = _sub(f, pr[1], pr[2]) if pr[2] - pr[1] < 32 else f
 
 func _set_hp(u: Unit, v: float) -> void:
 	shown_hp[u] = v
@@ -181,7 +315,7 @@ func _float(text: String, at: Vector2, col: Color, sz = 60) -> void:
 	tw.tween_property(l, "position:y", at.y - 80, 0.5); tw.parallel().tween_property(l, "modulate:a", 0.0, 0.5).set_delay(0.25)
 	tw.tween_callback(l.queue_free)
 
-func _center(u: Unit) -> Vector2: return home[u] + Vector2(SZ * 0.5, SZ * 0.5)
+func _center(u: Unit) -> Vector2: return home[u] + Vector2(RW * 0.5, RH * 0.5)
 
 func _flash(col: Color, peak: float, dur: float) -> void:
 	flash.color = Color(col.r, col.g, col.b, peak)
@@ -189,9 +323,10 @@ func _flash(col: Color, peak: float, dur: float) -> void:
 
 ## Weapon-type swing. Returns when the blow lands (target reaction follows).
 func _attack_motion(x: Unit, y: Unit, w: WeaponData, crit: bool) -> void:
-	var sx: TextureRect = spr[x]; var hx = home[x]
+	var sx: Control = spr[x]; var hx = home[x]
 	var dir = 1.0 if home[y].x > hx.x else -1.0
 	var t = w.type if w else WeaponData.Type.SWORD
+	_pose(x, "attack")
 	if crit:   # GBA-style crit wind-up: attacker flashes twice
 		for i in 2:
 			sx.modulate = Color(3, 3, 2.4); await _wait(0.06); sx.modulate = Color.WHITE; await _wait(0.06)
@@ -224,7 +359,8 @@ func _attack_motion(x: Unit, y: Unit, w: WeaponData, crit: bool) -> void:
 			_slash(_center(y), dir, t)
 
 func _return(x: Unit) -> void:
-	var sx: TextureRect = spr[x]
+	var sx: Control = spr[x]
+	_pose(x, "ready")
 	if sx.position.distance_to(home[x]) < 1.0: return
 	var bk = _tw(); bk.tween_property(sx, "position", home[x], 0.16).set_trans(Tween.TRANS_QUAD)
 
@@ -267,20 +403,20 @@ func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictiona
 	for ev in events:
 		if ev.type == "heal":
 			Sfx.play("heal"); _sparkle(ev.y)
-			if spr.has(ev.x): spr[ev.x].modulate = Color(1.5, 1.6, 1.5)
+			if spr.has(ev.x): spr[ev.x].modulate = Color(1.5, 1.6, 1.5); _pose(ev.x, "attack")
 			_float("+%d" % ev.amt, _center(ev.y) + Vector2(-30, -SZ * 0.4), Color8(120, 255, 140))
 			await _tick(ev.y, ev.y_hp)
-			if spr.has(ev.x): spr[ev.x].modulate = Color.WHITE
+			if spr.has(ev.x): spr[ev.x].modulate = Color.WHITE; _pose(ev.x, "ready")
 			await _wait(0.3)
 			continue
 		var x: Unit = ev.x; var y: Unit = ev.y
-		var sy: TextureRect = spr[y]
+		var sy: Control = spr[y]
 		await _attack_motion(x, y, ev.get("w", null), ev.crit)
 		var dir = 1.0 if home[y].x > home[x].x else -1.0
 		var label_at = _center(y) + Vector2(-40, -SZ * 0.45)
 		if ev.hit:
 			Sfx.play("crit" if ev.crit else "hit")
-			sy.modulate = Color(5, 5, 5)
+			sy.modulate = Color(5, 5, 5); _pose(y, "hit")
 			if ev.crit:
 				_flash(Color.WHITE, 0.7, 0.25)
 				_float("치명!", label_at + Vector2(-20, -70), Color8(255, 220, 64), 52)
@@ -291,13 +427,15 @@ func play(a: Unit, d: Unit, events: Array, exp_events: Array, start_hp: Dictiona
 			sy.modulate = Color.WHITE
 			_return(x)
 			await _tick(y, ev.y_hp)
+			if ev.y_hp > 0: _pose(y, "ready")
 			if shake.is_valid() and shake.is_running(): await shake.finished
 		else:
-			Sfx.play("miss"); _float("MISS", label_at, Color8(190, 214, 255), 52)
+			Sfx.play("miss"); _float("MISS", label_at, Color8(190, 214, 255), 52); _pose(y, "dodge")
 			var dodge = _tw(); dodge.tween_property(sy, "position:x", home[y].x + dir * 56, 0.09).set_trans(Tween.TRANS_QUAD)
 			dodge.tween_property(sy, "position:x", home[y].x, 0.16)
 			_return(x)
 			await dodge.finished
+			_pose(y, "ready")
 		if ev.get("x_hp", -1) >= 0 and abs(shown_hp.get(x, ev.x_hp) - ev.x_hp) >= 0.5: await _tick(x, ev.x_hp)   # lifesteal etc.
 		if ev.y_hp <= 0:
 			for i in 3:

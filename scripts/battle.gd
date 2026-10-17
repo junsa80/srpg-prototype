@@ -532,10 +532,10 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 		var v = VBoxContainer.new(); col.add_child(v); v.add_theme_constant_override("separation", 2)
 		var nm = ItemMenus.label(u.data.name, 26, sd[10]); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(nm)
 		var wr = HBoxContainer.new(); v.add_child(wr); wr.add_child(Icons.rect(w, 32))
-		var wl = ItemMenus.label(("%s%s" % [w.name, (" [%s]" % sd[9].rank) if sd[9].rank != "" else ""]) if w else "-", 22); wl.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(wl)
+		var wl = ItemMenus.label(("%s%s" % [w.name, (" [%s]" % sd[9].rank) if sd[9].rank != "" else ""]) if w else "-", 22, Icons.tri_text(w, Color8(248, 240, 224))); wl.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(wl)
 		var tv = tri_of.get(u, 0)
-		if tv != 0 and w:   # weapon triangle arrow (GBA style): green ▲ advantage, red ▼ disadvantage
-			var ta = ItemMenus.label("▲" if tv > 0 else "▼", 26, Color8(96, 230, 120) if tv > 0 else Color8(255, 90, 90)); ta.name = "Tri"; ta.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(ta)
+		if tv != 0 and w:   # weapon triangle: big ▲ 유리 (gold) / ▼ 불리 (grey) — colours kept apart from the blue/red/green type code
+			var ta = ItemMenus.label(("▲유리" if tv > 0 else "▼불리"), 30, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"; ta.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(ta)
 		var dm = "-" if sd[4] < 0 else (str(sd[4]) + (" ×%d" % sd[5] if sd[5] > 1 else ""))
 		var t = "명중 시 HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "  특효!" if sd[8] else "",
 			"-" if sd[6] < 0 else "%d%%" % sd[6], "-" if sd[7] < 0 else "%d%%" % sd[7]]
@@ -635,7 +635,8 @@ func _show_enemy(u: Unit) -> void:
 	grid.queue_redraw()
 	var intent = ""
 	for i in intents: if i.unit == u: intent = intent_text(i, u)
-	info.text = "%s Lv%d HP %d/%d  %s%s%s%s\n%s%s\n[붉은 칸=공격 가능 범위]" % [u.data.name, u.level, u.hp, u.stats.hp, intent, "  (경계)" if u.guard else "",
+	var ew = u.weapon(); var tri = (" [%s %s]" % [ew.name, Icons.TRI_NAME[int(ew.type)]]) if ew and Icons.TRI_NAME.has(int(ew.type)) else ""
+	info.text = "%s Lv%d HP %d/%d%s  %s%s%s%s\n%s%s\n[붉은 칸=공격 가능 범위]" % [u.data.name, u.level, u.hp, u.stats.hp, tri, intent, "  (경계)" if u.guard else "",
 		("  [대화: %s]" % u.talk_from) if u.talk_from != "" else "", "  (약탈)" if u.raider else "",
 		_items_text(u), ("\n★ 처치 시 획득: " + (u.drop.name if u.drop else "%dG" % u.gold_drop) if (u.drop or u.gold_drop > 0) else "") + drop_text(u)]
 
@@ -1119,6 +1120,8 @@ func _on_phase(phase: int, turn: int) -> void:
 		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛 탭=선택 · 길게=상태 · 빈 칸=지형 · [메뉴]=메뉴" % turn
 		if _check_end(): return
 		await _banner("플레이어 페이즈", Color8(120, 176, 255))
+		if turn == 1 and CHAPTER in ["ch1", "ch2"] and is_inside_tree() and not has_meta("flowtest"):   # weapon triangle tip (colour code)
+			Menus.toast(ui, "무기 상성: 파랑(검) > 빨강(도끼) > 초록(창) > 파랑\n유리 ▲ / 불리 ▼ — 자세히는 [메뉴] > 상성표")
 		await _turn_event(turn)
 	else:
 		busy = true
@@ -1380,7 +1383,7 @@ func _demo_forecast() -> void:
 func _demo_combat() -> void:
 	await get_tree().create_timer(1.6).timeout
 	var a = units.filter(func(u): return u.team == 0)[0]
-	var e = units.filter(func(u): return u.team == 1 and not u.boss)[0]
+	var e = units.filter(func(u): return u.team == 1 and (u.boss if "boss" in demo_flags() else not u.boss))[0]   # #combat+boss = boss aura shot
 	a.exp = 95; a.cell = e.cell + Vector2i(0, 1); a.position = grid.cell_to_pos(a.cell); _focus(a.cell)
 	selected = a; moved = true; pending_target = e
 	await _on_confirm()

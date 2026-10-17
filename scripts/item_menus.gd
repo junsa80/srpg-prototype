@@ -35,6 +35,7 @@ static func weapon_btn(w: WeaponData, u = null, prefix = "", suffix = "", h = 92
 	var b = big("%s%s  %d/%d%s\n%s" % [prefix, w.name, w.uses, w.max_uses, suffix, ("× " + reason) if reason != "" else Weapons.effect_text(w) + ("  " + w.desc if w.desc != "" and w.desc.length() < 14 else "")], h, 22)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT; Icons.on_button(b, w)
 	if reason != "": b.add_theme_color_override("font_color", Color8(140, 130, 120))
+	elif Icons.tri_color(w).a > 0: b.add_theme_color_override("font_color", Icons.tri_text(w))   # 검 파랑 / 도끼 빨강 / 창 초록
 	b.set_meta("reason", reason)
 	return b
 

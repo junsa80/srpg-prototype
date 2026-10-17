@@ -6,7 +6,7 @@ const SHAPES = {
 	0: ["..............kk", ".............kmk", "............kmlk", "...........kmlk.", "..........kmlk..", ".........kmlk...",
 		"........kmlk....", ".......kmlk.....", "..kk..kmlk......", "..kgkkmlk.......", "...kggmk........", "....kgk.........",
 		"...khkgk........", "..khk.kgk.......", ".khk...kk.......", ".kk.............", ],
-	1: ["............kkkk", "...........kllmk", "...........klmk.", "..........kmmkk.", ".........khkk...", "........khk.....",
+	1: ["...........kkkkk", "..........klllmk", "..........kllmk.", ".........kmmmkk.", "........kgkkk...", "........khk.....",
 		".......khk......", "......khk.......", ".....khk........", "....khk.........", "...khk..........", "..khk...........",
 		".khk............", "khk.............", "kk..............", "................"],
 	2: ["................", ".....kkkk.......", "....kmmllk......", "...kmmmlllk.....", "...kmmmllkhk....", "...kmmmlkhk.....",
@@ -40,6 +40,15 @@ const TINTS = {  # [metal, light]
 	"boss": [Color8(110, 40, 140), Color8(210, 130, 255)], "bow": [Color8(170, 120, 60), Color8(230, 190, 120)],
 }
 static var _cache = {}
+## Weapon triangle colour code (Pokemon-style): 검 BLUE > 도끼 RED > 창 GREEN > 검. Display only — math is WeaponData.triangle().
+const TRI = {0: Color8(56, 120, 248), 2: Color8(232, 56, 48), 1: Color8(40, 184, 80)}   # Type.SWORD / AXE / LANCE
+const TRI_NAME = {0: "파랑", 2: "빨강", 1: "초록"}
+static func tri_color(w) -> Color:
+	if w == null or w.is_item(): return Color(0, 0, 0, 0)
+	return TRI.get(int(w.type), Color(0, 0, 0, 0))
+## Brighter variant for text on dark panels.
+static func tri_text(w, fallback = Color8(240, 228, 160)) -> Color:
+	var c = tri_color(w); return c.lightened(0.35) if c.a > 0 else fallback
 
 static func tint_for(w: WeaponData) -> String:
 	var n = w.name
@@ -71,6 +80,13 @@ static func make(t: int, tint: String) -> Texture2D:
 		"p": Color8(240, 228, 196), "r": Color8(200, 40, 40), "s": tc[1]}
 	if t == 3: pal["m"] = Color8(230, 230, 230); pal["h"] = tc[0] if tint != "iron" else Color8(150, 100, 50)  # bowstring white, limb tinted
 	if t == 5: pal["s"] = tc[0]
+	if TRI.has(t):   # coloured rounded tile behind sword/lance/axe so the triangle reads at a glance
+		var bgc: Color = TRI[t].darkened(0.15); var edge: Color = TRI[t].lightened(0.25)
+		for y in 16:
+			for x in 16:
+				var corner = (x in [0, 15] and y in [0, 1, 14, 15]) or (y in [0, 15] and x in [0, 1, 14, 15])
+				if corner: continue
+				img.set_pixel(x, y, edge if (x in [0, 15] or y in [0, 15]) else bgc)
 	var rows: Array = SHAPES.get(t, SHAPES[0])
 	for y in 16:
 		for x in 16:

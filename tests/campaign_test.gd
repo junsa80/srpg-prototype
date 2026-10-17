@@ -261,7 +261,12 @@ func _ready() -> void:
 	b._fill_forecast(BattleManager.forecast(ar, axe), ar, axe)
 	await get_tree().process_frame
 	var tris = b.fc_panel.find_children("Tri", "Label", true, false)
-	check(tris.size() == 2 and tris.any(func(l): return l.text == "▲") and tris.any(func(l): return l.text == "▼"), "forecast shows ▲/▼ triangle arrows")
+	check(tris.size() == 2 and tris.any(func(l): return l.text.begins_with("▲")) and tris.any(func(l): return l.text.begins_with("▼")), "forecast shows ▲/▼ triangle arrows")
+	# colour code: 검 파랑 > 도끼 빨강 > 창 초록 > 검 (display only; math stays WeaponData.triangle)
+	var ws = Weapons.make("철검"); var wa = Weapons.make("철도끼"); var wl = Weapons.make("철창")
+	check(Icons.tri_color(ws).b > Icons.tri_color(ws).r and Icons.tri_color(wa).r > Icons.tri_color(wa).g and Icons.tri_color(wl).g > Icons.tri_color(wl).r, "triangle colours blue/red/green")
+	check(WeaponData.triangle(ws.type, wa.type) == 1 and WeaponData.triangle(wa.type, wl.type) == 1 and WeaponData.triangle(wl.type, ws.type) == 1, "blue>red>green>blue matches the math")
+	check(Icons.tri_color(Weapons.make("철활")).a == 0 and Icons.tri_color(Weapons.make("상처약")).a == 0, "bow/item: no triangle colour")
 	var tc = Menus.triangle_chart(b.ui); await get_tree().process_frame
 	check(tc.name == "TriChart", "상성표 screen opens"); tc.queue_free()
 	b.queue_free(); await get_tree().process_frame

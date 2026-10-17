@@ -79,6 +79,15 @@ UNITS = {
     "리엘": (C(120, 200, 176), "pony", None, "비룡기사", ["드래곤마스터"]),
 }
 
+# Portrait-matched palette (tools/portrait_palette.py): hair + outfit sampled from assets/portraits/<name>.png
+import json as _json
+_PAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "portrait_palette.json")
+if os.path.exists(_PAL):
+    for _n, _p in _json.load(open(_PAL)).items():
+        if _n in UNITS:
+            _h, _st, _acc, _b, _pr = UNITS[_n]
+            UNITS[_n] = (C(*_p["hair"]) if _p.get("hair") else _h, _st, C(*_p["outfit"]) if _p.get("outfit") else _acc, _b, _pr)
+
 def head(s, cx, cy, hair, style, eyes, skin, f, extras):
     r = 7
     s.ell(cx, cy, r, r - 1, skin)                                   # face
@@ -224,7 +233,7 @@ if __name__ == "__main__":
               "아머나이트": ["제네럴", "그레이트나이트"], "소셜나이트": ["팔라딘", "그레이트나이트"], "비룡기사": ["드래곤마스터", "드래곤나이트"],
               "도적": ["어쌔신", "로그"], "전사": ["워리어", "버서커"]}
         for c in [base] + list(dict.fromkeys(promos + BR.get(base, []))):
-            cloth = acc if c == base and acc else None
+            cloth = acc   # portrait outfit colour on every class sheet (class silhouette/capes/armour stay), so the unit stays recognisable after promotion
             im = class_sheet(c, hair, style, cloth); im.save("assets/units/%s@%s.png" % (n, c))
             if c == base: prev.append((n, im))
     for n in ENEMY: enemy_sheet(n).save("assets/units/%s.png" % n)
