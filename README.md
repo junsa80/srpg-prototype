@@ -1,7 +1,8 @@
 # SRPG 프로토타입 (Godot 4.3, GDScript)
 
 - 인수인계: [HANDOFF.md](HANDOFF.md) · 스토리 요약: [STORY.md](STORY.md) (스포일러 주의) · 변경 이력: [CHANGELOG.md](CHANGELOG.md)
-- 플레이: https://junsa80.github.io/srpg-prototype/
+- 플레이: https://junsa80.github.io/srpg-prototype/ — **본편 1~27장 + 종장 완결, 엔딩 3종**
+- 실기기 확인 목록: [DEVICE_CHECKLIST.md](DEVICE_CHECKLIST.md)
 
 고전 파이어엠블렘 스타일 사각 그리드 전술 RPG 뼈대입니다. **휴대폰 세로 화면(720x1280, stretch canvas_items/expand), 터치 전용 조작** 기준입니다.
 
@@ -33,9 +34,9 @@
 | `scripts/enemy_ai.gd` | 도달 가능한 최적 대상 공격(킬 우선), 없으면 접근. `plan()`이 의도 반환 |
 | `scripts/grid.gd` | 사각 그리드, AStarGrid2D 경로, BFS 이동 범위, 공격 범위 |
 | `scripts/save_manager.gd` | 오토로드. 슬롯 3개, 버전 JSON(시각·챕터·턴), 임시파일→rename, 클라우드 동기화 TODO 스텁 |
-| `scripts/dialogue_box.gd` | 초상화 없는 대화창 |
-| `chapters/chapter_data.gd` | 세계관, 파티 8인, 1~3장 대사 (2·3장은 스텁) |
-| `scenes/test_chapter.tscn` | 1장 마을 방어 (아린·노아·리나·세라·엘리아 vs 그림자 병사 4) |
+| `scripts/dialogue_box.gd` | 대화창 (초상화 `assets/portraits/<이름>.png`) |
+| `chapters/chapter_data.gd` | 전 장 대사 (프롤로그, 장별 pre/boss/post, 턴 이벤트, 야영, 대화 영입, 지원, 엔딩 3종) |
+| `data/maps.gd` | 전 장 맵·적 배치·증원·사이드 목표 (ch1~ch27, final) |
 | `ASSETS.md` | 픽셀아트/초상화/타일/보스 생성 프롬프트 |
 
 ## 세이브

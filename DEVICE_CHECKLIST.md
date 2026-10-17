@@ -1,0 +1,25 @@
+# 실기기(휴대폰) 확인 목록
+
+플레이: https://junsa80.github.io/srpg-prototype/ — 세로 화면, 터치만 사용. 확인 후 ✅/❌와 기종·브라우저를 적어 주세요.
+"자동 테스트"는 헤드리스 Godot에서 로직만 검증한 것입니다. 실제 터치·화면 크기·브라우저 동작은 검증하지 못합니다.
+
+| # | 항목 | 폰에서 확인할 것 | 자동 테스트가 보장하는 것 | 결과 |
+|---|---|---|---|---|
+| 1 | 교환 | 인접 아군 [교환] → 아이템 탭으로 주고받기, 교환 후에도 행동 가능 | `flow_test`(거점 교환), `campaign_test` UI pass(전투 교환·행동 유지) | |
+| 2 | 드롭 팝업 | 적 격파 후 획득 팝업이 뜨고 탭으로 닫힘, 소지품 가득 시 수송대/버리기/교체 버튼이 잘 눌림 | `campaign_test`: 가득 찬 소지품 → 수송대 + 팝업 대기열, 대기열 비우기 | |
+| 3 | 확대/축소 | 두 손가락 핀치, ＋/－ 버튼, 확대 상태에서 탭한 칸이 정확한지, 한 손 드래그가 탭으로 오인되지 않는지 | `campaign_test`: 배율 단계·최대 2배 제한·모든 배율에서 탭 좌표 변환·설정 저장. 핀치/드래그 제스처 자체는 미검증 | |
+| 4 | 백그라운드 오디오 | 홈으로 나가거나 탭 전환 시 BGM/효과음 멈춤, 돌아오면 재개 (iOS Safari·안드로이드 Chrome) | 없음 (`scripts/audio.gd` 알림/웹 visibility 처리 — 실기기 전용) | |
+| 5 | 전투 예측 창 | "명중 시 HP" 표시와 불확실성 안내, 창이 작은 화면에서 유닛을 가리지 않는지 | `qol_test`: forecast 플래그·안내 문구·"명중 시 HP" 라벨. 배치·가림은 미검증 | |
+| 6 | 노치/둥근 모서리 | 상단·하단 버튼이 노치·홈 바에 가리지 않는지 | 없음 (safe area 처리 코드 없음 — 문제 시 추가 필요) | |
+| 7 | 유닛 목록 정렬 | 미행동 / HP 위험 / 내구도 정렬 버튼이 누르기 쉬운지, 결과가 맞는지 | `qol_test`: sort-unacted / sort-hp / sort-uses | |
+| 8 | 저장 내보내기/가져오기 | 내보내기 → 클립보드 복사·txt 다운로드(iOS 제한 가능), 가져오기 칸 붙여넣기 시 가상 키보드 | `qol_test`: export / import / import-reject / 손상 감지·.bak·.tmp 복구, 클라우드 "미지원" 표기 | |
+| 9 | 자동 턴 종료 | 설정에서 끔 → 모든 유닛 행동 후에도 [턴 종료]까지 대기, 켬 → 자동 종료. 재접속 후 설정 유지 | `qol_test`: auto-off 동작. 설정 저장은 Settings 저장 경로 공용 | |
+| 10 | 위험 범위 | 적 전체 공격 가능 칸(보라 테두리)이 개별 적 범위(빨강)와 구분되는지, 밝은 화면에서 보이는지 | 없음 (그리기만 함 — 색 구분은 육안 확인) | |
+| 11 | 다음 유닛 | 이동 후 확정 안 한 상태에서 [다음] → 이동 취소 후 다음 유닛 선택 | `qol_test`: next-unit | |
+
+## 테스트 명령
+```bash
+G=/tmp/Godot_v4.3-stable_linux.x86_64
+for t in flow_test menu_test weapons_test campaign_test qol_test; do $G --headless res://tests/$t.tscn -- --flowtest; done
+$G --headless --script tests/selftest.gd; $G --headless --script tests/skills_test.gd; $G --headless --script tests/consistency_test.gd
+```
