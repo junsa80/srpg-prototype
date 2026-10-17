@@ -50,10 +50,15 @@ CLASS = {
     "비숍": ("robe", C(240, 240, 248), "staff", {"mitre": True, "trim": GOLD}),
     "전사": ("bare", C(168, 72, 40), "axe", {}), "워리어": ("bare", C(144, 56, 32), "axe", {"cape": C(96, 64, 40)}), "버서커": ("bare", C(176, 40, 40), "axe", {}),
 }
-ENEMY = {  # shadow enemies without user sheets
+ENEMY = {  # shadow enemy sheets (all generated here)
     "그림자 중갑병": ("plate", "lance", {"helm": True}), "그림자 기병": ("tunic", "lance", {"mount": "horse"}),
     "그림자 비룡": ("armor", "lance", {"mount": "wyvern", "helm": True}), "그림자 기사": ("plate", "lance", {"mount": "horse", "helm": True}),
     "그림자 비룡기사": ("armor", "lance", {"mount": "wyvern", "helm": True}),
+    # 2026-10-17 통일: 예전 사용자 그림 시트(실루엣+붉은 외곽선)를 같은 파이프라인으로 교체. 원본은 assets/user_art/sliced/*_old_sheet.png
+    "그림자 병사": ("armor", "sword", {}), "그림자 창병": ("armor", "lance", {"helm": True}),
+    "그림자 궁병": ("tunic", "bow", {"hood": C(40, 24, 56)}), "그림자 술사": ("robe", "tome", {"hood": C(40, 24, 56)}),
+    "그림자 지휘관": ("plate", "axe_sword", {"helm": True, "cape": C(144, 32, 48), "plume": GOLD}),
+    "바르가스": ("plate", "axe", {"cape": C(96, 24, 32)}),   # 3장 보스 전용 클래스 (예전엔 Kenney 타일 대체)
 }
 # unit -> hair colour, style, accent(optional cloth override), base class, promotions
 UNITS = {
