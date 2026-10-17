@@ -149,6 +149,9 @@ func _setup(a: Unit, d: Unit) -> void:
 		var other = d if u == a else a
 		var ow = other.weapon() if a.team != d.team else null
 		var tv = WeaponData.triangle(w.type, ow.type) if (w and ow and not w.is_item() and not ow.is_item()) else 0
+		if a.team != d.team and w and not w.is_item() and BattleManager.is_effective(u, other):   # 특효 banner (real multiplier)
+			var ef = _lbl("특효! ×%d" % BattleManager.EFF_MULT, 28, Color8(255, 72, 64)); ef.name = "Eff"
+			plate.add_child(ef); ef.position = Vector2(pw - 200, 52)
 		if tv != 0:   # big triangle arrow on the plate: ▲ advantage (gold) / ▼ disadvantage (grey)
 			var ta = _lbl("▲" if tv > 0 else "▼", 56, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"
 			plate.add_child(ta); ta.position = Vector2(pw - 64, 10)

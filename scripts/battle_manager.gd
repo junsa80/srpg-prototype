@@ -32,6 +32,9 @@ static func bonus(a: Unit) -> Dictionary:
 	return {"might": rb[0] + p.get("might", 0), "hit": rb[1] + p.get("hit", 0), "crit": rb[2] + p.get("crit", 0),
 		"rank": a.rank_letter(w.type) if a.team == 0 else ""}
 
+## Effective (특효) weapons multiply weapon might by this (also shown in forecast / combat plates / 상성표).
+const EFF_MULT = 3
+
 static func is_effective(a: Unit, d: Unit) -> bool:
 	var w = a.weapon()
 	if w == null or w.effective.is_empty(): return false
@@ -56,7 +59,7 @@ static func crit_rate(a: Unit, d: Unit) -> int:
 static func damage(a: Unit, d: Unit, initiator = true, strike_no = 1) -> int:
 	var w = a.weapon()
 	if w == null: return 0
-	var power = (a.eff("mag") if w.magic else a.eff("str")) + w.might * (3 if is_effective(a, d) else 1) + bonus(a).might
+	var power = (a.eff("mag") if w.magic else a.eff("str")) + w.might * (EFF_MULT if is_effective(a, d) else 1) + bonus(a).might
 	var base = power + tri(a, d) * TRIANGLE_DMG - Skills.defense_vs(a, d, w.magic)
 	return maxi(0, maxi(0, base) + Skills.dmg_mod(a, d, w.magic, initiator, strike_no))
 

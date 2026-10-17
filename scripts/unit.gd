@@ -204,6 +204,23 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary) -> void:
 	cell = Vector2i(d.cell[0], d.cell[1]); level = d.level; exp = d.exp; hp = d.hp; stats = d.stats; has_acted = d.acted; move_bonus = d.get("move_bonus", 0)
 
+var threat_mark = false   # red pulsing "!" : this enemy's 특효 weapon can reach the selected ally (set by battle)
+
+## Tags this unit's usable weapons are effective against (map badge), e.g. ["flying"] for any bow user.
+func eff_weapon_tags() -> Array:
+	var out = []
+	for w in usable_weapons():
+		for t in w.effective: if not t in out: out.append(t)
+	return out
+
+## Small target-type glyph for the 특효 badge: wing (flying) / shield (armor) / horseshoe (cavalry).
+func _eff_glyph(c: Vector2, tag: String, col: Color) -> void:
+	match tag:
+		"flying": draw_colored_polygon(PackedVector2Array([c + Vector2(-7, -4), c + Vector2(0, 2), c + Vector2(7, -4), c + Vector2(5, 3), c + Vector2(0, 6), c + Vector2(-5, 3)]), col)
+		"armor": draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -6), c + Vector2(6, -6), c + Vector2(6, 0), c + Vector2(0, 7), c + Vector2(-6, 0)]), col)
+		"cavalry": draw_arc(c + Vector2(0, 1), 5, PI * 0.75, PI * 2.25, 12, col, 3.0)
+		_: draw_circle(c, 4, col)
+
 static var anim_frame = 0   # global idle frame (0,1,2) advanced by battle scene
 
 func _draw() -> void:
@@ -233,6 +250,16 @@ func _draw() -> void:
 		if bw:
 			draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(16, 16, 24, 220)); draw_rect(Rect2(-sz / 2.0 - 2, sz / 2.0 - 24, 24, 24), Color8(248, 216, 112), false, 1.5)
 			draw_texture_rect(Icons.of(bw), Rect2(-sz / 2.0, sz / 2.0 - 22, 20, 20), false)
+	var et = eff_weapon_tags()   # 특효 badge(s) right of the weapon badge: dark red chip + target-type glyph
+	for i in et.size():
+		var r = Rect2(-sz / 2.0 + 23 + i * 19, sz / 2.0 - 22, 18, 18)
+		draw_rect(r, Color8(120, 16, 24, 230)); draw_rect(r, Color8(255, 96, 80), false, 1.5)
+		_eff_glyph(r.get_center(), et[i], Color8(255, 236, 200))
+	if threat_mark:   # pulsing red "!" above the head
+		var p = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 130.0)
+		var hc = Vector2(0, -px / 2 - 16)
+		draw_circle(hc, 13 + 3 * p, Color(1, 0.1, 0.1, 0.35 + 0.35 * p)); draw_circle(hc, 11, Color8(220, 24, 24)); draw_arc(hc, 11, 0, TAU, 20, Color.WHITE, 2.0)
+		draw_string(FONT, hc + Vector2(-11, 7), "!", HORIZONTAL_ALIGNMENT_CENTER, 22, 20, Color.WHITE)
 	if boss: draw_string(FONT, Vector2(-sz / 2.0, -sz / 2.0 + 12), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color8(255, 80, 80))
 	if poison > 0: draw_circle(Vector2(-sz / 2.0 + 8, -sz / 2.0 + 8), 7, Color(0.6, 0.1, 0.8))
 	if awakened:

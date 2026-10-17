@@ -94,6 +94,24 @@ const RANKS = ["E", "D", "C", "B", "A", "S"]
 const TYPE_NAMES = {0: "검", 1: "창", 2: "도끼", 3: "활", 4: "마법", 5: "지팡이", 6: "아이템"}
 const TAG_NAMES = {"armor": "중갑", "cavalry": "기마", "flying": "비행"}
 
+## Effectiveness display helpers (display only; the multiplier lives in BattleManager.EFF_MULT).
+static func tag_list(tags: Array) -> String: return "/".join(tags.map(func(t): return TAG_NAMES.get(t, t)))
+static func eff_label(w: WeaponData) -> String: return ("특효: " + tag_list(w.effective)) if w and not w.effective.is_empty() else ""
+## Weapons effective against a unit tag, bows collapsed to "활" (all bows hit fliers), e.g. armor -> [아머킬러, 해머, ...].
+static func weak_names(tag: String) -> Array:
+	var out = []; var bow = false
+	for n in TRAITS:
+		if not tag in TRAITS[n].get("eff", []): continue
+		if LIST.has(n) and LIST[n][0] == T.BOW: bow = true
+		else: out.append(n)
+	if bow: out.push_front("활")
+	return out
+static func weak_text(tags: Array) -> String:
+	var out = []
+	for t in tags:
+		for n in weak_names(t): if not n in out: out.append(n)
+	return "·".join(out)
+
 ## Class loadouts (base and promoted).
 const LOADOUT = {
 	"용병": ["철검", "상처약"], "도적": ["철단검", "상처약"], "아머나이트": ["철창", "상처약"], "소셜나이트": ["철검", "철창"], "비룡기사": ["철창", "철도끼"], "드래곤마스터": ["철창", "철도끼"], "영웅": ["철검", "철도끼"], "검성": ["철검"], "스나이퍼": ["철활"], "그레이트나이트": ["철창", "철도끼"], "레인저": ["철활", "철검"], "메이지나이트": ["파이어", "힐"], "로그": ["철단검"], "드래곤나이트": ["철창", "철검"], "궁수": ["철활", "상처약"], "마법사": ["파이어", "상처약"], "전사": ["철도끼", "상처약"], "워리어": ["철도끼"], "버서커": ["철도끼"], "시스터": ["힐", "철단검"], "성기사": ["철검", "철창", "힐"], "비숍": ["라이트", "힐"], "어쌔신": ["철단검"],

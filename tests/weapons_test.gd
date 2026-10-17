@@ -51,6 +51,14 @@ func _ready() -> void:
 	# bows vs flying
 	var rina = mk("리나", 0, "철활", Vector2i(0, 0)); var fly = mk("그림자 비룡", 1, "철창", Vector2i(0, 2))
 	chk("bow effective vs flying", BattleManager.is_effective(rina, fly))
+	# 특효 display helpers (multiplier constant the formula uses)
+	chk("EFF_MULT = 3", BattleManager.EFF_MULT == 3)
+	chk("eff_label 철활", Weapons.eff_label(Weapons.make("철활")) == "특효: 비행" and Weapons.eff_label(Weapons.make("철검")) == "")
+	chk("weak flying = 활 (%s)" % Weapons.weak_text(["flying"]), Weapons.weak_text(["flying"]) == "활")
+	var wa = Weapons.weak_names("armor"); var wc = Weapons.weak_names("cavalry")
+	chk("weak armor (%s)" % str(wa), "아머킬러" in wa and "해머" in wa and "볼트" in wa and "레이피어" in wa and "파멸의 도끼" in wa and not "활" in wa)
+	chk("weak cavalry (%s)" % str(wc), "호스슬레이어" in wc and "레이피어" in wc and "그림자 창 우르" in wc)
+	chk("rina badge = flying", rina.eff_weapon_tags() == ["flying"] and fly.eff_weapon_tags().is_empty())
 	# physio range
 	chk("피지오 range 1-4", Weapons.make("피지오").max_range == 4)
 	# proficiency: 성기사 staff heal +2

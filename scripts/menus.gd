@@ -281,7 +281,7 @@ static func _hp_col(u: Unit) -> Color:
 static func rebirth_select(parent: Node, on_done: Callable) -> CanvasLayer: return RebirthUI.open(parent, on_done)
 
 ## [중갑] [기마] [비행] labels + what is effective against each.
-const WEAK = {"armor": "아머킬러·해머·볼트", "cavalry": "호스슬레이어·레이피어", "flying": "활"}
+## (약점 문구는 Weapons.weak_text — 무기 데이터에서 생성)
 static func tag_text(u: Unit) -> String: return " ".join(u.tags().map(func(t): return "[%s]" % Weapons.TAG_NAMES.get(t, t)))
 
 static func status_text(u: Unit, short = false) -> String:
@@ -340,7 +340,7 @@ static func _fill_status(ctx: Dictionary) -> void:
 	var hl = ItemMenus.label("HP %d / %d" % [u.hp, u.stats.hp], 26); hl.autowrap_mode = TextServer.AUTOWRAP_OFF; hl.custom_minimum_size.x = 230; hp.add_child(hl)
 	hp.add_child(bar(u.hp, u.stats.hp, 150, 14, _hp_col(u)))
 	info.add_child(ItemMenus.label("이동 %d    무기: %s" % [u.move_range(), _wtypes(u)], 24))
-	if not u.tags().is_empty(): info.add_child(ItemMenus.label(tag_text(u) + "  약점: " + "·".join(u.tags().map(func(t): return WEAK.get(t, ""))), 22, Color8(255, 150, 150)))
+	if not u.tags().is_empty(): info.add_child(ItemMenus.label(tag_text(u) + "  약점: " + Weapons.weak_text(u.tags()), 22, Color8(255, 150, 150)))
 	# stats
 	var sp = PanelContainer.new(); sp.add_theme_stylebox_override("panel", Ornate.frame(Color8(26, 22, 44))); body.add_child(sp)
 	var g = GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); g.add_theme_constant_override("v_separation", 8); sp.add_child(g)
@@ -377,7 +377,7 @@ static func _fill_status(ctx: Dictionary) -> void:
 		var eq = w == u.weapon() or (u.weapon() == null and w == u.staff())
 		var ok = u.can_use(w)
 		r.add_child(ItemMenus.label("▶" if eq else " ", 22, GOLD)); r.add_child(Icons.rect(w, 40))
-		var wl = ItemMenus.label("%s  위력%d 명중%d 치명%d 무게%d\n%s" % [w.name, w.might, w.hit, w.crit, w.weight, w.desc if ok else "× " + u.block_reason(w)], 20, TXT if ok else DIM)
+		var wl = ItemMenus.label("%s  위력%d 명중%d 치명%d 무게%d%s\n%s" % [w.name, w.might, w.hit, w.crit, w.weight, ("  " + Weapons.eff_label(w)) if not w.effective.is_empty() else "", w.desc if ok else "× " + u.block_reason(w)], 20, TXT if ok else DIM)
 		wl.size_flags_horizontal = Control.SIZE_EXPAND_FILL; wl.autowrap_mode = TextServer.AUTOWRAP_OFF; r.add_child(wl)
 		var ul = ItemMenus.label("%d/%d" % [w.uses, w.max_uses], 22, TXT); ul.custom_minimum_size.x = 76; ul.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; r.add_child(ul)
 		r.add_child(bar(w.uses, w.max_uses, 70, 12, Color8(200, 176, 120)))
@@ -407,8 +407,9 @@ static func triangle_chart(parent: Node) -> CanvasLayer:
 		var l2 = ItemMenus.label("%s(%s)" % [Weapons.TYPE_NAMES[r[1]], Icons.TRI_NAME[r[1]]], 28, Icons.tri_text(w1)); l2.autowrap_mode = TextServer.AUTOWRAP_OFF; h.add_child(l2)
 	list.add_child(ItemMenus.label("색으로 기억하기: 파랑(검) > 빨강(도끼) > 초록(창) > 파랑(검)", 26, Color8(255, 224, 64)))
 	list.add_child(ItemMenus.label("반대 방향은 ▼ 불리 (명중 -15, 위력 -1).\n활·마법·지팡이는 상성 없음.\n예측 창의 무기 이름 옆 ▲/▼ 로 표시됩니다.", 24))
-	list.add_child(ItemMenus.label("\n특효 (위력 ×3)", 28, Color8(248, 216, 112)))
-	list.add_child(ItemMenus.label("활 → 비행 (비룡)\n아머킬러·해머·볼트 → 중갑\n호스슬레이어 → 기마\n킬러보우 → 비행\n파멸의 도끼 → 중갑·기마\n그림자 창 우르 → 기마", 24))
+	list.add_child(ItemMenus.label("\n특효 (무기 위력 ×%d)" % BattleManager.EFF_MULT, 28, Color8(248, 216, 112)))
+	list.add_child(ItemMenus.label("\n".join(["flying", "armor", "cavalry"].map(func(t): return "%s ← %s" % [Weapons.TAG_NAMES[t], Weapons.weak_text([t])])), 24))
+	list.add_child(ItemMenus.label("맵: 무기 칸 옆 붉은 칩 = 특효 무기 소지 (날개=비행, 방패=중갑, 말굽=기마).\n아군을 탭하면 그 아군에게 특효로 닿는 적 머리 위에 빨간 '!'가 깜빡입니다.\n예측 창·전투 화면에 '특효! ×%d'가 크게 표시됩니다." % BattleManager.EFF_MULT, 22, Color8(255, 170, 160)))
 	list.add_child(ItemMenus.label("\n마법 vs 물리", 28, Color8(248, 216, 112)))
 	list.add_child(ItemMenus.label("마법·마법검은 상대의 마방으로, 물리는 수비로 계산.\n경량 무기는 무게로 공속이 떨어지지 않음, 중량 무기는 위력↑ 공속↓.", 24))
 	close_btn(v, cl)

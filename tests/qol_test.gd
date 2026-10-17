@@ -130,6 +130,33 @@ func _ready() -> void:
 	var keep_fast = Settings.anim_fast; Settings.anim_fast = true; Settings.save()
 	chk(FileAccess.get_file_as_string(Settings.PATH).contains("\"anim_fast\":true"), "anim-fast-saved")
 	Settings.anim_fast = keep_fast; Settings.save()
+	# 특효 display: map badge tags, threat "!" on enemies whose effective weapon reaches the tapped ally, weakness line, forecast/plate banner
+	b._clear()
+	var e3: Unit = foes[0]; var kc = Vector2i(-1, -1)
+	for dv in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		if b.grid.in_bounds(e3.cell + dv) and b._unit_at(e3.cell + dv) == null: kc = e3.cell + dv; break
+	var kael = Roster.make_unit("카엘", 0, kc); b._place(kael)
+	e3.inventory.push_front(Weapons.make("아머킬러"))
+	chk("armor" in e3.eff_weapon_tags() and not "armor" in kael.eff_weapon_tags(), "eff-badge-tags")
+	var th = b.eff_threats(kael); chk(th.size() >= 1 and th.any(func(p): return p[0] == e3), "eff-threat")
+	b._show_info(kael); print("eff info: ", b.info.text.replace("\n", " | "))
+	chk(e3.threat_mark and b.info.text.contains("특효 위협") and b.info.text.contains("약점: ") and b.info.text.contains("아머킬러"), "eff-mark+weak")
+	chk(not b.units.any(func(u): return u.threat_mark and u.team == 0), "eff-mark-enemies-only")
+	b._show_enemy(e3); chk(not e3.threat_mark and b.info.text.contains("특효: 중갑"), "eff-enemy-info+unmark")
+	b._show_info(kael); b._clear(); chk(not e3.threat_mark, "eff-clear-unmark")
+	var fe = BattleManager.forecast(e3, kael); chk(fe.atk_eff, "eff-forecast-flag")
+	b._fill_forecast(fe, e3, kael); await get_tree().process_frame
+	var effl = b.fc_panel.find_child("Eff", true, false)
+	chk(effl != null and effl.text == "특효! ×%d" % BattleManager.EFF_MULT, "eff-forecast-banner")
+	b.fc_panel.visible = false
+	var cs3 = CombatScene.new(); add_child(cs3); BattleManager.pre_fc = fe
+	var fin3 = [0]; cs3.done.connect(func(): fin3[0] += 1)
+	cs3.play(e3, kael, [{"type": "strike", "x": e3, "y": kael, "hit": false, "crit": false, "dmg": 0, "w": e3.weapon(), "x_hp": e3.hp, "y_hp": kael.hp}], [], {e3: e3.hp, kael: kael.hp}); cs3._set_speed(12.0)
+	await get_tree().process_frame
+	var pe = cs3.find_child("Eff", true, false); chk(pe != null and pe.text.contains("×%d" % BattleManager.EFF_MULT), "eff-plate-banner")
+	t_end = Time.get_ticks_msec() + 10000
+	while fin3[0] < 1 and Time.get_ticks_msec() < t_end: await get_tree().process_frame
+	cs3.queue_free(); e3.inventory.pop_front(); b.units.erase(kael); kael.queue_free()
 	# no UI claims cloud save
 	for fn in ["res://scripts/menus.gd", "res://scripts/title.gd", "res://scripts/base.gd"]:
 		var src = FileAccess.get_file_as_string(fn)

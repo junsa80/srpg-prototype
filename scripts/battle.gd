@@ -99,8 +99,8 @@ func _ready() -> void:
 			if Roster.UNITS[n][1] == CHAPTER and Roster.UNITS[n][2] != "" and CHAPTER != "ch1": lines.append([n, Roster.UNITS[n][2]])
 		if CHAPTER == "ch1" and Campaign.cycle == 0 and resume.is_empty(): lines.append_array(ChapterData.PROLOGUE)
 		lines.append_array(ch.pre)   # 보스 대사는 첫 교전 때 (_boss_talk)
-		if not "nodialog" in demo and not "combat" in demo: await dialogue.play(lines)
-		if not "combat" in demo:
+		if not "nodialog" in demo and not "combat" in demo and not "effdemo" in demo: await dialogue.play(lines)
+		if not "combat" in demo and not "effdemo" in demo:
 			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
 	SaveManager.autosave(CHAPTER, 0, payload())  # chapter start (after preparation)
 	if "devwin" in demo:   # dev: screenshot the clear/rank/branch screens
@@ -115,6 +115,7 @@ func _ready() -> void:
 	if "combatfx" in demo: _demo_fx.call_deferred()
 	elif "combat" in demo: _demo_combat.call_deferred()
 	if "forecast" in demo: _demo_forecast.call_deferred()
+	if "effdemo" in demo: _demo_eff.call_deferred("effdemofc" in demo)
 	var rd = RegEx.create_from_string("recruit=([^+&]+)").search(demo)   # dev: #recruit=아린|카스 talk dialogue screenshot
 	if rd: dialogue.play.call_deferred(ChapterData.TALK.get("아린|" + rd.get_string(1).uri_decode(), ChapterData.CAMP.get(rd.get_string(1).uri_decode(), [])))
 	if "--gameover-demo" in OS.get_cmdline_user_args():
@@ -336,6 +337,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 ## Long-press (0.5 s) on any unit opens its status screen.
 func _process(_dt: float) -> void:
+	for u in units: if u.threat_mark: u.queue_redraw()   # smooth pulse
 	if pressed and not dragging and Time.get_ticks_msec() - press_ms > 500:
 		pressed = false
 		var u = _unit_at(grid.pos_to_cell(get_canvas_transform().affine_inverse() * press_pos))
@@ -530,14 +532,18 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 		var col = PanelContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		col.add_theme_stylebox_override("panel", Ornate.frame(Color8(30, 34, 70) if u.team == 0 else Color8(70, 26, 34), sd[10], 3)); h.add_child(col)
 		var v = VBoxContainer.new(); col.add_child(v); v.add_theme_constant_override("separation", 2)
-		var nm = ItemMenus.label(u.data.name, 26, sd[10]); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(nm)
+		var nr = HBoxContainer.new(); nr.add_theme_constant_override("separation", 10); v.add_child(nr)
+		var nm = ItemMenus.label(u.data.name, 26, sd[10]); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; nr.add_child(nm)
+		if sd[8] and sd[4] >= 0:   # big 특효 banner with the multiplier the formula really uses
+			var el = ItemMenus.label("특효! ×%d" % BattleManager.EFF_MULT, 30, Color8(255, 72, 64)); el.name = "Eff"; el.autowrap_mode = TextServer.AUTOWRAP_OFF
+			el.add_theme_color_override("font_outline_color", Color8(16, 8, 8)); el.add_theme_constant_override("outline_size", 6); nr.add_child(el)
 		var wr = HBoxContainer.new(); v.add_child(wr); wr.add_child(Icons.rect(w, 32))
 		var wl = ItemMenus.label(("%s%s" % [w.name, (" [%s]" % sd[9].rank) if sd[9].rank != "" else ""]) if w else "-", 22, Icons.tri_text(w, Color8(248, 240, 224))); wl.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(wl)
 		var tv = tri_of.get(u, 0)
 		if tv != 0 and w:   # weapon triangle: big ▲ 유리 (gold) / ▼ 불리 (grey) — colours kept apart from the blue/red/green type code
 			var ta = ItemMenus.label(("▲유리" if tv > 0 else "▼불리"), 30, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"; ta.autowrap_mode = TextServer.AUTOWRAP_OFF; wr.add_child(ta)
 		var dm = "-" if sd[4] < 0 else (str(sd[4]) + (" ×%d" % sd[5] if sd[5] > 1 else ""))
-		var t = "명중 시 HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "  특효!" if sd[8] else "",
+		var t = "명중 시 HP %d → %d\n위력 %s%s\n명중 %s  치명 %s" % [sd[2], sd[3], dm, "",
 			"-" if sd[6] < 0 else "%d%%" % sd[6], "-" if sd[7] < 0 else "%d%%" % sd[7]]
 		var l = ItemMenus.label(t, 22); l.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(l)
 		var b = sd[9]
@@ -556,7 +562,7 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 				var dr = HBoxContainer.new(); dr.name = "Drop"; v.add_child(dr); dr.add_child(Icons.rect(dd[0], 24))
 				var dl = ItemMenus.label("드롭 %s %s" % [dd[0].name, dd[1]], 18, Color8(255, 216, 32)); dl.autowrap_mode = TextServer.AUTOWRAP_OFF; dr.add_child(dl)
 				for c in dr.get_children(): c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for c in v.get_children() + wr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for c in v.get_children() + wr.get_children() + nr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var note = ItemMenus.label(forecast_note(f), 17, Color8(200, 200, 220)); note.name = "FcNote"; note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fc_panel.add_child(note); note.position = Vector2(14, 296); note.size = Vector2(672, 40)
 	fc_panel.visible = true
@@ -596,6 +602,8 @@ func _move_selected(c: Vector2i) -> void:
 	btn_confirm.disabled = false; btn_open.disabled = act.is_empty()
 	_update_item_btn(selected)
 	if not trade_partners(selected).is_empty(): info.text += "\n[아이템]=교환 가능"
+	var th = mark_threats(selected)
+	if not th.is_empty(): info.text += _threat_text(selected, th).replace("\n%s 약점: %s" % [Menus.tag_text(selected), Weapons.weak_text(selected.tags())], "")
 	busy = false
 
 func _slide(u: Unit, path: Array) -> void:
@@ -606,7 +614,37 @@ func _slide(u: Unit, path: Array) -> void:
 	await tw.finished
 
 func _items_text(u: Unit) -> String:
-	return ", ".join(u.inventory.map(func(w): return "%s%s %d/%d" % ["▶" if w == u.weapon() else "", w.name, w.uses, w.max_uses]))
+	return ", ".join(u.inventory.map(func(w): return "%s%s %d/%d%s" % ["▶" if w == u.weapon() else "", w.name, w.uses, w.max_uses, (" (%s)" % Weapons.eff_label(w)) if not w.effective.is_empty() else ""]))
+
+## Enemies whose usable 특효 weapon hits this ally's type and can reach its current cell: [[enemy, weapon], ...]. Display only.
+func eff_threats(ally: Unit) -> Array:
+	var out = []
+	var tg = ally.tags()
+	if tg.is_empty(): return out
+	for e in units:
+		if e.team != 1 or e.hp <= 0: continue
+		var ws = e.usable_weapons().filter(func(w): return w.effective.any(func(t): return t in tg))
+		if ws.is_empty(): continue
+		var o = _occ(e)
+		var mv = [e.cell] if e.boss else grid.movement_range(e.cell, e.move_range(), o[1], o[0], "flying" in e.tags())
+		for w in ws:
+			if ally.cell in grid.attack_range(mv, w.min_range, w.max_range): out.append([e, w]); break
+	return out
+
+## Red pulsing "!" on those enemies (ally == null clears all marks). Returns the threat list.
+func mark_threats(ally: Unit) -> Array:
+	var th = eff_threats(ally) if ally and ally.team == 0 else []
+	var hit = th.map(func(p): return p[0])
+	for u in units:
+		var m = u in hit
+		if u.threat_mark != m: u.threat_mark = m; u.queue_redraw()
+	return th
+
+func _threat_text(u: Unit, th: Array) -> String:
+	var s = ""
+	if u.team == 0 and not u.tags().is_empty(): s += "\n%s 약점: %s" % [Menus.tag_text(u), Weapons.weak_text(u.tags())]
+	if not th.is_empty(): s += "\n[!] 특효 위협(빨간 !): " + ", ".join(th.map(func(p): return "%s(%s)" % [p[0].data.name, p[1].name]))
+	return s
 
 func _skill_text(u: Unit) -> String:
 	var sk = Skills.LIST.get(u.data.name)
@@ -615,6 +653,7 @@ func _skill_text(u: Unit) -> String:
 func _show_info(u: Unit) -> void:
 	info.text = "%s Lv%d %s HP %d/%d EXP %d%s\n%s\n%s" % [u.data.name, u.level, u.unit_class.name, u.hp, u.stats.hp, u.exp,
 		"  [각성]" if u.awakened else "", _items_text(u), _skill_text(u)]
+	info.text += _threat_text(u, mark_threats(u))
 
 func _select(u: Unit) -> void:
 	selected = u; orig_cell = u.cell; moved = false; pending_target = null; pending_heal = null; pending_dest = Vector2i(-1, -1)
@@ -628,6 +667,7 @@ func _select(u: Unit) -> void:
 	_update_item_btn(u)
 
 func _show_enemy(u: Unit) -> void:
+	mark_threats(null)
 	var o = _occ(u)
 	grid.highlight_move = [u.cell] if u.boss else grid.movement_range(u.cell, u.move_range(), o[1], o[0], "flying" in u.tags())
 	var r = _ranges(u)
@@ -877,6 +917,7 @@ func _maybe_auto_end() -> void:
 func _clear(reset_text = true) -> void:
 	selected = null; pending_target = null; pending_heal = null; moved = false; pending_dest = Vector2i(-1, -1)
 	grid.highlight_move = []; grid.highlight_attack = []; grid.highlight_heal = []; grid.arrow = []; grid.queue_redraw()
+	if units.size(): mark_threats(null)
 	if fc_panel: fc_panel.visible = false
 	for b in [btn_confirm, btn_cancel, btn_weapon, btn_convoy, btn_open]: b.disabled = true
 	if reset_text: info.text = "유닛을 탭하세요 (드래그=화면 이동)"
@@ -1401,3 +1442,30 @@ func _demo_fx() -> void:
 	var evs = [{"type": "strike", "x": a, "y": e, "hit": false, "crit": false, "dmg": 0, "w": a.weapon(), "x_hp": a.hp, "y_hp": e.hp},
 		{"type": "strike", "x": a, "y": e, "hit": true, "crit": true, "dmg": dm, "w": a.weapon(), "x_hp": a.hp, "y_hp": e.hp - dm}]
 	combat.play(a, e, evs, [], {a: a.hp, e: e.hp})
+
+## Dev (#effdemo / #effdemofc): 특효 marks screenshot — an enemy with a weapon effective vs a tagged ally moves into reach,
+## the ally is tapped (red "!" + weakness line); fc = also open the forecast so the enemy's counter shows '특효! ×N'. Never saved.
+func _demo_eff(fc: bool) -> void:
+	await get_tree().create_timer(1.2).timeout
+	var allies = units.filter(func(u): return u.team == 0 and u.hp > 0)
+	var a: Unit = null
+	for u in allies: if not u.tags().is_empty() and a == null: a = u
+	if a == null and not allies.is_empty():   # no tagged ally deployed: drop in 카엘 (아머나이트) next to the first ally (dev only)
+		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+			var c = allies[0].cell + dv
+			if a == null and grid.in_bounds(c) and _unit_at(c) == null and not grid.walls.has(c): a = Roster.make_unit("카엘", 0, c); _place(a)
+	if a == null: return
+	var wn = {"armor": "아머킬러", "flying": "철활", "cavalry": "호스슬레이어"}[a.tags()[0]]
+	var foes = units.filter(func(u): return u.team == 1 and u.hp > 0 and not u.boss)
+	foes.sort_custom(func(x, y): return _dist(x.cell, a.cell) < _dist(y.cell, a.cell))
+	if foes.is_empty(): return
+	var e: Unit = foes[0]; e.inventory.push_front(Weapons.make(wn))
+	var near = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(2, 0), Vector2i(0, 2), Vector2i(1, 1), Vector2i(-1, 1)]
+	for dv in (near if fc else near.slice(4)):
+		var c = a.cell + dv
+		if grid.in_bounds(c) and _unit_at(c) == null and not grid.walls.has(c): e.cell = c; e.position = grid.cell_to_pos(c); break
+	_focus(a.cell)
+	if fc:
+		_select(a); moved = true; grid.highlight_move = []; tap(e.cell)
+	else:
+		tap(a.cell)

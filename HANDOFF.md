@@ -6,7 +6,7 @@
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `0c1bdc30e2908f60cb891d1b865866ff` (2026-10-17, 전투 장면 개선·동료 12명 초상화).
+- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `4375d38e2fee567ad6212415ee82e095` (2026-10-17, 특효 무기 표시).
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
@@ -31,7 +31,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 ```
 - `gh auth`는 사용자 계정(junsa80)으로 로그인된 상태여야 push/release 가능. **토큰을 커밋하지 말 것** (커밋 전 `rg -l "gh[op]_[A-Za-z0-9]{20}" .`).
 - `--script` 모드 테스트(selftest, skills_test)는 autoload(Campaign/Settings/Sfx/Menus)를 못 씀 → `unit.gd`, `battle_manager.gd`에서 autoload 참조 금지(정적 변수 사용, 예: `Unit.show_badge`).
-- 개발용 URL 해시: `#goto=chX`, `nodialog`, `mapview`, `devwin`(적 전멸·클리어 화면), `forecast`, `#base+ch2`.
+- 개발용 URL 해시: `#goto=chX`, `nodialog`, `mapview`, `devwin`(적 전멸·클리어 화면), `forecast`, `#base+ch2`, `#nodialog+effdemo`(특효 위협 표시)·`effdemofc`(+예측 창).
 
 ## 3. 저장소 구조
 | 경로 | 내용 |
@@ -58,6 +58,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 데미지 = (힘 또는 마력) + 위력×(특효면 3) + 보너스 + 상성×1 − 방어(또는 마방). 치명 = 무기치명 + 기술/2 + 보너스 − 행운, 치명 ×3.
 - 공속 = 속도 − max(0, 무게 − 힘). 공속 차 4 이상이면 추격.
 - 상성: 검 > 도끼 > 창 > 검 (예측 창에 ▲/▼, 메뉴에 상성표).
+- 특효: 태그 armor/cavalry/flying(`ClassProfs.TAGS`) × 무기 `eff`(`Weapons.TRAITS`) → 무기 위력 ×`BattleManager.EFF_MULT`(3). 표시: 맵 붉은 칩(`Unit.eff_weapon_tags`), 아군 탭 시 위협 적 빨간 "!"(`battle.eff_threats`/`mark_threats`, `Unit.threat_mark`), 약점 문구 `Weapons.weak_text`, 예측 창·전투 이름판 "특효! ×3"(노드 이름 `Eff`).
 - 무기 랭크 E~S (WEXP 0/30/70/120/180/250), 클래스별 숙련 보너스(`class_profs.gd`).
 - **드롭**: 일반 적 무기 3%·아이템 5%, 정예/경계 12%·10% (2026-10-15 하향, 이전 8%/15%), 보스는 확정 드롭만. 시도마다 고정 시드 → 저장/불러오기로 다시 굴릴 수 없음. 획득 팝업, 소지품 가득 차면 수송대로/버리기/교체.
 - **열쇠**: 문 열쇠·상자 열쇠·마스터 키(3회). 도적은 무료.
