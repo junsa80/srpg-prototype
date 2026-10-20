@@ -6,7 +6,7 @@
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `4375d38e2fee567ad6212415ee82e095` (2026-10-17, 특효 무기 표시).
+- 현재 배포: 커밋은 `git log -1`, `docs/index.pck` md5 `fa628d6978f06a76bbe8f89f9432c7ce` (2026-10-20, 모바일 safe area, 커밋 7ae4b4c).
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
