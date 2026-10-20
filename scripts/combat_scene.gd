@@ -109,7 +109,7 @@ func _setup(a: Unit, d: Unit) -> void:
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: _set_speed(4.0))
 	bg = _rect(root, Color8(16, 20, 40), Vector2(-60, -60), Vector2(W + 120, H + 120))   # oversized so screen shake never shows the map
 	# vertical stack: plates | arena (160*BS) | bottom panels | hint+skip, centred; never under a notch / status bar
-	var plate_h = 100.0; var arena_h = 160.0 * BS; var hp_h = 232.0; var btn_h = 64.0
+	var plate_h = 100.0; var arena_h = 160.0 * BS; var hp_h = 232.0; var btn_h = 92.0 + SafeArea.bottom(get_viewport())
 	var total = plate_h + 14 + arena_h + 14 + hp_h + 16 + btn_h
 	var top = maxf(_safe_top() + 18.0, (H - total) * 0.45)
 	var arena_y = top + plate_h + 14
@@ -203,18 +203,15 @@ func _setup(a: Unit, d: Unit) -> void:
 		bars[u] = [ticks, null, num]
 	flash = _rect(root, Color(1, 1, 1, 0), Vector2(-60, -60), Vector2(W + 120, H + 120))
 	var by = arena_y + arena_h + 14 + hp_h + 16
-	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, by + 18)
+	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, by + 30)
 	skip_btn = Button.new(); skip_btn.text = "건너뛰기 ▶▶"; skip_btn.name = "CombatSkip"; skip_btn.add_theme_font_size_override("font_size", 26)
-	root.add_child(skip_btn); skip_btn.size = Vector2(220, 60); skip_btn.position = Vector2(W - 236, by)
+	root.add_child(skip_btn); skip_btn.size = Vector2(240, 92); skip_btn.position = Vector2(W - 236, by)
 	skip_btn.pressed.connect(func(): _set_speed(12.0))
 	_idle_loop()
 
 ## Top inset (notch / status bar) in viewport units; 0 where the platform reports none.
 func _safe_top() -> float:
-	var ss = DisplayServer.screen_get_size(); var sa = DisplayServer.get_display_safe_area()
-	var vs = get_viewport().get_visible_rect().size
-	if ss.y <= 0 or sa.size.y <= 0: return 0.0
-	return clampf(sa.position.y * vs.y / float(ss.y), 0.0, 200.0)
+	return SafeArea.top(get_viewport())
 
 ## [DMG, HIT, CRT, doubles] strings for the panel (captured before the exchange).
 func _stat_vals(u: Unit, a: Unit, d: Unit) -> Array:

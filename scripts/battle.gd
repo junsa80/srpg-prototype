@@ -34,7 +34,8 @@ var prep: PrepScreen = null; var prep_active = false; var press_ms = 0; var open
 var kills = 0; var stole = 0; var chests_got = 0; var escaped: Array = []; var seized = false
 var visited: Array = []; var ruined: Array = []; var killed_names: Array = []; var clear_report = {}; var events_seen: Array = []; var boss_talked = false
 var drag_from = Vector2.ZERO; var dragging = false; var press_pos = Vector2.ZERO; var pressed = false
-const PANEL_H = 380
+const PANEL_H = 396
+var sa := Vector2.ZERO   # safe-area insets (top, bottom) in viewport units, see SafeArea
 
 # ---------------------------------------------------------------- setup
 ## Dev/screenshot hooks: web URL hash (#ch2, #combat, #base) or user args (--demo=ch2 ...).
@@ -100,7 +101,7 @@ func _ready() -> void:
 		if CHAPTER == "ch1" and Campaign.cycle == 0 and resume.is_empty(): lines.append_array(ChapterData.PROLOGUE)
 		lines.append_array(ch.pre)   # 보스 대사는 첫 교전 때 (_boss_talk)
 		if not "nodialog" in demo and not "combat" in demo and not "effdemo" in demo: await dialogue.play(lines)
-		if not "combat" in demo and not "effdemo" in demo:
+		if not "combat" in demo and not "effdemo" in demo and not "noprep" in demo:   # dev: #noprep skips the deployment screen
 			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
 	SaveManager.autosave(CHAPTER, 0, payload())  # chapter start (after preparation)
 	if "devwin" in demo:   # dev: screenshot the clear/rank/branch screens
@@ -180,12 +181,12 @@ func _btn(t: String, parent: Control, fs = 30) -> Button:
 func _build_ui() -> void:
 	ui = CanvasLayer.new(); add_child(ui)
 	var panel = Panel.new(); ui.add_child(panel); panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 245)))
-	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); panel.offset_top = -PANEL_H
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); sa = SafeArea.insets(get_viewport()); panel.offset_bottom = -sa.y; panel.offset_top = -PANEL_H - sa.y
 	var v = VBoxContainer.new(); panel.add_child(v); v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 14; v.offset_right = -14; v.offset_top = 10; v.offset_bottom = -10; v.add_theme_constant_override("separation", 8)
 	info = Label.new(); v.add_child(info); info.size_flags_vertical = Control.SIZE_EXPAND_FILL; info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_font_size_override("font_size", 24); info.add_theme_color_override("font_color", Color8(248, 240, 224)); info.clip_text = true
-	var r2 = HBoxContainer.new(); v.add_child(r2); r2.add_theme_constant_override("separation", 8); r2.custom_minimum_size.y = 74
+	var r2 = HBoxContainer.new(); v.add_child(r2); r2.add_theme_constant_override("separation", 8); r2.custom_minimum_size.y = 90  # >=44 CSS px even at 360px width (0.5 scale)
 	btn_weapon = _btn("무기", r2, 24); btn_convoy = _btn("아이템", r2, 24); btn_open = _btn("열기", r2, 24)
 	btn_status = _btn("상태", r2, 24); btn_danger = _btn("위험", r2, 24); btn_menu = _btn("메뉴", r2, 24)
 	btn_status.name = "BtnStatus"; btn_menu.name = "BtnMenu"
@@ -198,18 +199,18 @@ func _build_ui() -> void:
 	for b in [btn_confirm, btn_cancel, btn_weapon, btn_convoy, btn_open]: b.disabled = true
 	_refresh_toggle_labels()
 	# terrain + unit windows (top)
-	terrain_win = Panel.new(); ui.add_child(terrain_win); terrain_win.add_theme_stylebox_override("panel", Ornate.frame()); terrain_win.position = Vector2(10, 10); terrain_win.size = Vector2(190, 110)
+	terrain_win = Panel.new(); ui.add_child(terrain_win); terrain_win.add_theme_stylebox_override("panel", Ornate.frame()); terrain_win.position = Vector2(10, 10 + sa.x); terrain_win.size = Vector2(190, 110)
 	terrain_lbl = Label.new(); terrain_win.add_child(terrain_lbl); terrain_lbl.position = Vector2(16, 8); terrain_lbl.add_theme_font_size_override("font_size", 22)
 	unit_win = Panel.new(); ui.add_child(unit_win); unit_win.add_theme_stylebox_override("panel", Ornate.frame()); unit_win.size = Vector2(330, 120)
-	unit_win.set_anchors_preset(Control.PRESET_TOP_RIGHT); unit_win.position = Vector2(720 - 340, 10)
+	unit_win.set_anchors_preset(Control.PRESET_TOP_RIGHT); unit_win.position = Vector2(720 - 340, 10 + sa.x)
 	unit_port = TextureRect.new(); unit_win.add_child(unit_port); unit_port.position = Vector2(10, 10); unit_port.size = Vector2(100, 100)
 	unit_port.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; unit_port.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	unit_lbl = Label.new(); unit_win.add_child(unit_lbl); unit_lbl.position = Vector2(120, 8); unit_lbl.add_theme_font_size_override("font_size", 22)
 	unit_wicon = Icons.rect(null, 32); unit_win.add_child(unit_wicon); unit_wicon.position = Vector2(120, 76); unit_wicon.size = Vector2(32, 32)
 	var zb = HBoxContainer.new(); ui.add_child(zb); zb.name = "ZoomButtons"; zb.add_theme_constant_override("separation", 8)
-	zb.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT); zb.offset_left = -148; zb.offset_right = -12; zb.offset_top = -PANEL_H - 76; zb.offset_bottom = -PANEL_H - 12
+	zb.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT); zb.offset_left = -196; zb.offset_right = -12; zb.offset_top = -PANEL_H - sa.y - 100; zb.offset_bottom = -PANEL_H - sa.y - 12
 	for d in [-1, 1]:
-		var b = ItemMenus.big("-" if d < 0 else "+", 64, 40); b.name = "ZoomOut" if d < 0 else "ZoomIn"; b.custom_minimum_size = Vector2(64, 64)
+		var b = ItemMenus.big("-" if d < 0 else "+", 64, 40); b.name = "ZoomOut" if d < 0 else "ZoomIn"; b.custom_minimum_size = Vector2(88, 88)
 		b.modulate = Color(1, 1, 1, 0.85); b.pressed.connect(func(): zoom_step(d)); zb.add_child(b)
 	fc_panel = Panel.new(); ui.add_child(fc_panel); fc_panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 248)))
 	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 340); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
@@ -275,7 +276,7 @@ func _restore(r: Dictionary) -> void:
 	btn_end.disabled = false
 
 # ---------------------------------------------------------------- camera / input
-func _view_size() -> Vector2: return get_viewport().get_visible_rect().size - Vector2(0, PANEL_H)
+func _view_size() -> Vector2: return get_viewport().get_visible_rect().size - Vector2(0, PANEL_H + sa.y)
 
 func _clamp_cam() -> void:
 	var vs = _view_size() / cam.zoom.x; var ps = grid.pixel_size()   # visible world size at current zoom
@@ -325,7 +326,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		zoom_step(1 if ev.button_index == MOUSE_BUTTON_WHEEL_UP else -1); return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		if ev.pressed:
-			if ev.position.y > get_viewport().get_visible_rect().size.y - PANEL_H: return
+			if ev.position.y > get_viewport().get_visible_rect().size.y - PANEL_H - sa.y: return
 			pressed = true; dragging = false; press_pos = ev.position; drag_from = cam.position; press_ms = Time.get_ticks_msec()
 		elif pressed:
 			pressed = false
@@ -441,13 +442,13 @@ func _screen_y(c: Vector2i) -> float: return (grid.cell_to_pos(c).y - cam.positi
 func relayout_windows(c: Vector2i) -> void:
 	var vs = _view_size(); var sy = _screen_y(c)
 	var bottom = sy < vs.y * 0.42
-	terrain_win.position.y = vs.y - terrain_win.size.y - 10 if bottom else 10.0
-	unit_win.position.y = vs.y - unit_win.size.y - 10 if bottom else 10.0
+	terrain_win.position.y = vs.y - terrain_win.size.y - 10 if bottom else 10.0 + sa.x
+	unit_win.position.y = vs.y - unit_win.size.y - 10 if bottom else 10.0 + sa.x
 	terrain_win.set_meta("bottom", bottom)
 
 ## Forecast panel goes to whichever half doesn't cover the attacker/target.
 func relayout_forecast(cells: Array) -> void:
-	var vs = _view_size(); var top_y = 140.0; var bot_y = vs.y - fc_panel.size.y - 10
+	var vs = _view_size(); var top_y = 140.0 + sa.x; var bot_y = vs.y - fc_panel.size.y - 10
 	var covers_top = cells.any(func(c): var y = _screen_y(c); return y > top_y - 40 and y < top_y + fc_panel.size.y + 40)
 	fc_panel.position.y = bot_y if covers_top else top_y
 
