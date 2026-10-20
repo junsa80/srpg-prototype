@@ -8,8 +8,10 @@
 
 ## 실행
 - 에디터: Godot 4.3 이상에서 `project.godot` 열기 → F5
-- 헤드리스 자가 테스트: `godot --headless --script res://tests/selftest.gd`
-- 웹 빌드: `godot --headless --export-release Web build/web/index.html`
+- **Godot 4.3-stable** + 웹 내보내기 템플릿 필요 → 설치·빌드·배포·검증 전체 절차는 [HANDOFF.md §10](HANDOFF.md#10-혼자-이어받기-2026-10-20-정리)
+- 테스트 9종: `tests/` 의 flow/menu/weapons/campaign/qol/drop(`.tscn -- --flowtest`) + selftest/skills_test/consistency_test(`--script`), 밸런스 시뮬 `tests/sim_test.tscn`
+- 웹 빌드: `godot --headless --export-release Web build/web/index.html` → `docs/`로 복사해 배포 (`build/web/`은 git 제외)
+- 모바일 화면 확인: `node tools/mobile_check.js` → `build/mobile_check/*.png` (360~430px 4기종, 노치 흉내 포함)
   (스레드 지원 OFF → COOP/COEP 헤더 없는 일반 정적 호스팅에서도 동작)
 - 로컬 확인: `python3 -m http.server -d build/web 8000` 후 휴대폰/브라우저로 접속
 

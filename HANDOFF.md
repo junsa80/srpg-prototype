@@ -1,6 +1,6 @@
 # 인수인계 문서 (HANDOFF)
 
-다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-17.
+다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-20 (모바일 safe area·빌드 절차 보강).
 
 ## 1. 프로젝트 개요
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
@@ -24,14 +24,14 @@ $G --headless res://tests/sim_test.tscn -- --flowtest      # 밸런스 시뮬 (S
 # 웹 빌드 (export_presets.cfg: thread_support=false → COOP/COEP 없는 정적 호스팅 OK)
 $G --headless --export-release Web build/web/index.html
 rm -rf docs && cp -r build/web docs && touch docs/.nojekyll docs/.gdignore
-git add -A && git commit -m "..." && git push origin main
+git add docs <내가 바꾼 파일들> && git commit -m "[GrokBot] ..." && git push origin main   # git add -A 금지 (§10.6)
 # 배포 확인
 gh api repos/junsa80/srpg-prototype/pages/builds/latest --jq '.status+" "+.commit'
 curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs/index.pck
 ```
 - `gh auth`는 사용자 계정(junsa80)으로 로그인된 상태여야 push/release 가능. **토큰을 커밋하지 말 것** (커밋 전 `rg -l "gh[op]_[A-Za-z0-9]{20}" .`).
 - `--script` 모드 테스트(selftest, skills_test)는 autoload(Campaign/Settings/Sfx/Menus)를 못 씀 → `unit.gd`, `battle_manager.gd`에서 autoload 참조 금지(정적 변수 사용, 예: `Unit.show_badge`).
-- 개발용 URL 해시: `#goto=chX`, `nodialog`, `mapview`, `devwin`(적 전멸·클리어 화면), `forecast`, `#base+ch2`, `#nodialog+effdemo`(특효 위협 표시)·`effdemofc`(+예측 창).
+- 개발용 URL 해시(여러 개는 `,` 또는 `+`로 연결): `#goto=chX`, `nodialog`, `noprep`(출전 준비 생략), `safearea=TOP,BOTTOM`(CSS px 노치 흉내), `combat`/`combatfx`/`combatfx+magic`/`boss`/`late`(전투 장면), `mapview`, `devwin`(적 전멸·클리어 화면), `forecast`, `#base+ch2`, `#nodialog+effdemo`(특효 위협 표시)·`effdemofc`(+예측 창).
 
 ## 3. 저장소 구조
 | 경로 | 내용 |
@@ -120,10 +120,10 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 ## 7. 미완료 · 열린 작업
 1. 결정 완료(2026-10-17, `story/OPEN_QUESTIONS.md` §2): 떠나보냄=기본 엔딩, 종장 빛 기둥, 7장 8턴 방어 유지, 아린/세라 변경 없음, 미구현 영입 21명·이졸데·발레리우스 보류. 레온 초상화 교체 완료(2026-10-17). **남은 것**: 업데이트 재시작 시 enemy_lv 초기화 여부(유지 권장).
 2. 보리스 전용 초상화·SD 완료. **아트 감사 `story/ART_AUDIT.md`** (재생성: `tools/art_audit.gd`): 임시(코드 생성) 초상 12명 → 2026-10-17 교체 완료, 구형 96px 3명+상인, 이름 NPC 화자 초상 없음 22명. 그림자 일반병 5종·바르가스 SD는 chibi.py로 통일(원본 `assets/user_art/sliced/*_old_sheet.png`). SD만 다시 만들 땐 `tools/chibi.py`를 모듈로 불러 `class_sheet()`로 해당 유닛만 생성(전체 재실행은 모든 시트를 덮어씀).
-3. 실기기 확인 (`DEVICE_CHECKLIST.md` 12항목). safe area(노치) 처리 코드 없음.
+3. 실기기 확인 (`DEVICE_CHECKLIST.md` 15항목). safe area: 2026-10-20 `scripts/safe_area.gd` 추가(CSS env + viewport-fit=cover), 에뮬레이션만 확인 — 실제 아이폰 노치/안드로이드 제스처 바 확인 필요.
 4. 원안 메커닉(보류): 5장 안개, 6장 성 안/밖 분할·노아 침식, 7장 호위 NPC.
 5. 클라우드 저장 미구현 (UI에 "미지원" 표기). 로컬 내보내기/가져오기·손상 복구는 구현.
-6. 스크린샷 러너: `/workspace/shotrunner/battle_shot.js` (puppeteer-core, 새 프로필, 390x844 모바일; `URL=... OUT=dir T0 N DT` 프레임 연속 캡처). box 초기화 시 `npm i puppeteer-core@23` 재설치. 전투 전후 비교 `build/battle_before.png`/`battle_after.png`.
+6. 스크린샷 러너: 모바일 4기종 일괄 `node tools/mobile_check.js`(§10.4). 연속 프레임은 `/workspace/shotrunner/battle_shot.js` (puppeteer-core, 새 프로필, 390x844 모바일; `URL=... OUT=dir T0 N DT` 프레임 연속 캡처). box 초기화 시 `npm i puppeteer-core@23` 재설치. 전투 전후 비교 `build/battle_before.png`/`battle_after.png`.
 8. 전투 장면 후속 후보: 클래스별 공격 프레임(현재 SD 3프레임 대기 애니만), 지형별 배경 그림, 전용 효과음(활 시위/마법), 원거리 시 카메라 팬.
 7. 시뮬 AI가 조잡함 (탈출·제압형 목표에서 사망 과대 추정, 예: ch23 평균 사망 4.9 — 2026-10-17 완화 전 6.4).
 
@@ -181,3 +181,70 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 - 배경·발판: `python3 tools/make_battle_bg.py` → `assets/battle/bg/*.png`(240x160) + `assets/battle/platform/*.png`(64x16) + `build/battle_bg_sheet.png`. 매핑 `CombatScene.BG_OF_TERRAIN/BG_OF_GROUND/PLAT_OF_TERRAIN/PLAT_OF_GROUND`.
 - `combat_scene._setup()` 세로 배치: 이름판(100) | 무대 160*BS(BS=3) | 아래 창(232) | 안내+[건너뛰기]. `AY` = 무대 위 + 130*BS. 위쪽 = max(`_safe_top()`+18, 중앙 정렬). 아래 창 노드: `StatBox`(S_HIT/S_DMG/S_CRT, X2), `Tri`, `Eff`, `HPNum`, `HPBar`(칸 = `bars[u][0]` 배열). 발판 `PlatformL/R`, 배경 `BattleBG`.
 - 스크린샷: `URL='http://127.0.0.1:18931/#combat+late+nodialog'`(근접) / `#combatfx+late+nodialog`(활) / `#combatfx+magic+late+nodialog`(마법) + `shotrunner/battle_shot.js` (T0=9000). 결과 `build/battle_fe_ref.png`.
+
+## 10. 혼자 이어받기 (2026-10-20 정리)
+
+### 10.1 환경 준비 (box/PC가 초기화됐을 때)
+```bash
+gh repo clone junsa80/srpg-prototype /workspace/srpg      # gh auth login (junsa80) 필요
+cd /tmp && wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip && unzip -o Godot_v4.3-stable_linux.x86_64.zip
+# 내보내기 템플릿 (웹 빌드에 필수, 버전 4.3.stable 정확히 일치)
+wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+mkdir -p ~/.local/share/godot/export_templates/4.3.stable && unzip -j -o Godot_v4.3-stable_export_templates.tpz 'templates/*' -d ~/.local/share/godot/export_templates/4.3.stable
+G=/tmp/Godot_v4.3-stable_linux.x86_64; cd /workspace/srpg && $G --headless --import   # class_name 캐시 생성 (새 스크립트 추가 후에도)
+# 스크린샷용: Chrome(/usr/bin/google-chrome) + puppeteer-core
+mkdir -p /workspace/shotrunner && cd /workspace/shotrunner && npm init -y && npm i puppeteer-core
+```
+- Godot는 반드시 **4.3-stable** (다른 버전은 .godot 캐시·export 템플릿 불일치).
+
+### 10.2 테스트 9종 + 시뮬
+```bash
+G=/tmp/Godot_v4.3-stable_linux.x86_64
+for t in flow_test menu_test weapons_test campaign_test qol_test drop_test; do $G --headless res://tests/$t.tscn -- --flowtest 2>&1 | grep -E "PASS|FAIL"; done
+for s in selftest skills_test consistency_test; do $G --headless --script tests/$s.gd 2>&1 | grep -E "PASS|FAIL"; done
+$G --headless res://tests/sim_test.tscn -- --flowtest            # 전 장 16판 (수십 분). SIM_ONLY=ch23 단일 장, SIM_V=1 상세
+DROP_REPORT_ONLY=1 $G --headless res://tests/drop_test.tscn -- --flowtest   # 드롭 수량 보고
+```
+- 각 테스트는 마지막에 `XXXTEST PASS` 출력. 종료 시 `ObjectDB leaked`/`resources still in use` 경고는 정상(무시).
+- 시뮬 목표: 9장 이후 16판 중 8~13승, 결과는 `tests/sim_results.txt`에 손으로 추가.
+
+### 10.3 빌드 · 배포 · 확인 순서
+1. 소스 수정 → 2. 테스트 9종 PASS → 3. 소스 커밋·푸시 → 4. HANDOFF/CHANGELOG 갱신 → 5. 배포:
+```bash
+$G --headless --export-release Web build/web/index.html       # 템플릿 없으면 여기서 실패
+rm -rf docs && cp -r build/web docs && touch docs/.nojekyll docs/.gdignore
+git add docs && git commit -m "[GrokBot] 배포: ..." && git push origin main
+sleep 60; gh api repos/junsa80/srpg-prototype/pages/builds/latest --jq '.status+" "+.commit'   # built + 내 커밋
+curl -s "https://junsa80.github.io/srpg-prototype/index.pck?$(date +%s)" | md5sum; md5sum docs/index.pck   # 두 값 일치 = 배포 완료
+git log origin/main --oneline -3                                # GitHub에 커밋 확인
+```
+- `.nojekyll`: Pages가 `_`로 시작하는 파일을 숨기지 않게. `.gdignore`: Godot가 docs/를 리소스로 import하지 않게(둘 다 필수).
+- **`build/web/`는 git에서 제외**(2026-10-20, `.gitignore`). 배포본은 `docs/`만 커밋한다. 예전엔 `build/web`이 추적돼서 export 때마다 "커밋 안 된 변경"이 남았음.
+- `index.html`의 `viewport-fit=cover`는 `export_presets.cfg`의 `html/head_include`로 넣는다 (export마다 index.html이 다시 생성되므로 직접 수정 금지).
+
+### 10.4 모바일 화면 확인 (puppeteer 에뮬레이션)
+```bash
+(cd build/web && python3 -m http.server 18931 &)
+PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js     # SIZES=360x640,430x932 MODES=prep,map,forecast,combat 로 좁히기
+```
+- 결과 `build/mobile_check/<WxH>[_notch]_<prep|map|forecast|combat>.png` (360x640·375x667·390x844·430x932, `_notch` = `#safearea=47,34`).
+- 화면 기준: 가상 720px 폭(canvas_items/expand) → 360px 폰에서 0.5배. **버튼 높이 ≥ 88 가상 px = 44 CSS px**. 하단 버튼 줄 90/104, 전투 [건너뛰기] 240x92, 줌 88x88.
+- safe area: `SafeArea.insets(viewport)` = (위, 아래) 가상 px. 웹은 CSS `env(safe-area-inset-*)`, 해시 `safearea=` 우선, 아래 최소 8 CSS px. 네이티브는 `DisplayServer.get_display_safe_area()`. 사용처: `battle.gd` `sa`(하단 패널·줌·상단 창·예측 창), `combat_scene._safe_top()`·btn_h.
+
+### 10.5 그림 파이프라인
+- 초상화: 원본(정사각 크롭) `/workspace/portraits_raw/<이름>.png` → 128x128 `assets/portraits/<이름>.png` (`PIL resize LANCZOS`). NPC 공용 `npc_<type>.png` + `Sprites.NPC_ALIAS`. 확인 `tests/consistency_test.gd`(누락 WARN), 감사 `tools/art_audit.gd` → `story/ART_AUDIT.md`.
+- 맵 스프라이트: `python3 tools/portrait_palette.py && python3 tools/chibi.py` (실루엣 `tools/fe_sprites.py`, 클래스→계열 `chibi.SPEC`). 일부만: `chibi.class_sheet()`.
+- 전투 포즈: `assets/battle/<이름@클래스|이름|클래스>/{ready,attack,hit,dodge}.png`, **왼쪽을 바라보게**, 64x72(2배 표시). 배경 240x160 `assets/battle/bg/`, 발판 64x16 `assets/battle/platform/` (`tools/make_battle_bg.py`). 아이콘 16x16 `tools/make_icons.py`.
+- 그림 추가 후 `$G --headless --import`.
+
+### 10.6 세이브 호환 · 주의점
+- 저장: `user://save_<0-3>.json`(0 = 자동), `.tmp`에 쓰고 rename, `.bak` 보존, 손상 시 `{"corrupt":true}`. 내보내기 `SRPGSAVE1:`+base64. 엔딩 `ending_<id>`, 이탈 목록 `absent`.
+- **규칙**: 기존 키 이름·의미를 바꾸지 말 것, 새 키는 기본값으로 읽기(`get(k, 기본)`), 설정 기본값 유지. 클래스 기본 스탯·성장률·전투 공식 변경 금지.
+- 흔한 함정: (1) box/PC 초기화 → Godot·템플릿·puppeteer 재설치, `build/` 파일이 지워져 보이면 `git checkout -- build`. (2) 여러 작업자가 같은 폴더 → **`git add -A` 금지, 자기 파일만 stage**. (3) 새 `class_name` 스크립트는 `--import` 전엔 테스트에서 "identifier not declared". (4) Pages 캐시: md5 확인 시 `?타임스탬프` 붙이기. (5) `--script` 테스트에서 autoload 사용 불가.
+
+### 10.7 남은 일 (2026-10-20)
+- 아린 초상화 다시 그리기(현재 소년처럼 보임).
+- 클래스별 전투 포즈 그림(아린·레온·리나·마법사 시험부터).
+- 구분이 약한 스프라이트 짝: 성기사/팔라딘, 소셜나이트/레인저, 비룡기사/드래곤나이트, 그림자 창병/그림자 중갑병.
+- 실기기 확인 `DEVICE_CHECKLIST.md`(특히 노치·핀치·오디오·클립보드).
+- enemy_lv 업데이트 재시작 초기화 여부(유지 권장), 클라우드 저장 미구현.
