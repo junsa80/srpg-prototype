@@ -1,6 +1,7 @@
 # SRPG 프로토타입 (Godot 4.3, GDScript)
 
 - 인수인계: [HANDOFF.md](HANDOFF.md) · 스토리 요약: [STORY.md](STORY.md) (스포일러 주의) · 변경 이력: [CHANGELOG.md](CHANGELOG.md)
+- **다른 AI(Grok/ChatGPT)가 이어받을 때: [AGENTS.md](AGENTS.md) 먼저**
 - 플레이: https://junsa80.github.io/srpg-prototype/ — **본편 1~27장 + 종장 완결, 엔딩 3종**
 - 실기기 확인 목록: [DEVICE_CHECKLIST.md](DEVICE_CHECKLIST.md)
 

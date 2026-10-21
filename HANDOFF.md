@@ -1,5 +1,7 @@
 # 인수인계 문서 (HANDOFF)
 
+> 다른 AI가 이어받는다면 먼저 [AGENTS.md](AGENTS.md)를 읽으세요. 초상화 원본은 `art/source/portraits_raw/`에 백업되어 있습니다.
+
 다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-20 (모바일 safe area·빌드 절차 보강).
 
 ## 1. 프로젝트 개요
@@ -129,7 +131,7 @@ curl -s https://junsa80.github.io/srpg-prototype/index.pck | md5sum; md5sum docs
 
 ### 이어서 작업하는 법
 - 새 장 추가: `data/maps.gd` CH 항목 → `chapters/chapter_data.gd` CHAPTERS/EVENTS/CAMP/SUPPORTS → `scripts/campaign.gd` NEXT, `data/roster.gd` CH_INDEX → `tests/campaign_test.gd`·`tests/sim_test.gd` PLAN → 시뮬 → 빌드·배포. 이야기 이름 보스는 `Bosses.ALIAS`로 기존 패시브 연결.
-- 초상화: 원본을 `/workspace/portraits_raw/<이름>.png`에 두고 128px 정사각 크롭 → `assets/portraits/<이름>.png` → `tests/consistency_test.gd`로 누락 확인.
+- 초상화: 원본을 `art/source/portraits_raw/<이름>.png`(작업 사본 `/workspace/portraits_raw/`)에 두고 128px 정사각 크롭 → `assets/portraits/<이름>.png` → `tests/consistency_test.gd`로 누락 확인.
 - 세션이 자주 끊기므로 단계마다 커밋·푸시.
 
 ## 8. 그림 파일 주의 (파일명 ≠ 내용)
@@ -232,7 +234,7 @@ PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js 
 - safe area: `SafeArea.insets(viewport)` = (위, 아래) 가상 px. 웹은 CSS `env(safe-area-inset-*)`, 해시 `safearea=` 우선, 아래 최소 8 CSS px. 네이티브는 `DisplayServer.get_display_safe_area()`. 사용처: `battle.gd` `sa`(하단 패널·줌·상단 창·예측 창), `combat_scene._safe_top()`·btn_h.
 
 ### 10.5 그림 파이프라인
-- 초상화: 원본(정사각 크롭) `/workspace/portraits_raw/<이름>.png` → 128x128 `assets/portraits/<이름>.png` (`PIL resize LANCZOS`). NPC 공용 `npc_<type>.png` + `Sprites.NPC_ALIAS`. 확인 `tests/consistency_test.gd`(누락 WARN), 감사 `tools/art_audit.gd` → `story/ART_AUDIT.md`.
+- 초상화: 원본(정사각 크롭) `art/source/portraits_raw/<이름>.png` (저장소 백업, 작업 사본 `/workspace/portraits_raw/`) → 128x128 `assets/portraits/<이름>.png` (`PIL resize LANCZOS`). NPC 공용 `npc_<type>.png` + `Sprites.NPC_ALIAS`. 확인 `tests/consistency_test.gd`(누락 WARN), 감사 `tools/art_audit.gd` → `story/ART_AUDIT.md`.
 - 맵 스프라이트: `python3 tools/portrait_palette.py && python3 tools/chibi.py` (실루엣 `tools/fe_sprites.py`, 클래스→계열 `chibi.SPEC`). 일부만: `chibi.class_sheet()`.
 - 전투 포즈: `assets/battle/<이름@클래스|이름|클래스>/{ready,attack,hit,dodge}.png`, **왼쪽을 바라보게**, 64x72(2배 표시). 배경 240x160 `assets/battle/bg/`, 발판 64x16 `assets/battle/platform/` (`tools/make_battle_bg.py`). 아이콘 16x16 `tools/make_icons.py`.
 - 그림 추가 후 `$G --headless --import`.

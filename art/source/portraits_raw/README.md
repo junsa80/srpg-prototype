@@ -1,0 +1,77 @@
+# 초상화 원본 (portraits_raw)
+
+GenerateImage로 만든 SRPG 캐릭터·NPC 초상화 **원본**입니다 (전원 성인, 복장 완비 픽셀아트).
+
+- 생성: GenerateImage가 1:1을 무시하고 1280x720을 주므로 2x2 그리드로 생성 → 각 칸을 350px 정사각으로 크롭해 여기에 저장.
+- 게임 반영: `PIL resize(128,128, LANCZOS)` → `assets/portraits/<이름>.png`. NPC 공용은 `npc_<type>.png` + `Sprites.NPC_ALIAS`.
+- `_sheet*.png`: 크롭 전 그리드 시트(참고용).
+- 확인: `tests/consistency_test.gd`(누락 WARN). 상세는 [HANDOFF.md §10.5](../../../HANDOFF.md).
+- 규칙: 선정적·노골적 이미지는 절대 올리지 않음.
+
+## 파일 목록
+- _sheet12.png
+- _sheet4.png
+- _sheet_npc.png
+- npc_merchant.png
+- npc_nun.png
+- npc_oldman.png
+- npc_soldier.png
+- npc_woman.png
+- npc_youngman.png
+- 가렌.png
+- 가브리엘.png
+- 그라데스.png
+- 그라이브.png
+- 그렉.png
+- 그림자
+- 궁병
+- 대장.png
+- 그림자
+- 근위대장.png
+- 그림자
+- 기병
+- 대장.png
+- 그림자
+- 기사.png
+- 그림자
+- 사제.png
+- 그림자
+- 장군.png
+- 노르드
+- 왕.png
+- 다린.png
+- 라울.png
+- 레온.png
+- 리나.png
+- 리안.png
+- 리엘.png
+- 마그누스.png
+- 미르.png
+- 베일.png
+- 벨크.png
+- 보리스.png
+- 브록.png
+- 비룡
+- 군주.png
+- 사르한
+- 사절.png
+- 상인.png
+- 세라.png
+- 셀레나.png
+- 소라.png
+- 신전
+- 무녀.png
+- 실라.png
+- 아린.png
+- 아서.png
+- 에레보스.png
+- 엘런.png
+- 엘렌.png
+- 오드윈.png
+- 오스만.png
+- 요새
+- 문지기.png
+- 카린.png
+- 카스.png
+- 카이.png
+- 카이린.png
