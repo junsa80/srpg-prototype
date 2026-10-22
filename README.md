@@ -1,4 +1,6 @@
-# SRPG 프로토타입 (Godot 4.3, GDScript)
+# 잿빛 왕관: 새벽의 서약
+
+**Ashen Crown** · Godot 4.3 / GDScript 전술 RPG
 
 - 인수인계: [HANDOFF.md](HANDOFF.md) · 스토리 요약: [STORY.md](STORY.md) (스포일러 주의) · 변경 이력: [CHANGELOG.md](CHANGELOG.md)
 - **다른 AI(Grok/ChatGPT)가 이어받을 때: [AGENTS.md](AGENTS.md) 먼저**

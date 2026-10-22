@@ -1,5 +1,7 @@
 # 변경 이력
 
+- 2026-10-22: 게임 표시 제목을 **잿빛 왕관: 새벽의 서약 (Ashen Crown)**으로 변경. 타이틀 화면·창 제목·웹 탭·README 표기 통일. 기존 세이브와 설정 경로 보존을 위해 내부 프로젝트 이름은 SRPG Prototype 유지.
+
 - 2026-10-22: **모바일 타이틀·메뉴·예측 가독성** — 타이틀 자동 세로 배치와 기존 요새 배경, [환생 · 기록 관리]에 환생/초기화 이동. 공통 메뉴·아이템·거점·출전 준비 safe area 적용, 긴 확인창 여백 제한, 공통 글꼴 최소 24. 예측 창 확대·이름/특효 분리·안내문 줄바꿈 후 높이 재측정. 원본 아트·스토리 문서 웹 내보내기 제외. 기존 테스트 9종 + 모바일 UI 경계 검사 PASS, Godot 4.3 웹 빌드 성공. 브라우저 WebGL2/secure-context 미지원으로 실기기 화면 QA 미완료. 공식·능력치·저장 형식 유지.
 
 - 2026-10-20: **모바일 safe area·터치 크기** — `scripts/safe_area.gd`(신규): 웹은 CSS `env(safe-area-inset-*)`(index.html에 `viewport-fit=cover`, `export_presets.cfg` head_include), 네이티브는 `DisplayServer.get_display_safe_area()`, 아래 최소 8 CSS px. 전투 맵 하단 패널·줌 버튼·상단 지형/유닛 창·예측 창, 전투 장면 위 여백과 [건너뛰기]가 안전 영역을 피함. 360px 폭에서도 44 CSS px 이상: 위 버튼 줄 74→90, 줌 64→88, [건너뛰기] 220x60→240x92, 하단 패널 380→396. 개발 해시 `noprep`, `safearea=T,B`. `tools/mobile_check.js`(4기종 × 노치 유무 × 출전/맵/예측/전투 스크린샷 → `build/mobile_check/`). `build/web/`을 git에서 제외(배포본은 `docs/`). 공식·능력치·저장 변경 없음.
