@@ -213,7 +213,7 @@ func _build_ui() -> void:
 		var b = ItemMenus.big("-" if d < 0 else "+", 64, 40); b.name = "ZoomOut" if d < 0 else "ZoomIn"; b.custom_minimum_size = Vector2(88, 88)
 		b.modulate = Color(1, 1, 1, 0.85); b.pressed.connect(func(): zoom_step(d)); zb.add_child(b)
 	fc_panel = Panel.new(); ui.add_child(fc_panel); fc_panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 248)))
-	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 340); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
+	fc_panel.position = Vector2(10, 140); fc_panel.size = Vector2(700, 480); fc_panel.visible = false; fc_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE; fc_panel.name = "Forecast"
 	terrain_win.visible = false; unit_win.visible = false
 	for w in [terrain_win, unit_win]: w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner = Label.new(); ui.add_child(banner); banner.add_theme_font_size_override("font_size", 64); banner.visible = false
@@ -523,7 +523,7 @@ func _show_forecast() -> void:
 ## GBA-style forecast window: both sides with weapon icons, rank letter + bonuses, effectiveness.
 func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 	for c in fc_panel.get_children(): c.queue_free()
-	var h = HBoxContainer.new(); fc_panel.add_child(h); h.position = Vector2(14, 10); h.size = Vector2(672, 280); h.add_theme_constant_override("separation", 10)
+	var h = HBoxContainer.new(); fc_panel.add_child(h); h.position = Vector2(14, 10); h.size = Vector2(672, 340); h.add_theme_constant_override("separation", 10)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sides = [[a, f.atk_w, f.atk_hp_before, f.atk_hp_after, f.atk_dmg, f.atk_count, f.atk_hit, f.atk_crit, f.atk_eff, f.atk_bonus, Color8(120, 176, 255)],
 		[d, f.def_w, f.def_hp_before, f.def_hp_after, f.def_dmg, f.def_count, f.def_hit, f.def_crit, f.def_eff, f.def_bonus, Color8(255, 120, 120)]]
@@ -533,7 +533,7 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 		var col = PanelContainer.new(); col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		col.add_theme_stylebox_override("panel", Ornate.frame(Color8(30, 34, 70) if u.team == 0 else Color8(70, 26, 34), sd[10], 3)); h.add_child(col)
 		var v = VBoxContainer.new(); col.add_child(v); v.add_theme_constant_override("separation", 2)
-		var nr = HBoxContainer.new(); nr.add_theme_constant_override("separation", 10); v.add_child(nr)
+		var nr = VBoxContainer.new(); nr.add_theme_constant_override("separation", 2); v.add_child(nr)
 		var nm = ItemMenus.label(u.data.name, 26, sd[10]); nm.autowrap_mode = TextServer.AUTOWRAP_OFF; nr.add_child(nm)
 		if sd[8] and sd[4] >= 0:   # big 특효 banner with the multiplier the formula really uses
 			var el = ItemMenus.label("특효! ×%d" % BattleManager.EFF_MULT, 30, Color8(255, 72, 64)); el.name = "Eff"; el.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -565,7 +565,9 @@ func _fill_forecast(f: Dictionary, a: Unit, d: Unit) -> void:
 				for c in dr.get_children(): c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		for c in v.get_children() + wr.get_children() + nr.get_children(): if c is Control: c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var note = ItemMenus.label(forecast_note(f), 17, Color8(200, 200, 220)); note.name = "FcNote"; note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fc_panel.add_child(note); note.position = Vector2(14, 296); note.size = Vector2(672, 40)
+	note.size = Vector2(672, 110); note.position = Vector2(14, 360); fc_panel.add_child(note)
+	# Label wrapping first measures at width 1 before layout; reset after the actual width is known.
+	note.set_deferred("size", Vector2(672, 110))
 	fc_panel.visible = true
 
 ## Uncertainty line under the forecast: HP above assumes every strike hits.

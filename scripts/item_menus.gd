@@ -5,7 +5,7 @@ static func _panel(parent: Node, title: String, on_close: Callable) -> Array:
 	var root = ColorRect.new(); parent.add_child(root); root.color = Color(0, 0, 0, 0.7)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var card = Panel.new(); root.add_child(card); card.add_theme_stylebox_override("panel", Ornate.frame())
-	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); card.offset_left = 20; card.offset_right = -20; card.offset_top = 60; card.offset_bottom = -40
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); card.offset_left = 20; card.offset_right = -20; var safe = SafeArea.insets(parent.get_viewport()); card.offset_top = safe.x + 40; card.offset_bottom = -safe.y - 24
 	var v = VBoxContainer.new(); card.add_child(v); v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 18; v.offset_right = -18; v.offset_top = 16; v.offset_bottom = -16; v.add_theme_constant_override("separation", 10)
 	var t = Label.new(); t.text = title; t.add_theme_font_size_override("font_size", 36); t.add_theme_color_override("font_color", Color8(248, 216, 112)); v.add_child(t)
@@ -23,10 +23,10 @@ static func nav_row(cycle: Callable, prefix := "N") -> HBoxContainer:
 
 static func big(t: String, h = 88, fs = 28) -> Button:
 	var b = Ornate.button(Button.new()); b.text = t; b.custom_minimum_size = Vector2(0, h)
-	b.add_theme_font_size_override("font_size", fs); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; return b
+	b.add_theme_font_size_override("font_size", maxi(fs, 24)); b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; return b
 
 static func label(t: String, fs = 26, col = Color8(248, 240, 224)) -> Label:
-	var l = Label.new(); l.text = t; l.add_theme_font_size_override("font_size", fs); l.add_theme_color_override("font_color", col)
+	var l = Label.new(); l.text = t; l.add_theme_font_size_override("font_size", maxi(fs, 24)); l.add_theme_color_override("font_color", col)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; return l
 
 ## Item button: icon + name/uses + role text; greyed with reason if unit can't use it.

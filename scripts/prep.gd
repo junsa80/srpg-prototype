@@ -3,6 +3,7 @@ class_name PrepScreen extends CanvasLayer
 ## status, then 시작. Deployment spots are highlighted on the live map above the panel and units appear on them.
 signal started
 const H = 620
+var safe := Vector2.ZERO
 var b                     # battle scene
 var panel: Panel; var head: Label; var grid_box: GridContainer; var lineup: Array = []
 
@@ -10,7 +11,7 @@ func run(battle) -> void:
 	b = battle; layer = 6; b.prep_active = true
 	lineup = b.deployed.duplicate()
 	panel = Panel.new(); add_child(panel); panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 250)))
-	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); panel.offset_top = -H; panel.name = "PrepPanel"
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); safe = SafeArea.insets(b.get_viewport()); panel.offset_top = -H - safe.y; panel.offset_bottom = -safe.y; panel.name = "PrepPanel"
 	var v = VBoxContainer.new(); panel.add_child(v); v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 16; v.offset_right = -16; v.offset_top = 12; v.offset_bottom = -12; v.add_theme_constant_override("separation", 10)
 	head = ItemMenus.label("", 30, Menus.GOLD); head.autowrap_mode = TextServer.AUTOWRAP_OFF; v.add_child(head)
@@ -24,7 +25,7 @@ func run(battle) -> void:
 	_refresh()
 	await started
 
-func _view_h() -> float: return b.get_viewport().get_visible_rect().size.y - H
+func _view_h() -> float: return b.get_viewport().get_visible_rect().size.y - H - safe.y
 
 func _focus_spots() -> void:
 	var ps = b.grid.pixel_size(); var vs = b.get_viewport().get_visible_rect().size
@@ -36,7 +37,7 @@ func _focus_spots() -> void:
 
 func _refresh() -> void:
 	var size: int = b.MAP.deploy_size
-	head.text = "출전 준비 — %s   출전 %d/%d" % [ChapterData.CHAPTERS[b.CHAPTER].title, lineup.size(), size]
+	head.text = "출전 준비 — 출전 %d/%d\n%s" % [lineup.size(), size, ChapterData.CHAPTERS[b.CHAPTER].title]
 	for c in grid_box.get_children(): c.queue_free()
 	for n in b.ROSTER_NAMES:
 		var on = n in lineup; var e = Campaign.entry(n)

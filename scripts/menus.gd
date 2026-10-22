@@ -12,7 +12,8 @@ static func overlay(parent: Node, title: String, lay = 30, top = 40, bottom = 40
 	var cl = CanvasLayer.new(); cl.layer = lay; parent.add_child(cl)
 	var dim = ColorRect.new(); cl.add_child(dim); dim.color = Color(0, 0, 0, 0.72); dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var card = Panel.new(); dim.add_child(card); card.add_theme_stylebox_override("panel", Ornate.frame())
-	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); card.offset_left = 18; card.offset_right = -18; card.offset_top = top; card.offset_bottom = -bottom
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); card.offset_left = 18; card.offset_right = -18; var safe = SafeArea.insets(parent.get_viewport()); var available = parent.get_viewport().get_visible_rect().size.y - safe.x - safe.y
+	card.offset_top = safe.x + minf(float(top), available * 0.2); card.offset_bottom = -safe.y - minf(float(bottom), available * 0.2)
 	var v = VBoxContainer.new(); card.add_child(v); v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 20; v.offset_right = -20; v.offset_top = 18; v.offset_bottom = -18; v.add_theme_constant_override("separation", 12)
 	if title != "":
