@@ -1,6 +1,7 @@
 config_version=5
 
 [application]
+; Legacy internal name preserves the existing user:// save and settings directory.
 config/name="SRPG Prototype"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.3")

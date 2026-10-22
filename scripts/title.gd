@@ -3,6 +3,7 @@ extends Control
 var box: VBoxContainer
 
 func _ready() -> void:
+	DisplayServer.window_set_title("잿빛 왕관: 새벽의 서약")
 	if "--flowtest" in OS.get_cmdline_user_args() or "ch2" in _hash() or "combat" in _hash() or "base" in _hash() or "nodialog" in _hash():
 		get_tree().change_scene_to_file.call_deferred("res://scenes/battle.tscn"); return
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -17,9 +18,9 @@ func _ready() -> void:
 	art.custom_minimum_size.y = 180; art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var t = ItemMenus.label("그림자 군단", 60, Color8(248, 216, 112)); t.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var t = ItemMenus.label("잿빛 왕관", 60, Color8(248, 216, 112)); t.autowrap_mode = TextServer.AUTOWRAP_OFF
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(t)
-	var sub = ItemMenus.label("Shadow Legion Tactics", 26, Color8(200, 208, 224)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(sub)
+	var sub = ItemMenus.label("새벽의 서약 · Ashen Crown", 26, Color8(200, 208, 224)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(sub)
 	box = VBoxContainer.new(); layout.add_child(box); box.name = "TitleActions"
 	box.add_theme_constant_override("separation", 12)
 	_main()
