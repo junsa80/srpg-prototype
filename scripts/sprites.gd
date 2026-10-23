@@ -63,6 +63,7 @@ const NPC_ALIAS = {
 }
 static func portrait(n: String) -> Texture2D:
 	var path = "res://assets/portraits/%s.png" % n
+	if n == "아린": path = "res://assets/portraits/arin-v3.png"
 	if ResourceLoader.exists(path): return load(path)
 	if NPC_ALIAS.has(n):   # missing npc_<type>.png -> null (no picture), never an error
 		path = "res://assets/portraits/npc_%s.png" % NPC_ALIAS[n]
