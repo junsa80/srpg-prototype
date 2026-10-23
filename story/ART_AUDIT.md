@@ -1,5 +1,8 @@
 # 아트 감사 (ART_AUDIT) — 2026-10-17
 
+> 2026-10-23: 아린 표시 초상은 성인 여성 용병 설정을 기준으로 `assets/portraits/arin-v3.png`로 갱신. `Sprites.portrait("아린")`이 선택하며 기존 `아린.png`는 원본 보존. 갈색 단발·푸른 복장 유지. 생성 기록은 `art/GRAPHICS_UPGRADE_20261023.md`.
+
+
 스포일러 포함 → `story/`에 둔다 (`docs/` 금지). 다시 뽑기: `godot --headless --script tools/art_audit.gd` (모든 대사 화자·아군·이름 적·보스·NPC, 초상/스프라이트 출처 TSV).
 
 조사 범위: `Roster.UNITS` 28명, 모든 장 pre/boss/post·턴 이벤트·야영·대화·지원·엔딩·마을 대사 화자, 맵의 이름 적/보스/NPC (총 78명).

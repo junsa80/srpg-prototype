@@ -195,6 +195,7 @@ func _draw() -> void:
 					draw_rect(r.grow(-4), Color(0.2, 0.9, 0.4, 0.35)); draw_string(f, r.position + Vector2(8, 50), "탈출", HORIZONTAL_ALIGNMENT_CENTER, 64, 22, Color8(230, 255, 230))
 				"pillar":
 					draw_rect(Rect2(r.position + Vector2(24, 8), Vector2(32, 64)), Color8(180, 172, 160)); draw_rect(Rect2(r.position + Vector2(18, 4), Vector2(44, 10)), Color8(200, 192, 180))
+	_draw_map_depth()
 	var dset = {}
 	for c in danger: dset[c] = true
 	for c in danger:   # all-enemy threat: purple fill + outer border (distinct from one enemy's red range)
@@ -204,9 +205,9 @@ func _draw() -> void:
 		if not dset.has(c + Vector2i(0, 1)): draw_line(r0.position + Vector2(0, CELL), r0.end, bc, 3)
 		if not dset.has(c + Vector2i(-1, 0)): draw_line(r0.position, r0.position + Vector2(0, CELL), bc, 3)
 		if not dset.has(c + Vector2i(1, 0)): draw_line(r0.position + Vector2(CELL, 0), r0.end, bc, 3)
-	for c in highlight_attack: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(1, 0.15, 0.1, 0.4))
-	for c in highlight_move: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-2), Color(0.2, 0.5, 1, 0.5))
-	for c in highlight_heal: draw_rect(Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)), Color(0.2, 1, 0.3, 0.4))
+	for c in highlight_attack: _draw_action_tile(c, Color8(245, 104, 86), "attack")
+	for c in highlight_move: _draw_action_tile(c, Color8(94, 181, 255), "move")
+	for c in highlight_heal: _draw_action_tile(c, Color8(108, 230, 166), "heal")
 	_draw_arrow()
 	if cursor.x >= 0:  # animated FE-style corner cursor
 		var p0 = Vector2(cursor) * CELL; var o = 4 + 4 * abs(sin(t_anim * 5.0)); var L = 18
@@ -223,6 +224,31 @@ func _draw() -> void:
 func _process(dt: float) -> void:
 	t_anim += dt
 	if cursor.x >= 0 or not warnings.is_empty() or not water.is_empty(): queue_redraw()
+
+## Visual depth only: cast short wall shadows and keep tile boundaries legible.
+func _draw_map_depth() -> void:
+	for c in walls:
+		var below = c + Vector2i.DOWN; var right = c + Vector2i.RIGHT
+		if in_bounds(below) and not walls.has(below):
+			draw_rect(Rect2(Vector2(below) * CELL, Vector2(CELL, 8)), Color(0.025, 0.035, 0.06, 0.28))
+		if in_bounds(right) and not walls.has(right):
+			draw_rect(Rect2(Vector2(right) * CELL, Vector2(5, CELL)), Color(0.025, 0.035, 0.06, 0.18))
+	var dims = pixel_size()
+	for x in range(1, size.x): draw_line(Vector2(x * CELL, 0), Vector2(x * CELL, dims.y), Color(0.025, 0.04, 0.06, 0.10), 1)
+	for y in range(1, size.y): draw_line(Vector2(0, y * CELL), Vector2(dims.x, y * CELL), Color(0.025, 0.04, 0.06, 0.10), 1)
+	draw_rect(Rect2(Vector2.ZERO, dims).grow(-2), Color8(167, 148, 99, 180), false, 3)
+
+## Preserve terrain texture; use a border plus a small shape as well as colour.
+func _draw_action_tile(c: Vector2i, tint: Color, kind: String) -> void:
+	var r = Rect2(Vector2(c) * CELL, Vector2(CELL, CELL)).grow(-3)
+	draw_rect(r, Color(tint, 0.27)); draw_rect(r, Color(tint, 0.88), false, 2)
+	var p = Vector2(c) * CELL + Vector2(CELL / 2, CELL - 12)
+	if kind == "heal":
+		draw_line(p - Vector2(5, 0), p + Vector2(5, 0), tint, 3); draw_line(p - Vector2(0, 5), p + Vector2(0, 5), tint, 3)
+	elif kind == "attack":
+		draw_line(p - Vector2(4, 4), p + Vector2(4, 4), tint, 3); draw_line(p + Vector2(-4, 4), p + Vector2(4, -4), tint, 3)
+	else:
+		draw_polyline(PackedVector2Array([p + Vector2(-5, 2), p + Vector2(0, -3), p + Vector2(5, 2)]), tint, 3)
 
 func _draw_arrow() -> void:
 	if arrow.size() < 2: return

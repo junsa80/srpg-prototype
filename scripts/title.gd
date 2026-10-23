@@ -13,12 +13,16 @@ func _ready() -> void:
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layout.offset_left = 36; layout.offset_right = -36; layout.offset_top = safe.x + 24; layout.offset_bottom = -safe.y - 24
 	layout.add_theme_constant_override("separation", 12)
-	var art = TextureRect.new(); layout.add_child(art); art.name = "TitleArt"
-	art.texture = load("res://assets/battle/bg/fort.png")
-	art.custom_minimum_size.y = 180; art.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var hero = PanelContainer.new(); layout.add_child(hero); hero.name = "TitleArtFrame"
+	hero.custom_minimum_size.y = 180; hero.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var trim = Ornate.frame(Color8(12, 20, 32), Color8(202, 166, 97), 3)
+	trim.set_content_margin_all(4); hero.add_theme_stylebox_override("panel", trim)
+	var art = TextureRect.new(); hero.add_child(art); art.name = "TitleArt"
+	art.texture = load("res://assets/title/ashen-crown-keyart-v1.png")
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR; art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var t = ItemMenus.label("잿빛 왕관", 60, Color8(248, 216, 112)); t.autowrap_mode = TextServer.AUTOWRAP_OFF
+	t.add_theme_color_override("font_shadow_color", Color8(2, 8, 16)); t.add_theme_constant_override("shadow_offset_y", 3)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(t)
 	var sub = ItemMenus.label("새벽의 서약 · Ashen Crown", 26, Color8(200, 208, 224)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(sub)
 	box = VBoxContainer.new(); layout.add_child(box); box.name = "TitleActions"
