@@ -2,14 +2,14 @@
 
 > 다른 AI가 이어받는다면 먼저 [AGENTS.md](AGENTS.md)를 읽으세요. 초상화 원본은 `art/source/portraits_raw/`에 백업되어 있습니다.
 
-다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-22 (타이틀·공통 메뉴·출전 준비 safe area, 전투 예측 가독성).
+다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-23 (전용 키아트·아린 성인 여성 초상·남색/황동 UI·전장 깊이/행동 표식).
 
 ## 1. 프로젝트 개요
 - 표시 제목: **잿빛 왕관: 새벽의 서약** / **Ashen Crown**.
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `45f213c3a02a403fca8dbc3ddc3459ba` (2026-10-22 모바일 UI + 표시 제목 변경). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
+- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `e08a3d7a79a01817c695225a6684cd32` (2026-10-23 그래픽 업그레이드). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
@@ -246,7 +246,7 @@ PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js 
 - 흔한 함정: (1) box/PC 초기화 → Godot·템플릿·puppeteer 재설치, `build/` 파일이 지워져 보이면 `git checkout -- build`. (2) 여러 작업자가 같은 폴더 → **`git add -A` 금지, 자기 파일만 stage**. (3) 새 `class_name` 스크립트는 `--import` 전엔 테스트에서 "identifier not declared". (4) Pages 캐시: md5 확인 시 `?타임스탬프` 붙이기. (5) `--script` 테스트에서 autoload 사용 불가.
 
 ### 10.7 남은 일 (2026-10-20)
-- 아린 초상화 다시 그리기(현재 소년처럼 보임).
+- 아린 초상화: 2026-10-23 성인 여성 용병 설정으로 교체 완료. Sprites.portrait의 arin-v3.png 사용, 기존 원본 보존.
 - 클래스별 전투 포즈 그림(아린·레온·리나·마법사 시험부터).
 - 구분이 약한 스프라이트 짝: 성기사/팔라딘, 소셜나이트/레인저, 비룡기사/드래곤나이트, 그림자 창병/그림자 중갑병.
 - 실기기 확인 `DEVICE_CHECKLIST.md`(특히 노치·핀치·오디오·클립보드).
@@ -264,3 +264,11 @@ PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js 
 - 「잿빛 왕관」 / 「새벽의 서약」 / Ashen Crown. 타이틀 주제목·부제, DisplayServer 창 제목, 웹 HTML title 및 export head_include, README에 반영.
 - 중요: 내부 `application/config/name="SRPG Prototype"`은 기존 user:// 저장/설정 경로를 유지하려고 보존. 표시 제목과 별개이며 변경하지 말 것.
 - 제목 변경 후 회귀 9종 + 모바일 UI 경계 검사 PASS. Godot 4.3 --export-pack으로 웹 PCK 재생성, 검증된 기존 JS/WASM 런타임 유지, HTML의 PCK 크기 갱신. 실기기/브라우저 렌더링 QA는 위 제한 그대로.
+
+## 12. 2026-10-23 그래픽 업그레이드
+- 키아트 assets/title/ashen-crown-keyart-v1.png: 새벽의 성채와 성인 여행자 일행, 남색·황동·여명빛. 타이틀 그림을 액자 안에 배치하고 그림자 있는 제목과 통일.
+- 아린은 story/ART_AUDIT의 성인 여성 용병 설정에 맞춘 assets/portraits/arin-v3.png로 표시. 기존 갈색 단발·푸른 복장 유지. 첫 시안은 설정 불일치로 폐기. 원본 아린.png는 보존하고 Sprites.portrait에서 새 그림을 사용.
+- Ornate 프레임/버튼은 남색·황동·아이보리, 포커스 테두리와 비활성 글자 대비 강화. 기존 여백/터치 최소 크기 유지.
+- Grid 그리기만 변경: 짧은 벽 그림자, 가는 칸 경계, 이동/공격/회복 테두리 및 꺾쇠/교차/십자. 기본 색 의미와 모든 범위/이동/공식/세이브 유지.
+- 원본과 프롬프트/내장 생성 방식/사용 경로: art/GRAPHICS_UPGRADE_20261023.md. 타이틀 가져오기 최대1024/품질0.9, 초상 최대256/무손실. 기존 JS/WASM 런타임 유지, Godot 4.3 PCK 재생성 및 HTML 파일 크기 갱신.
+- 회귀 9종 + mobile_ui_test PASS. 최종 초상 교체/가져오기 최적화 후 모바일 경계·QoL·정합성 재확인 PASS. diff --check 통과. 실제 폰/브라우저 렌더링·터치·성능은 미검증이며 headless 테스트와 구분.
