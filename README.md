@@ -1,5 +1,8 @@
 # 잿빛 왕관: 새벽의 서약
 
+> 2026-10-23: 타이틀=허브 커버 키아트 + 주/보조 메뉴. HUD≥12px. 플레이: https://junsa80.github.io/srpg-prototype/
+
+
 **Ashen Crown** · Godot 4.3 / GDScript 전술 RPG
 
 - 인수인계: [HANDOFF.md](HANDOFF.md) · 스토리 요약: [STORY.md](STORY.md) (스포일러 주의) · 변경 이력: [CHANGELOG.md](CHANGELOG.md)
@@ -8,6 +11,9 @@
 - 실기기 확인 목록: [DEVICE_CHECKLIST.md](DEVICE_CHECKLIST.md)
 
 고전 파이어엠블렘 스타일 사각 그리드 전술 RPG 뼈대입니다. **휴대폰 세로 화면(720x1280, stretch canvas_items/expand), 터치 전용 조작** 기준입니다.
+
+## 최근 (2026-10-23)
+타이틀에 허브 커버 키아트(`assets/ui/title_key.png`)·주/보조 메뉴, HUD 본문≥12px, 아린/세라/가렌 맵 스프라이트 표지 톤 연결.
 
 ## 실행
 - 에디터: Godot 4.3 이상에서 `project.godot` 열기 → F5

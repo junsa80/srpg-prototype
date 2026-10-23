@@ -177,7 +177,7 @@ func _setup(a: Unit, d: Unit) -> void:
 			var kl = _lbl(rows[ri][0], 24, Color8(232, 216, 152)); sb.add_child(kl); kl.position = Vector2(10, 4 + ri * 35)
 			var vl = _lbl(rows[ri][1], 28); vl.name = "S_" + rows[ri][0]; sb.add_child(vl)
 			vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; vl.size = Vector2(80, 34); vl.position = Vector2(sbw - 90, 1 + ri * 35)
-		if sv[3]: var x2 = _lbl("×2", 22, Color8(255, 224, 64)); x2.name = "X2"; sb.add_child(x2); x2.position = Vector2(80, 40)
+		if sv[3]: var x2 = _lbl("×2", 24, Color8(255, 224, 64)); x2.name = "X2"; sb.add_child(x2); x2.position = Vector2(80, 40)
 		var ix = 8.0 if right else sbw + 20.0   # inner area (toward the centre): ▲▼ and 특효
 		if tv != 0:   # weapon triangle: ▲ advantage (gold) / ▼ disadvantage (grey)
 			var ta = _lbl(("▲" if tv > 0 else "▼"), 52, Color8(255, 224, 64) if tv > 0 else Color8(176, 176, 196)); ta.name = "Tri"
@@ -203,7 +203,7 @@ func _setup(a: Unit, d: Unit) -> void:
 		bars[u] = [ticks, null, num]
 	flash = _rect(root, Color(1, 1, 1, 0), Vector2(-60, -60), Vector2(W + 120, H + 120))
 	var by = arena_y + arena_h + 14 + hp_h + 16
-	var hint = _lbl("화면을 누르면 빨리 감기", 20, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, by + 30)
+	var hint = _lbl("화면을 누르면 빨리 감기", 24, Color8(200, 204, 224)); root.add_child(hint); hint.position = Vector2(20, by + 30)
 	skip_btn = Button.new(); skip_btn.text = "건너뛰기 ▶▶"; skip_btn.name = "CombatSkip"; skip_btn.add_theme_font_size_override("font_size", 26)
 	root.add_child(skip_btn); skip_btn.size = Vector2(240, 92); skip_btn.position = Vector2(W - 236, by)
 	skip_btn.pressed.connect(func(): _set_speed(12.0))

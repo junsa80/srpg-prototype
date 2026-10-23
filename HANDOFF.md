@@ -2,14 +2,14 @@
 
 > 다른 AI가 이어받는다면 먼저 [AGENTS.md](AGENTS.md)를 읽으세요. 초상화 원본은 `art/source/portraits_raw/`에 백업되어 있습니다.
 
-다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-22 (타이틀·공통 메뉴·출전 준비 safe area, 전투 예측 가독성).
+다른 AI/개발자가 이어서 작업할 수 있도록 정리한 문서입니다. 마지막 갱신: 2026-10-23 (인게임 그래픽 업리프트: 타이틀 커버 키아트·주/보조 메뉴, HUD ≥12px, 표지 캐스트 팔레트).
 
 ## 1. 프로젝트 개요
 - 표시 제목: **잿빛 왕관: 새벽의 서약** / **Ashen Crown**.
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `45f213c3a02a403fca8dbc3ddc3459ba` (2026-10-22 모바일 UI + 표시 제목 변경). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
+- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `ea405155af8b37a14068cf84f5f72b94` (2026-10-23 인게임 그래픽 업리프트). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
@@ -264,3 +264,10 @@ PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js 
 - 「잿빛 왕관」 / 「새벽의 서약」 / Ashen Crown. 타이틀 주제목·부제, DisplayServer 창 제목, 웹 HTML title 및 export head_include, README에 반영.
 - 중요: 내부 `application/config/name="SRPG Prototype"`은 기존 user:// 저장/설정 경로를 유지하려고 보존. 표시 제목과 별개이며 변경하지 말 것.
 - 제목 변경 후 회귀 9종 + 모바일 UI 경계 검사 PASS. Godot 4.3 --export-pack으로 웹 PCK 재생성, 검증된 기존 JS/WASM 런타임 유지, HTML의 PCK 크기 갱신. 실기기/브라우저 렌더링 QA는 위 제한 그대로.
+
+## 10.4 인게임 그래픽 업리프트 (2026-10-23)
+- 타이틀: `assets/ui/title_key.png`(허브 커버 v1, 하단 바 제거) 전체 배경 + 주 버튼(이어하기·새 게임) / 보조 줄(불러오기·설정·기록 HBox). `scripts/title.gd`.
+- HUD: 지형·유닛 창·전투 힌트·설정 TextEdit 등 직접 font_size <24 → 24 (캔버스 720→360 CSS에서 ≥12px). `battle.gd` / `combat_scene.gd` / `menus.gd`.
+- 맵 스프라이트: 표지 캐스트만 팔레트 연결 — 아린 navy, 세라 white-teal, 가렌 grey-leather (`tools/portrait_palette.py` OVERRIDE → `chibi.py` 재생성, 해당 유닛 시트만 변경).
+- 전후 스크린(로컬): `build/gfx_uplift/after_title_{360,390}.png`, `after_map_*`, `after_forecast_*`, `before_title_art_fort.png`.
+- 밸런스·세이브·공식 변경 없음.

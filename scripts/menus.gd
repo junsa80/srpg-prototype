@@ -196,7 +196,7 @@ static func _export_slot(parent: Node, slot: int) -> void:
 static func _import_dialog(ctx: Dictionary) -> void:
 	var o = overlay(ctx.cl, "저장 코드 가져오기"); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "ImportSave"
 	v.add_child(ItemMenus.label("내보낸 저장 코드를 붙여넣고 넣을 슬롯을 고르세요.", 22, DIM))
-	var te = TextEdit.new(); te.name = "Code"; te.custom_minimum_size = Vector2(0, 260); te.add_theme_font_size_override("font_size", 20)
+	var te = TextEdit.new(); te.name = "Code"; te.custom_minimum_size = Vector2(0, 260); te.add_theme_font_size_override("font_size", 24)
 	te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY; v.add_child(te)
 	var paste = ItemMenus.big("클립보드에서 붙여넣기", 80, 26); v.add_child(paste)
 	paste.pressed.connect(func(): te.text = DisplayServer.clipboard_get())
@@ -241,7 +241,7 @@ static func unit_list(parent: Node, units: Array, title = "유닛 목록", on_pi
 	var srt = HBoxContainer.new(); srt.name = "Sort"; v.add_child(srt); v.move_child(srt, 1)
 	for m in SORT_MODES.size():
 		var sb = _small(("▶" if m == list_sort else "") + SORT_MODES[m], 0); sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL; sb.name = "Sort%d" % m
-		sb.add_theme_font_size_override("font_size", 22); var mm = m
+		sb.add_theme_font_size_override("font_size", 24); var mm = m
 		sb.pressed.connect(func(): list_sort = mm; cl.queue_free(); unit_list(parent, units, title, on_pick, on_jump)); srt.add_child(sb)
 	var list = scroll(v)
 	var alive = sort_units(units.filter(func(u): return u.hp > 0), list_sort)

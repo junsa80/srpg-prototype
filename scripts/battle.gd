@@ -200,12 +200,12 @@ func _build_ui() -> void:
 	_refresh_toggle_labels()
 	# terrain + unit windows (top)
 	terrain_win = Panel.new(); ui.add_child(terrain_win); terrain_win.add_theme_stylebox_override("panel", Ornate.frame()); terrain_win.position = Vector2(10, 10 + sa.x); terrain_win.size = Vector2(190, 110)
-	terrain_lbl = Label.new(); terrain_win.add_child(terrain_lbl); terrain_lbl.position = Vector2(16, 8); terrain_lbl.add_theme_font_size_override("font_size", 22)
+	terrain_lbl = Label.new(); terrain_win.add_child(terrain_lbl); terrain_lbl.position = Vector2(16, 8); terrain_lbl.add_theme_font_size_override("font_size", 24)
 	unit_win = Panel.new(); ui.add_child(unit_win); unit_win.add_theme_stylebox_override("panel", Ornate.frame()); unit_win.size = Vector2(330, 120)
 	unit_win.set_anchors_preset(Control.PRESET_TOP_RIGHT); unit_win.position = Vector2(720 - 340, 10 + sa.x)
 	unit_port = TextureRect.new(); unit_win.add_child(unit_port); unit_port.position = Vector2(10, 10); unit_port.size = Vector2(100, 100)
 	unit_port.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; unit_port.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	unit_lbl = Label.new(); unit_win.add_child(unit_lbl); unit_lbl.position = Vector2(120, 8); unit_lbl.add_theme_font_size_override("font_size", 22)
+	unit_lbl = Label.new(); unit_win.add_child(unit_lbl); unit_lbl.position = Vector2(120, 8); unit_lbl.add_theme_font_size_override("font_size", 24)
 	unit_wicon = Icons.rect(null, 32); unit_win.add_child(unit_wicon); unit_wicon.position = Vector2(120, 76); unit_wicon.size = Vector2(32, 32)
 	var zb = HBoxContainer.new(); ui.add_child(zb); zb.name = "ZoomButtons"; zb.add_theme_constant_override("separation", 8)
 	zb.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT); zb.offset_left = -196; zb.offset_right = -12; zb.offset_top = -PANEL_H - sa.y - 100; zb.offset_bottom = -PANEL_H - sa.y - 12

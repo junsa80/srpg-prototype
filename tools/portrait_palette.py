@@ -48,15 +48,16 @@ def sample(path):
 # Hand fixes where the automatic sample grabs a strap/veil/shadow instead of the hair or main outfit (checked on build/palette_compare.png).
 OVERRIDE = {
     "노아": {"outfit": [44, 60, 120]},    # navy coat (sample hit the leather strap)
+    "아린": {"outfit": [48, 64, 140]},    # navy + gold lord (hub cover centre)
     "루크": {"outfit": [64, 120, 64]},    # green hood/cloak
     "레온": {"outfit": [56, 128, 120]},   # teal plate trim
     "미르": {"hair": [232, 216, 160]},    # cream hair (sample hit the blue veil)
-    "세라": {"hair": [236, 204, 124]},    # golden hair
+    "세라": {"hair": [236, 204, 124], "outfit": [200, 228, 220]},  # white-teal healer (hub cover left)
     "아서": {"hair": [216, 200, 160]},    # greying gold
     "보리스": {"outfit": [124, 84, 52]},  # brown leather (lift made it orange)
     "리안": {"outfit": [160, 52, 52]},    # crimson cape/cloth
     "리나": {"outfit": [76, 124, 60]},    # green hunter's tunic
-    "가렌": {"outfit": [112, 86, 62]},    # leather vest
+    "가렌": {"hair": [188, 188, 196], "outfit": [104, 88, 72]},  # grey hair + grey-leather (hub cover right)
     "카린": {"outfit": [52, 100, 68]},    # dark green scarf/cloak
     "브록": {"hair": [112, 80, 56]},      # dark brown hair + beard
 }
