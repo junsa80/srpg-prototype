@@ -9,7 +9,7 @@
 - GBA 파이어엠블렘 스타일 SRPG. **Godot 4.3 / GDScript**, **휴대폰 세로 720x1280**, 터치 전용, 한국어 UI.
 - 플레이: https://junsa80.github.io/srpg-prototype/ (repo `junsa80/srpg-prototype`, `main` 브랜치 `/docs` 폴더 = GitHub Pages)
 - 구현 범위: **본편 완결** — 1~27장 + 종장(그림자의 심연) + 3장 이후 분기(4A 노르드 / 4B 사르한), 엔딩 3종(새벽/잿빛/기본, `ChapterData.ending_id`; 14장 떠나보냄 = 기본), 종장 빛 기둥(`L`, `light_only_heal`). 거점(상점·수송·장비·상태·저장·지원·환생), 프롤로그/턴 이벤트/야영/지원 대화, 모든 보스·화자 초상화.
-- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `ea405155af8b37a14068cf84f5f72b94` (2026-10-23 인게임 그래픽 업리프트). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
+- 배포 파일: 커밋은 `git log -1`, `docs/index.pck` md5 `e4014191fc49a397afa2db316809188f` (2026-10-23 인게임 그래픽 업리프트). 실제 배포 완료는 §10.3의 라이브 파일 해시로 확인.
 - 미결 사항 목록: `story/OPEN_QUESTIONS.md` (스포일러). 실기기 확인 목록: `DEVICE_CHECKLIST.md`.
 
 ## 2. 빌드 · 테스트 · 배포
@@ -271,3 +271,11 @@ PP=/workspace/shotrunner/node_modules/puppeteer-core node tools/mobile_check.js 
 - 맵 스프라이트: 표지 캐스트만 팔레트 연결 — 아린 navy, 세라 white-teal, 가렌 grey-leather (`tools/portrait_palette.py` OVERRIDE → `chibi.py` 재생성, 해당 유닛 시트만 변경).
 - 전후 스크린(로컬): `build/gfx_uplift/after_title_{360,390}.png`, `after_map_*`, `after_forecast_*`, `before_title_art_fort.png`.
 - 밸런스·세이브·공식 변경 없음.
+
+## 2026-10-23 GPT 그래픽 작업 재개·통합
+- 이전 `ai/gpt/graphics-20261023`(3386dfb)의 키아트·성인 여성 용병 아린 초상·Ornate 색상·전장 그림자/칸/행동 표식을 최신 main 9afee37 위에 통합.
+- main의 주/보조 타이틀 버튼 배치, HUD 24px 이상, 캐스트 팔레트는 유지. 배경만 전용 성채 키아트로 연결. 기존 hub 커버 파일은 보존.
+- 원래 브랜치의 PCK를 덮어쓰지 않고 Godot 4.3으로 통합 소스에서 다시 export-pack. 검증된 JS/WASM 유지, HTML의 실제 PCK 크기 갱신.
+- 회귀 9종과 모바일 UI 경계 검사 PASS. 모바일 UI 검사는 `--flowtest` 없이 실행(이 플래그는 타이틀을 건너뛰므로 타이틀 검사에 사용 금지).
+- 새 생성 작업은 없으며 기존 브랜치의 완성 이미지를 재사용. 실제 폰의 WebGL 렌더링/색감/터치는 미검증.
+- 아린 초상은 `Sprites.portrait`에서 arin-v3.png로 연결 완료. §10.7의 아린 재그리기 항목은 완료 상태로 대체.

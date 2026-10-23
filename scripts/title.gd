@@ -1,5 +1,5 @@
 extends Control
-## Title / main menu: hub-cover key art, primary actions + secondary helper row.
+## Title / main menu: dedicated Ashen Crown key art, primary actions + secondary helper row.
 var box: VBoxContainer
 
 func _ready() -> void:
@@ -8,10 +8,10 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/battle.tscn"); return
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg = ColorRect.new(); add_child(bg); bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); bg.color = Color8(12, 14, 22)
-	# Full-bleed cover key art (dawn + ashen castle) — matches hub thumbs/srpg-prototype-cover-v1
+	# Dedicated citadel key art; retain the latest primary / secondary action layout.
 	var art = TextureRect.new(); add_child(art); art.name = "TitleArt"
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var key = load("res://assets/ui/title_key.png")
+	var key = load("res://assets/title/ashen-crown-keyart-v1.png")
 	art.texture = key if key else load("res://assets/battle/bg/fort.png")
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR; art.mouse_filter = Control.MOUSE_FILTER_IGNORE
