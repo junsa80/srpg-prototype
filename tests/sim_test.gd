@@ -27,7 +27,7 @@ const PLAN = {   # chapter: [party level, extra weapons, recruits, promote]
 	"ch26": [20, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘", "제드"], true],
 	"ch27": [20, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘", "제드"], true],
 	"final": [20, ["강철", "은"], ["가렌", "카이", "실라", "다린", "소라", "엘렌", "카린", "카이린", "리엘", "제드"], true]}
-const TRIALS = 16
+var TRIALS = 16   # SIM_TRIALS env overrides (e.g. 48 for a lower-noise curve check)
 var results = {}
 var threat = {}
 
@@ -66,6 +66,7 @@ func _safe(u: Unit, c: Vector2i) -> bool:
 
 func _ready() -> void:
 	var only = OS.get_environment("SIM_ONLY")
+	if OS.get_environment("SIM_TRIALS").is_valid_int(): TRIALS = maxi(1, OS.get_environment("SIM_TRIALS").to_int())
 	for ch in PLAN:
 		if only != "" and only != ch: continue
 		var wins = 0; var turns = []; var deaths = 0

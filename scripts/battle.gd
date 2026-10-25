@@ -260,7 +260,8 @@ func _restore(r: Dictionary) -> void:
 		if grid.terrain.get(c, "") in ["door", "crack"]: grid.open_door(c)
 		elif grid.terrain.get(c, "") == "chest": grid.open_chest(c)
 		opened.append(c)
-	for i in r.get("reinf_done", []): MAP.reinforcements[int(i)]["done"] = true
+	for i in r.get("reinf_done", []):   # guard: a mid-battle save may name a wave index that a later balance pass removed
+		if int(i) >= 0 and int(i) < MAP.get("reinforcements", []).size(): MAP.reinforcements[int(i)]["done"] = true
 	var st: Dictionary = r.get("state", {})
 	kills = int(st.get("kills", 0)); stole = int(st.get("stole", 0)); chests_got = int(st.get("chests", 0)); escaped = st.get("escaped", [])
 	killed_names = st.get("killed", []); events_seen = st.get("events", []).map(func(x): return int(x)); boss_talked = st.get("boss_talked", true)

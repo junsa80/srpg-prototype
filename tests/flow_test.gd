@@ -125,13 +125,14 @@ func _ready() -> void:
 	ok = ok and f1 != f2 and not c2.btn_weapon.disabled
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 98")
 	c2._clear()
-	# reinforcements at turn 5 + warning on turn 4
-	c2.tm.turn = 4; c2._update_warnings(); ok = ok and c2.grid.warnings.size() == 2
-	c2.tm.turn = 5; var n0 = c2.units.size()
+	# reinforcements on their turn + warning one turn before (wave read from map data: ch2 = turn 6, 1 unit since the 2026-10-25 curve pass)
+	var rw = c2.MAP.reinforcements[0]; var rn = rw.units.size()
+	c2.tm.turn = int(rw.turn) - 1; c2._update_warnings(); ok = ok and c2.grid.warnings.size() == rn and rn >= 1
+	c2.tm.turn = int(rw.turn); var n0 = c2.units.size()
 	for u in c2.units: if u.team == 0: u.hp = 999; u.stats.hp = 999
 	await c2._run_enemy_phase()
 	print("reinforcements: units ", n0, " -> ", c2.units.size())
-	ok = ok and c2.units.size() == n0 + 2
+	ok = ok and c2.units.size() == n0 + rn
 	if not ok and not has_meta("f"): set_meta("f", 1); print("FAILAT 106")
 	# boss kill = victory
 	for b in boss: b.hp = 0
