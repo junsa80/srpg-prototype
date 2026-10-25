@@ -2,6 +2,8 @@ extends Node
 ## Autoload "Sfx": CC0 procedurally-synthesized chiptune SFX + BGM loop, mute toggle (persisted).
 var players = {}
 var bgm: AudioStreamPlayer
+var bgm_tracks = {}
+var current_track = "home"
 var muted = false
 var bg = false            # app/tab in background: everything paused (resumes at the same position)
 var _vis_cb = null        # keep the JS callback alive
@@ -11,9 +13,11 @@ func _ready() -> void:
 	for n in NAMES:
 		var p = AudioStreamPlayer.new(); p.stream = load("res://assets/sfx/%s.wav" % n); add_child(p); players[n] = p
 	bgm = AudioStreamPlayer.new(); add_child(bgm)
-	var s: AudioStreamWAV = load("res://assets/sfx/bgm.wav")
-	s.loop_mode = AudioStreamWAV.LOOP_FORWARD; s.loop_begin = 0; s.loop_end = s.data.size() / 2
-	bgm.stream = s; bgm.volume_db = -8
+	for track in ["home", "battle"]:
+		var s: AudioStreamWAV = load("res://assets/sfx/bgm_home.wav" if track == "home" else "res://assets/sfx/bgm.wav")
+		s.loop_mode = AudioStreamWAV.LOOP_FORWARD; s.loop_begin = 0; s.loop_end = s.data.size() / 2
+		bgm_tracks[track] = s
+	bgm.stream = bgm_tracks["home"]; bgm.volume_db = -8
 	muted = FileAccess.file_exists("user://muted")
 	apply_volumes(); _apply()
 	if OS.has_feature("web"):   # mobile browsers may not send focus notifications
@@ -43,6 +47,10 @@ func play(n: String) -> void:
 	if not muted and not bg and Settings.sfx_on and players.has(n): players[n].play()
 
 func start_bgm() -> void:
+	var scene = get_tree().current_scene
+	var track = "battle" if scene and "battle" in scene.scene_file_path else "home"
+	if track != current_track:
+		bgm.stop(); current_track = track; bgm.stream = bgm_tracks[track]
 	if not bgm.playing and not muted and Settings.bgm_on: bgm.play()
 
 func toggle_mute() -> bool:
