@@ -3,6 +3,8 @@ extends Node2D
 ## tap unit -> tap blue cell (shows path arrow) -> tap again to slide there -> tap enemy for forecast -> [확인].
 ## Drag to pan the camera on large maps.
 var CHAPTER = "ch1"
+var first_guide: FirstPlayGuide
+var first_entry = false
 var MAP = {}
 @onready var grid: Grid = $Grid
 @onready var tm: TurnManager = $TurnManager
@@ -46,6 +48,8 @@ static func demo_flags() -> String:
 
 func _ready() -> void:
 	var demo = demo_flags()
+	first_entry = Campaign.get_meta("first_play", false)
+	if Campaign.has_meta("first_play"): Campaign.remove_meta("first_play")
 	if "lv12" in demo:   # dev: screenshot promotion compare
 		Campaign.ensure_roster()
 		for n in Campaign.roster: Campaign.roster[n].level = 12
@@ -98,10 +102,10 @@ func _ready() -> void:
 		var lines = []
 		for n in ROSTER_NAMES:
 			if Roster.UNITS[n][1] == CHAPTER and Roster.UNITS[n][2] != "" and CHAPTER != "ch1": lines.append([n, Roster.UNITS[n][2]])
-		if CHAPTER == "ch1" and Campaign.cycle == 0 and resume.is_empty(): lines.append_array(ChapterData.PROLOGUE)
-		lines.append_array(ch.pre)   # 보스 대사는 첫 교전 때 (_boss_talk)
+		if CHAPTER == "ch1" and Campaign.cycle == 0 and resume.is_empty() and not first_entry: lines.append_array(ChapterData.PROLOGUE)
+		lines.append_array(ch.pre.slice(0, 3) if first_entry and CHAPTER == "ch1" else ch.pre)   # 보스 대사는 첫 교전 때 (_boss_talk)
 		if not "nodialog" in demo and not "combat" in demo and not "effdemo" in demo: await dialogue.play(lines)
-		if not "combat" in demo and not "effdemo" in demo and not "noprep" in demo:   # dev: #noprep skips the deployment screen
+		if not first_entry and not "combat" in demo and not "effdemo" in demo and not "noprep" in demo:   # dev: #noprep skips the deployment screen
 			prep = PrepScreen.new(); add_child(prep); await prep.run(self)
 	SaveManager.autosave(CHAPTER, 0, payload())  # chapter start (after preparation)
 	if "devwin" in demo:   # dev: screenshot the clear/rank/branch screens
@@ -109,6 +113,8 @@ func _ready() -> void:
 			if u.team == 1: u.hp = 0; u.visible = false
 		seized = true; escaped.append("아린")
 	tm.start_player_phase()
+	if first_entry and CHAPTER == "ch1" and Campaign.get_meta("guided_start", false): _start_guide()
+	if Campaign.has_meta("guided_start"): Campaign.remove_meta("guided_start")
 	if "mapview" in demo:   # dev: whole-map overview screenshot
 		var z = minf(_view_size().x / grid.pixel_size().x, _view_size().y / grid.pixel_size().y)
 		cam.zoom = Vector2(z, z); cam.position = Vector2.ZERO
@@ -179,6 +185,11 @@ func _btn(t: String, parent: Control, fs = 30) -> Button:
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL; parent.add_child(b); return b
 
 func _build_ui() -> void:
+	var backdrop = CanvasLayer.new(); backdrop.layer = -10; add_child(backdrop)
+	var art = TextureRect.new(); backdrop.add_child(art); art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.texture = load("res://assets/title/ashen-crown-keyart-v1.png"); art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED; art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	art.modulate = Color(0.22, 0.28, 0.34); art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui = CanvasLayer.new(); add_child(ui)
 	var panel = Panel.new(); ui.add_child(panel); panel.add_theme_stylebox_override("panel", Ornate.frame(Color8(20, 18, 36, 245)))
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE); sa = SafeArea.insets(get_viewport()); panel.offset_bottom = -sa.y; panel.offset_top = -PANEL_H - sa.y
@@ -377,14 +388,15 @@ func open_menu() -> void:
 	if busy or prep_active or tm.phase != TurnManager.Phase.PLAYER: return
 	var o = Menus.overlay(ui, "메뉴", 30, 150, 150); var cl: CanvasLayer = o[0]; var v: VBoxContainer = o[1]; cl.name = "BattleMenu"
 	var items = [["유닛 목록", func(): Menus.unit_list(ui, units.filter(func(u): return u.team == 0) + units.filter(func(u): return u.team == 1), "유닛 목록", null, jump_to)],
-		["전투 목표", _objective], ["상성표", func(): Menus.triangle_chart(ui)], ["설정", func(): Menus.settings(ui, func(): anim_on = Settings.anim)],
+		["게임 방법", func(): FirstPlayGuide.manual(self)], ["전투 목표", _objective], ["상성표", func(): Menus.triangle_chart(ui)], ["설정", func(): Menus.settings(ui, func(): anim_on = Settings.anim)],
 		["중단 저장", func(): Menus.slots(ui, "save", func(): return [CHAPTER, tm.turn, payload()])],
 		["챕터 재시작", func(): Menus.confirm(ui, "이 장을 처음부터 다시 할까요?\n(이번 장에서 얻은 경험치·아이템은 장 시작 상태로 돌아갑니다)", "재시작", restart_chapter)],
 		["환생", func(): Menus.rebirth_select(ui, func(): get_tree().change_scene_to_file("res://scenes/battle.tscn"))],
 		["타이틀로", func(): Menus.confirm(ui, "타이틀로 돌아갈까요?\n저장하지 않은 진행은 마지막 자동 저장(턴 %d 시작)부터 이어집니다." % tm.turn, "타이틀로", func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))],
 		["턴 종료", func(): cl.queue_free(); _on_end_turn()]]
+	var list = Menus.scroll(v)
 	for it in items:
-		var b = ItemMenus.big(it[0], 92, 32); b.name = "M_" + it[0]; v.add_child(b); var cb: Callable = it[1]
+		var b = ItemMenus.big(it[0], 92, 32); b.name = "M_" + it[0]; list.add_child(b); var cb: Callable = it[1]
 		b.pressed.connect(func(): Sfx.play("select"); cb.call())
 	Menus.close_btn(v, cl)
 	Sfx.play("select")
@@ -709,6 +721,7 @@ func _on_confirm() -> void:
 		info.text = "\n".join(log)
 	elif pending_target:
 		var d = pending_target
+		if is_instance_valid(first_guide): first_guide.attacked = true
 		await _boss_talk(a, d)
 		var log = BattleManager.resolve(a, d)
 		await _animate(a, d)
@@ -1150,6 +1163,7 @@ func _banner(text: String, col: Color) -> void:
 
 func _on_end_turn() -> void:
 	if tm.phase != TurnManager.Phase.PLAYER or busy: return
+	if is_instance_valid(first_guide) and first_guide.attacked: first_guide.finish()
 	_clear()
 	var lines = _end_of_player_turn()
 	tm.end_player_phase()
@@ -1165,7 +1179,7 @@ func _on_phase(phase: int, turn: int) -> void:
 		info.text = "\n".join(lines) + ("\n" if lines.size() else "") + "턴 %d — 플레이어 페이즈\n유닛 탭=선택 · 길게=상태 · 빈 칸=지형 · [메뉴]=메뉴" % turn
 		if _check_end(): return
 		await _banner("플레이어 페이즈", Color8(120, 176, 255))
-		if turn == 1 and CHAPTER in ["ch1", "ch2"] and is_inside_tree() and not has_meta("flowtest"):   # weapon triangle tip (colour code)
+		if turn == 1 and CHAPTER == "ch2" and is_inside_tree() and not has_meta("flowtest"):   # weapon triangle tip (colour code)
 			Menus.toast(ui, "무기 상성: 파랑(검) > 빨강(도끼) > 초록(창) > 파랑\n유리 ▲ / 불리 ▼ — 자세히는 [메뉴] > 상성표")
 		await _turn_event(turn)
 	else:
@@ -1476,3 +1490,8 @@ func _demo_eff(fc: bool) -> void:
 		_select(a); moved = true; grid.highlight_move = []; tap(e.cell)
 	else:
 		tap(a.cell)
+
+## Optional, presentation-only guidance; never changes battle rules or saved units.
+func _start_guide() -> void:
+	if is_instance_valid(first_guide): first_guide.queue_free()
+	first_guide = FirstPlayGuide.new(); first_guide.battle = self; add_child(first_guide)
