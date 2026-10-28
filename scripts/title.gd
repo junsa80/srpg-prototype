@@ -31,6 +31,8 @@ func _ready() -> void:
 	var sub = ItemMenus.label("새벽의 서약 · Ashen Crown", 26, Color8(220, 228, 240)); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_color_override("font_outline_color", Color8(16, 16, 24)); sub.add_theme_constant_override("outline_size", 6)
 	layout.add_child(sub)
+	var promise = ItemMenus.label("동료와 함께 마을을 지키는 전술 RPG", 26, Color8(236, 229, 211))
+	promise.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; layout.add_child(promise)
 	box = VBoxContainer.new(); layout.add_child(box); box.name = "TitleActions"
 	box.add_theme_constant_override("separation", 10)
 	_main()
@@ -102,7 +104,22 @@ func _new_game_confirm() -> void:
 	Menus.confirm(self, "새로 시작할까요?\n(저장 슬롯은 그대로 남습니다)", "새로 시작", _new_game)
 
 func _new_game() -> void:
-	Campaign.reset(); SaveManager.delete_slot(0); _goto("res://scenes/battle.tscn")
+	var o = Menus.overlay(self, "어떻게 시작할까요?"); var cl = o[0]; var v = o[1]
+	cl.name = "FirstPlayChoice"
+	var art = TextureRect.new(); v.add_child(art); art.texture = Sprites.portrait("아린")
+	art.custom_minimum_size.y = 240; art.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	v.add_child(ItemMenus.label("마을을 지키는 첫 전투.\n동료와 함께 한 수씩 길을 열어 보세요.", 30))
+	for choice in [[true, "안내받으며 시작", "선택 · 이동 · 공격 · 턴 종료만 짧게. 언제든 스킵할 수 있어요."], [false, "바로 플레이", "기본 편성으로 바로 출전. 도움이 필요하면 메뉴 → 게임 방법."]]:
+		var guided: bool = choice[0]
+		var b = ItemMenus.big(choice[1], 100, 32); b.name = "GuidedStart" if guided else "DirectStart"; v.add_child(b)
+		v.add_child(ItemMenus.label(choice[2], 26, Color8(192, 205, 220)))
+		b.pressed.connect(func():
+			Campaign.reset(); SaveManager.delete_slot(0)
+			Campaign.set_meta("first_play", true); Campaign.set_meta("guided_start", guided)
+			cl.queue_free(); _goto("res://scenes/battle.tscn"))
+	Menus.close_btn(v, cl, null, "돌아가기")
 
 ## 완전 초기화: wipes campaign + every save slot. Two confirmations (danger).
 func _wipe_confirm() -> void:
